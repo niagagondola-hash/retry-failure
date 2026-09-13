@@ -144,10 +144,12 @@ Membangun `payment-gateway-mock` sebagai NestJS app terpisah di `apps/payment-ga
 
 ## Acceptance criteria
 
+> **PENTING — curl command wajib pakai `-H 'Content-Type: application/json'` untuk PUT/POST yang kirim JSON body.** Tanpa header ini, curl default pakai `application/x-www-form-urlencoded` → NestJS parse body sebagai form, bukan JSON → DTO kosong → silent failure (config tidak berubah, no error). Sudah diverifikasi di sandbox.
+
 - [ ] `cd apps/payment-gateway-mock && pnpm start:dev` jalan tanpa crash.
 - [ ] `curl http://localhost:3002/admin/config` returns current config.
-- [ ] `curl -X PUT http://localhost:3002/admin/config -d '{"mode":"fail-first-n","n":2}'` mengubah state.
-- [ ] `curl -X POST http://localhost:3002/v1/charges -H 'Idempotency-Key: test-1' -d '{"amount":100,"currency":"IDR"}'` returns 200 (mode always-success).
+- [ ] `curl -X PUT -H 'Content-Type: application/json' http://localhost:3002/admin/config -d '{"mode":"fail-first-n","n":2}'` mengubah state. ← WAJIB `-H 'Content-Type: application/json'`
+- [ ] `curl -X POST -H 'Idempotency-Key: test-1' -H 'Content-Type: application/json' http://localhost:3002/v1/charges -d '{"amount":100,"currency":"IDR"}'` returns 200 (mode always-success).
 - [ ] Mode `fail-first-n=2`: 2 call pertama return 500, call ke-3 return 200 + `replayed: false` (fresh charge). Same-key call ke-4 → 200 + `replayed: true`.
 - [ ] Mode `rate-limited`: return 429 + header `Retry-After: <n>`.
 - [ ] Mode `client-error`: return 400 `{ error_code: 'invalid_card' }`.
