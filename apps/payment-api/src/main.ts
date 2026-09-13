@@ -5,7 +5,10 @@ import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create(AppModule, {
+    bufferLogs: false,
+    logger: ['log', 'error', 'warn', 'debug'],
+  });
   const config = app.get(ConfigService);
   const port = Number(process.env.PORT ?? config.get<number>('PORT') ?? 3001);
   const logger = new Logger('bootstrap');
