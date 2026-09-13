@@ -145,17 +145,24 @@ Membangun `payment-gateway-mock` sebagai NestJS app terpisah di `apps/payment-ga
 ## Acceptance criteria
 
 > **PENTING — curl command wajib pakai `-H 'Content-Type: application/json'` untuk PUT/POST yang kirim JSON body.** Tanpa header ini, curl default pakai `application/x-www-form-urlencoded` → NestJS parse body sebagai form, bukan JSON → DTO kosong → silent failure (config tidak berubah, no error). Sudah diverifikasi di sandbox.
+>
+> **PENTING — Mode TIDAK auto-reset antar test.** Setiap test mode-specific butuh PUT mode dulu. Bila ragu, jalankan pre-step reset di bawah sebelum test.
+>
+> **Pre-step reset (jalankan sebelum setiap test bila ragu)**:
+> ```bash
+> curl -X PUT -H 'Content-Type: application/json' http://localhost:3002/admin/config -d '{"mode":"always-success"}'
+> ```
 
-- [ ] `cd apps/payment-gateway-mock && pnpm start:dev` jalan tanpa crash.
-- [ ] `curl http://localhost:3002/admin/config` returns current config.
-- [ ] `curl -X PUT -H 'Content-Type: application/json' http://localhost:3002/admin/config -d '{"mode":"fail-first-n","n":2}'` mengubah state. ← WAJIB `-H 'Content-Type: application/json'`
-- [ ] `curl -X POST -H 'Idempotency-Key: test-1' -H 'Content-Type: application/json' http://localhost:3002/v1/charges -d '{"amount":100,"currency":"IDR"}'` returns 200 (mode always-success).
-- [ ] Mode `fail-first-n=2`: 2 call pertama return 500, call ke-3 return 200 + `replayed: false` (fresh charge). Same-key call ke-4 → 200 + `replayed: true`.
-- [ ] Mode `rate-limited`: return 429 + header `Retry-After: <n>`.
-- [ ] Mode `client-error`: return 400 `{ error_code: 'invalid_card' }`.
-- [ ] Mode `succeed-but-drop-response`: call pertama hang → client timeout; call kedua dengan same key → return 200 + `replayed: true`.
-- [ ] `GET /admin/stats` returns `{ requestCount, successCount, failureCount, replayCount, actualChargesCount }`.
-- [ ] `GET /metrics` returns Prometheus text format.
+- [ ] **#1 Start server jalan tanpa crash.**
+- [ ] **#2** `curl http://localhost:3002/admin/config` returns current config.
+- [ ] **#3** `curl -X PUT -H 'Content-Type: application/json' http://localhost:3002/admin/config -d '{"mode":"fail-first-n","n":2}'` mengubah state.
+- [ ] **#4 [RESET mode=always-success]** `curl -X POST -H 'Idempotency-Key: test-1' -H 'Content-Type: application/json' http://localhost:3002/v1/charges -d '{"amount":100,"currency":"IDR"}'` returns 200 (mode always-success).
+- [ ] **#5 [SET mode=fail-first-n,n=2]** 2 call pertama return 500, call ke-3 return 200 + `replayed: false` (fresh charge). Same-key call ke-4 → 200 + `replayed: true`.
+- [ ] **#6 [SET mode=rate-limited]** return 429 + header `Retry-After: <n>`.
+- [ ] **#7 [SET mode=client-error]** return 400 `{ error_code: 'invalid_card' }`.
+- [ ] **#8 [SET mode=succeed-but-drop-response]** call pertama hang → client timeout; call kedua dengan same key → return 200 + `replayed: true`.
+- [ ] **#9** `GET /admin/stats` returns `{ requestCount, successCount, failureCount, replayCount, actualChargesCount }`.
+- [ ] **#10** `GET /metrics` returns Prometheus text format.
 - [ ] `pnpm typecheck` & `pnpm lint` lulus.
 
 ## Useful commands (run after completing this task)
