@@ -135,19 +135,35 @@ NEVER sum Retry-After + exponential backoff. Pilih salah satu:
 
 ## Useful commands (run after completing this task)
 
+### Pre-flight Check
+
+> **WAJIB BACA**: sebelum menjalankan command di bawah, cek kondisi lingkungan Anda via [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 1 (Pre-flight Check).
+>
+> Ringkasan keyword:
+> - `pnpm --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu (lihat [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 2.1).
+>
+> Tidak ada port-specific command di task ini (pure TypeScript package, Jest unit test only). Command di bawah sama untuk kedua kondisi (LOCAL & SANDBOX).
+
+---
+
 ```bash
 # 1. Install deps untuk packages/resilience
+# KONDISI LOCAL (pnpm sudah terinstall) & KONDISI SANDBOX (pnpm via corepack):
 cd /home/z/my-project/retry-failure
 pnpm install
 
-# 2. Run Jest tests
+# Bila pnpm belum terinstall (KONDISI SANDBOX), jalankan `corepack enable pnpm` dulu
+# (lihat SANDBOX_NOTES.md section 2.1). Setelah root package.json dipin ke
+# `packageManager: "pnpm@9.12.0"` (TASK-01), corepack akan otomatis activate versi yang sama.
+
+# 2. Run Jest tests — sama kedua kondisi
 pnpm --filter @retry-failure/resilience test
 
-# 3. Lint & typecheck
+# 3. Lint & typecheck — sama kedua kondisi
 pnpm --filter @retry-failure/resilience lint
 pnpm --filter @retry-failure/resilience typecheck
 
-# 4. Quick sanity check via ts-node (bila mau cek manual)
+# 4. Quick sanity check via ts-node (bila mau cek manual) — sama kedua kondisi
 cd /home/z/my-project/retry-failure/packages/resilience
 pnpm exec ts-node -e '
 import { classifyError, parseRetryAfter } from "./src/errors";

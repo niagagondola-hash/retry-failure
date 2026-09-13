@@ -582,15 +582,38 @@ export class GatewayModule {}
 
 ## Useful commands (run after completing this task)
 
+### Pre-flight Check
+
+> **WAJIB BACA**: sebelum menjalankan command di bawah, cek kondisi lingkungan Anda via [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 1 (Pre-flight Check).
+>
+> Ringkasan keyword:
+> - `pnpm --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
+> - `docker --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → butuh external PostgreSQL atau skip DB-dependent commands.
+> - `curl -s http://localhost:3000` sibuk → KONDISI SANDBOX → payment-api pakai PORT=3001, gateway-mock pakai PORT=3002. Bebas → KONDISI LOCAL → payment-api pakai PORT=3000, gateway-mock pakai PORT=3001.
+
+Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih salah satu sesuai kondisi.
+
+---
+
 ### 1. Start gateway mock (TASK-03 dependency)
 
 ```bash
+# KONDISI LOCAL (port 3000 bebas; gateway-mock default 3001):
 cd /home/z/my-project/retry-failure/apps/payment-gateway-mock
-pnpm start:dev > /tmp/gateway-mock.log 2>&1 &
+PORT=3001 pnpm start:dev > /tmp/gateway-mock.log 2>&1 &
+sleep 5
+tail -n 20 /tmp/gateway-mock.log
+# Expected: "payment-gateway-mock listening on :3001"
+
+# KONDISI SANDBOX (port 3000 dipakai Next.js preview → payment-api geser ke 3001; gateway-mock geser ke 3002):
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock
+PORT=3002 pnpm start:dev > /tmp/gateway-mock.log 2>&1 &
 sleep 5
 tail -n 20 /tmp/gateway-mock.log
 # Expected: "payment-gateway-mock listening on :3002"
 ```
+
+> Variabel lingkungan konvensi: `GW_PORT="${GW_PORT:-3001}"` default LOCAL, set `GW_PORT=3002` untuk SANDBOX. Command curl / ts-node smoke di bawah pakai pola env var supaya tidak duplikat.
 
 ### 2. Typecheck & lint
 
@@ -601,7 +624,7 @@ pnpm --filter payment-api lint
 pnpm --filter payment-api test
 ```
 
-### 3. Quick E2E smoke test via ts-node (gateway mock harus sudah jalan di :3002)
+### 3. Quick E2E smoke test via ts-node (gateway mock harus sudah jalan — port kondisional sesuai Pre-flight)
 
 Simpan sebagai `/tmp/smoke-gateway-adapter.ts`:
 
@@ -615,6 +638,10 @@ import { ResilientPaymentGateway } from '../../apps/payment-api/src/modules/gate
 import { DEFAULT_RESILIENCE_CONFIG } from '@retry-failure/resilience';
 import type { ChargeResult } from '../../apps/payment-api/src/modules/gateway/types';
 
+// Baca gateway URL dari env. Default LOCAL (port 3001); untuk SANDBOX set GW_PORT=3002
+// sebelum invoke ts-node (lihat command block di bawah script ini).
+const GATEWAY_URL = process.env.GATEWAY_URL || 'http://localhost:3001';
+
 @Module({
   imports: [HttpModule, ConfigModule.forRoot()],
   providers: [HttpPaymentGateway],
@@ -626,7 +653,7 @@ async function smoke(mode: string, expectedDescription: string): Promise<void> {
   const http = app.get(HttpService);
   const config = app.get(ConfigService);
   // Set gateway mode via /admin/config
-  await http.put('http://localhost:3002/admin/config', { mode }).toPromise();
+  await http.put(`${GATEWAY_URL}/admin/config`, { mode }).toPromise();
 
   const inner = new HttpPaymentGateway(http, config);
   const resilient = new ResilientPaymentGateway({
@@ -656,7 +683,7 @@ async function smoke(mode: string, expectedDescription: string): Promise<void> {
   await smoke('rate-limited', 'should fail with retryAfterMs set from Retry-After header');
   // Reset ke always-success di akhir
   await NestFactory.create(SmokeModule).then(async (app) => {
-    await app.get(HttpService).put('http://localhost:3002/admin/config', { mode: 'always-success' }).toPromise();
+    await app.get(HttpService).put(`${GATEWAY_URL}/admin/config`, { mode: 'always-success' }).toPromise();
     await app.close();
   });
   console.log('Gateway reset to always-success.');
@@ -667,34 +694,63 @@ Jalankan:
 
 ```bash
 cd /home/z/my-project/retry-failure
-pnpm --filter payment-api exec ts-node /tmp/smoke-gateway-adapter.ts
+
+# KONDISI LOCAL (gateway-mock di port 3001):
+GATEWAY_URL=http://localhost:3001 pnpm --filter payment-api exec ts-node /tmp/smoke-gateway-adapter.ts
+
+# KONDISI SANDBOX (gateway-mock di port 3002):
+GATEWAY_URL=http://localhost:3002 pnpm --filter payment-api exec ts-node /tmp/smoke-gateway-adapter.ts
+
+# Atau pakai pola env var GW_PORT (default 3001 LOCAL, override 3002 SANDBOX):
+GW_PORT="${GW_PORT:-3001}" GATEWAY_URL="http://localhost:${GW_PORT}" \
+  pnpm --filter payment-api exec ts-node /tmp/smoke-gateway-adapter.ts
 ```
 
 ### 4. Quick curl-based verification (langsung ke gateway, tanpa adapter)
 
+Pola env var: `GW_PORT="${GW_PORT:-3001}"` default LOCAL; set `GW_PORT=3002` untuk SANDBOX.
+
 ```bash
-# Reset mode ke always-success
+# === Varien explicit (pilih satu) ===
+
+# KONDISI LOCAL (gateway-mock port 3001):
+curl -s -X PUT http://localhost:3001/admin/config \
+  -H 'Content-Type: application/json' \
+  -d '{"mode":"always-success"}' | jq .
+
+# KONDISI SANDBOX (gateway-mock port 3002):
 curl -s -X PUT http://localhost:3002/admin/config \
   -H 'Content-Type: application/json' \
   -d '{"mode":"always-success"}' | jq .
 
+# === Pola env var (rekomendasi — kurangi duplikasi) ===
+# Set GW_PORT sekali di sesi shell, command berikut pakai variabel tsb.
+# KONDISI LOCAL: export GW_PORT=3001
+# KONDISI SANDBOX: export GW_PORT=3002
+GW_PORT="${GW_PORT:-3001}"
+
+# Reset mode ke always-success
+curl -s -X PUT "http://localhost:${GW_PORT}/admin/config" \
+  -H 'Content-Type: application/json' \
+  -d '{"mode":"always-success"}' | jq .
+
 # Manual charge — verifikasi endpoint gateway mock hidup
-curl -s -X POST http://localhost:3002/v1/charges \
+curl -s -X POST "http://localhost:${GW_PORT}/v1/charges" \
   -H 'Idempotency-Key: manual-test-1' \
   -H 'Content-Type: application/json' \
   -d '{"amount":"10000.00","currency":"IDR","order_id":"order-1"}' | jq .
 
 # Rate-limited mode
-curl -s -X PUT http://localhost:3002/admin/config \
+curl -s -X PUT "http://localhost:${GW_PORT}/admin/config" \
   -H 'Content-Type: application/json' \
   -d '{"mode":"rate-limited","retryAfterSeconds":2}' | jq .
-curl -i -X POST http://localhost:3002/v1/charges \
+curl -i -X POST "http://localhost:${GW_PORT}/v1/charges" \
   -H 'Idempotency-Key: manual-test-2' \
   -H 'Content-Type: application/json' \
   -d '{"amount":"10000.00","currency":"IDR","order_id":"order-2"}'
 
 # Reset ulang
-curl -s -X PUT http://localhost:3002/admin/config \
+curl -s -X PUT "http://localhost:${GW_PORT}/admin/config" \
   -H 'Content-Type: application/json' \
   -d '{"mode":"always-success"}' | jq .
 ```
@@ -702,7 +758,9 @@ curl -s -X PUT http://localhost:3002/admin/config \
 ### 5. Reset gateway mode ke always-success di akhir (selalu)
 
 ```bash
-curl -s -X PUT http://localhost:3002/admin/config \
+GW_PORT="${GW_PORT:-3001}"  # 3001 LOCAL, 3002 SANDBOX
+
+curl -s -X PUT "http://localhost:${GW_PORT}/admin/config" \
   -H 'Content-Type: application/json' \
   -d '{"mode":"always-success","n":0,"probability":0.5,"retryAfterSeconds":10,"timeoutMs":5000}' | jq .
 

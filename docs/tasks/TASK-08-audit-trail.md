@@ -435,37 +435,69 @@ Namun ada beberapa hal yang perlu diperhatikan / di-update di TASK-07 setelah TA
 
 ## Useful commands (run after completing this task)
 
+### Pre-flight Check
+
+> **WAJIB BACA**: sebelum menjalankan command di bawah, cek kondisi lingkungan Anda via [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 1 (Pre-flight Check).
+>
+> Ringkasan keyword:
+> - `pnpm --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
+> - `docker --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → butuh external PostgreSQL atau skip DB-dependent commands.
+> - `curl -s http://localhost:3000` sibuk → KONDISI SANDBOX → payment-api pakai PORT=3001, gateway-mock pakai PORT=3002. Bebas → KONDISI LOCAL → payment-api pakai PORT=3000, gateway-mock pakai PORT=3001.
+
+Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih salah satu sesuai kondisi.
+
+---
+
 ```bash
 # 1. (Bila entity PaymentAttempt di-update untuk kolom `replayed`) Generate + run migration baru
+#    Sama untuk kedua kondisi (asalkan DB dapat diakses — bila SANDBOX tanpa external PG, skip).
 cd /home/z/my-project/retry-failure/apps/payment-api
 pnpm db:migration:generate src/database/migrations/0002_add_replayed_column
 pnpm db:migrate
 
 # 2. Start PostgreSQL (bila belum jalan)
+# KONDISI LOCAL (Docker tersedia):
 cd /home/z/my-project/retry-failure
 docker compose up -d postgres
 sleep 5
 docker compose ps postgres
+
+# KONDISI SANDBOX (Docker tidak tersedia):
+# - Opsi A: connect ke external PostgreSQL instance (set DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME di apps/payment-api/.env).
+# - Opsi B: skip integration test, gunakan NoopAuditService untuk dev (audit rows tidak ter-write — Jest unit test tetap jalan).
+# Verifikasi koneksi (kedua kondisi):
+psql -h localhost -U retry_failure -d retry_failure -c "SELECT 1;" 2>/dev/null || \
+  echo "psql tidak tersedia / DB belum connectable — gunakan Node script fallback di step 7"
 
 # 3. Typecheck & lint
 cd /home/z/my-project/retry-failure
 pnpm --filter payment-api typecheck
 pnpm --filter payment-api lint
 
-# 4. Jest unit tests untuk AuditService
+# 4. Jest unit tests untuk AuditService (tidak butuh DB — pakai mocked repository)
 pnpm --filter payment-api test -- --testPathPattern=audit.service.spec
 
-# 5. Start gateway mock + payment-api (di 2 terminal berbeda)
-cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && pnpm start:dev  # port 3002
-cd /home/z/my-project/retry-failure/apps/payment-api && pnpm start:dev           # port 3001
+# 5. Start gateway mock + payment-api (di 2 terminal berbeda — port kondisional)
+# KONDISI LOCAL:
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && PORT=3001 pnpm start:dev  # port 3001
+cd /home/z/my-project/retry-failure/apps/payment-api && PORT=3000 pnpm start:dev           # port 3000
+
+# KONDISI SANDBOX:
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && PORT=3002 pnpm start:dev  # port 3002
+cd /home/z/my-project/retry-failure/apps/payment-api && PORT=3001 pnpm start:dev            # port 3001
+
+# Konvensi env var: API_PORT="${API_PORT:-3000}" (LOCAL) / API_PORT=3001 (SANDBOX)
+#                   GW_PORT="${GW_PORT:-3001}" (LOCAL) / GW_PORT=3002 (SANDBOX)
 
 # 6. End-to-end smoke test (butuh TASK-09 controllers untuk POST /payments).
 #    Bila TASK-09 belum siap, skip; bila sudah:
-curl -sS -X POST http://localhost:3001/payments \
+API_PORT="${API_PORT:-3000}"  # default 3000 LOCAL; set API_PORT=3001 untuk SANDBOX
+curl -sS -X POST "http://localhost:${API_PORT}/payments" \
   -H 'Content-Type: application/json' \
   -d '{"orderId":"smoke-001","amount":10000,"currency":"IDR"}' | jq .
 
 # 7. Verify audit rows di PostgreSQL (PostgreSQL — bukan SQLite)
+# KONDISI LOCAL (docker exec):
 docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
   psql -U retry_failure -d retry_failure -c \
   "SELECT id, attempt_number, outcome, http_status, breaker_state, duration_ms, trace_id, replayed
@@ -473,7 +505,26 @@ docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postg
    ORDER BY created_at DESC
    LIMIT 5;"
 
+# KONDISI SANDBOX (host psql atau Node script fallback):
+psql -h localhost -U retry_failure -d retry_failure -c \
+  "SELECT id, attempt_number, outcome, http_status, breaker_state, duration_ms, trace_id, replayed
+   FROM payment_attempts
+   ORDER BY created_at DESC
+   LIMIT 5;"
+
+# Bila psql CLI tidak tersedia di SANDBOX, gunakan Node script:
+cd /home/z/my-project/retry-failure/apps/payment-api
+pnpm exec ts-node -e "
+import { Client } from 'pg';
+const c = new Client({ host: 'localhost', port: 5432, user: 'retry_failure', password: 'retry_failure', database: 'retry_failure' });
+await c.connect();
+const r = await c.query('SELECT id, attempt_number, outcome, http_status, breaker_state, duration_ms, trace_id, replayed FROM payment_attempts ORDER BY created_at DESC LIMIT 5');
+console.log(r.rows);
+await c.end();
+"
+
 # 8. Verify counter di parent payment konsisten dengan jumlah attempts
+# KONDISI LOCAL:
 docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
   psql -U retry_failure -d retry_failure -c \
   "SELECT p.id, p.order_id, p.status, p.attempt_count,
@@ -483,15 +534,32 @@ docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postg
    LIMIT 5;"
 # Expected: attempt_count === actual_rows untuk payment yang sudah complete cycle.
 
+# KONDISI SANDBOX:
+psql -h localhost -U retry_failure -d retry_failure -c \
+  "SELECT p.id, p.order_id, p.status, p.attempt_count,
+          (SELECT COUNT(*) FROM payment_attempts a WHERE a.payment_id = p.id) AS actual_rows
+   FROM payments p
+   ORDER BY p.created_at DESC
+   LIMIT 5;"
+
 # 9. Verify listAttempts via API (butuh TASK-09 GET /payments/:id)
 PAYMENT_ID="<id-dari-step-6>"
-curl -sS http://localhost:3001/payments/${PAYMENT_ID} | jq '.attempts'
+API_PORT="${API_PORT:-3000}"
+curl -sS "http://localhost:${API_PORT}/payments/${PAYMENT_ID}" | jq '.attempts'
 
 # 10. Trigger circuit_open scenario (set gateway failure mode = 'always_500' via
 #     dashboard / admin endpoint TASK-03, lalu create payment berulang sampai
 #     breaker trip). Verify audit row dengan outcome='circuit_open' muncul:
+# KONDISI LOCAL:
 docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
   psql -U retry_failure -d retry_failure -c \
+  "SELECT payment_id, attempt_number, outcome, breaker_state, duration_ms
+   FROM payment_attempts
+   WHERE outcome = 'circuit_open'
+   ORDER BY created_at DESC LIMIT 5;"
+
+# KONDISI SANDBOX:
+psql -h localhost -U retry_failure -d retry_failure -c \
   "SELECT payment_id, attempt_number, outcome, breaker_state, duration_ms
    FROM payment_attempts
    WHERE outcome = 'circuit_open'

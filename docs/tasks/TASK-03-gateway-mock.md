@@ -158,53 +158,86 @@ Membangun `payment-gateway-mock` sebagai NestJS app terpisah di `apps/payment-ga
 
 ## Useful commands (run after completing this task)
 
+### Pre-flight Check
+
+> **WAJIB BACA**: sebelum menjalankan command di bawah, cek kondisi lingkungan Anda via [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 1 (Pre-flight Check).
+>
+> Ringkasan keyword:
+> - `pnpm --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
+> - `curl -s http://localhost:3000` sibuk → KONDISI SANDBOX → gateway-mock di PORT=3002 (payment-api di 3001). Bebas → KONDISI LOCAL → gateway-mock di PORT=3001 (payment-api di 3000).
+>
+> Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih salah satu sesuai kondisi.
+
+---
+
 ```bash
 # 1. Start gateway mock
+# KONDISI LOCAL (port 3001 bebas):
 cd /home/z/my-project/retry-failure/apps/payment-gateway-mock
-pnpm start:dev > /tmp/gateway-mock.log 2>&1 &
+PORT=3001 pnpm start:dev > /tmp/gateway-mock.log 2>&1 &
 sleep 5
 tail -n 20 /tmp/gateway-mock.log
 
-# 2. Test endpoints
-curl -s http://localhost:3002/admin/config | jq .
-curl -s -X PUT http://localhost:3002/admin/config \
+# KONDISI SANDBOX (port 3001 dipakai payment-api; port 3000 dipakai Next.js preview):
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock
+PORT=3002 pnpm start:dev > /tmp/gateway-mock.log 2>&1 &
+sleep 5
+tail -n 20 /tmp/gateway-mock.log
+
+# Catatan: bila ingin port-agnostic, bisa pakai env variable:
+#   GW_PORT="${GW_PORT:-3001}"  # default 3001 LOCAL; set GW_PORT=3002 untuk SANDBOX
+#   PORT=$GW_PORT pnpm start:dev
+
+# 2. Test endpoints — deteksi port gateway mock via env
+GW_PORT="${GW_PORT:-3001}"  # default 3001 LOCAL; export GW_PORT=3002 untuk SANDBOX
+curl -s http://localhost:$GW_PORT/admin/config | jq .
+curl -s -X PUT http://localhost:$GW_PORT/admin/config \
   -H 'Content-Type: application/json' \
   -d '{"mode":"fail-first-n","n":2}' | jq .
 
+# Atau tulis dua varian explicit bila lebih jelas:
+# KONDISI LOCAL:
+#   curl -s http://localhost:3001/admin/config | jq .
+# KONDISI SANDBOX:
+#   curl -s http://localhost:3002/admin/config | jq .
+
 # 3. Test charge (always-success)
-curl -s -X PUT http://localhost:3002/admin/config -H 'Content-Type: application/json' -d '{"mode":"always-success"}'
-curl -s -X POST http://localhost:3002/v1/charges \
+curl -s -X PUT http://localhost:$GW_PORT/admin/config -H 'Content-Type: application/json' -d '{"mode":"always-success"}'
+curl -s -X POST http://localhost:$GW_PORT/v1/charges \
   -H 'Idempotency-Key: test-001' \
   -H 'Content-Type: application/json' \
   -d '{"amount":100,"currency":"IDR"}' | jq .
 
 # 4. Test replay
-curl -s -X POST http://localhost:3002/v1/charges \
+curl -s -X POST http://localhost:$GW_PORT/v1/charges \
   -H 'Idempotency-Key: test-001' \
   -H 'Content-Type: application/json' \
   -d '{"amount":100,"currency":"IDR"}' | jq .  # harus ada replayed:true
 
 # 5. Test rate-limited
-curl -s -X PUT http://localhost:3002/admin/config -H 'Content-Type: application/json' -d '{"mode":"rate-limited","retryAfterSeconds":2}'
-curl -i -X POST http://localhost:3002/v1/charges \
+curl -s -X PUT http://localhost:$GW_PORT/admin/config -H 'Content-Type: application/json' -d '{"mode":"rate-limited","retryAfterSeconds":2}'
+curl -i -X POST http://localhost:$GW_PORT/v1/charges \
   -H 'Idempotency-Key: test-002' \
   -H 'Content-Type: application/json' \
   -d '{"amount":100}'
 
 # 6. Stats & metrics
-curl -s http://localhost:3002/admin/stats | jq .
-curl -s http://localhost:3002/metrics
+curl -s http://localhost:$GW_PORT/admin/stats | jq .
+curl -s http://localhost:$GW_PORT/metrics
 
 # 7. Test via Caddy dari Next.js sandbox (port 3000)
-# Asumsi Next.js dev sudah jalan; ini akan dipakai di TASK-12
+# Hanya relevan di KONDISI SANDBOX (Next.js preview di port 3000).
+# Di KONDISI LOCAL, skip command ini — Next.js tidak berjalan otomatis di port 3000.
+# Asumsi Next.js dev sudah jalan (SANDBOX); ini akan dipakai di TASK-12.
 curl -s "http://localhost:3000/admin/config?XTransformPort=3002" | jq .
+# Note: XTransformPort=3002 sesuai port gateway-mock di SANDBOX.
 
-# 8. Lint & typecheck
+# 8. Lint & typecheck — sama kedua kondisi
 cd /home/z/my-project/retry-failure
 pnpm --filter payment-gateway-mock lint
 pnpm --filter payment-gateway-mock typecheck
 
-# 9. Cleanup
+# 9. Cleanup — sama kedua kondisi
 pkill -f "nest start" 2>/dev/null
 ```
 

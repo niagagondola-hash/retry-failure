@@ -1460,87 +1460,146 @@ Bila Next.js dev server di port 3000 dan Caddy di port 81, browser fetch ke `/ap
 
 ## Useful commands (run after completing this task)
 
+### Pre-flight Check
+
+> **WAJIB BACA**: sebelum menjalankan command di bawah, cek kondisi lingkungan Anda via [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 1 (Pre-flight Check).
+>
+> Ringkasan keyword:
+> - `pnpm --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
+> - `docker --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → butuh external PostgreSQL atau skip DB-dependent commands.
+> - `curl -s http://localhost:3000` sibuk → KONDISI SANDBOX → Next.js preview sudah otomatis berjalan di 3000, payment-api pakai PORT=3001, gateway-mock pakai PORT=3002. Bebas → KONDISI LOCAL → Next.js di-start manual di 3000, payment-api pakai PORT=3000, gateway-mock pakai PORT=3001.
+> - `command -v bun` ada → bisa pakai `bun run dev` untuk Next.js. Tidak ada → install via `npm i -g bun` atau pakai `pnpm dev`.
+
+Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih salah satu sesuai kondisi.
+
+> **Catatan runtime**: Pilih salah satu runtime (pnpm atau bun) untuk Next.js. Di KONDISI SANDBOX, bun sudah otomatis tersedia (Next.js preview otomatis pakai `bun run dev` di port 3000).
+
+---
+
 ```bash
 # 1. Start backend services (di terminal terpisah)
 #    a. PostgreSQL (bila belum running — sandbox mungkin pakai in-memory atau managed)
-#    b. Gateway mock (port 3002)
-cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && pnpm start:dev
+# KONDISI LOCAL (Docker tersedia):
+docker compose -f /home/z/my-project/retry-failure/docker-compose.yml up -d postgres
+sleep 3
+docker compose -f /home/z/my-project/retry-failure/docker-compose.yml ps postgres
+
+# KONDISI SANDBOX (Docker tidak tersedia):
+# - Butuh external PostgreSQL instance (set DB_HOST/DB_PORT/DB_USER/DB_PASS/DB_NAME di apps/payment-api/.env)
+# - Atau skip DB-dependent commands; inspect via Node script (lihat SANDBOX_NOTES.md section 2.6)
+
+#    b. Gateway mock (port kondisional)
+# KONDISI LOCAL (port 3001 bebas):
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && PORT=3001 pnpm start:dev
+# Expected log: "Gateway mock running on http://localhost:3001"
+
+# KONDISI SANDBOX (port 3002, karena 3001 dipakai payment-api):
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && PORT=3002 pnpm start:dev
 # Expected log: "Gateway mock running on http://localhost:3002"
 
-#    c. Payment API (port 3001)
-cd /home/z/my-project/retry-failure/apps/payment-api && pnpm start:dev
+#    c. Payment API (port kondisional)
+# KONDISI LOCAL (port 3000 bebas):
+cd /home/z/my-project/retry-failure/apps/payment-api && PORT=3000 pnpm start:dev
+# Expected log: "Payment API running on http://localhost:3000" + "Swagger UI: http://localhost:3000/docs"
+
+# KONDISI SANDBOX (port 3001, karena 3000 dipakai Next.js preview):
+cd /home/z/my-project/retry-failure/apps/payment-api && PORT=3001 pnpm start:dev
 # Expected log: "Payment API running on http://localhost:3001" + "Swagger UI: http://localhost:3001/docs"
 
-#    d. Caddy (port 81)
-cd /home/z/my-project && caddy run --config Caddyfile
-# Expected log: "Caddy serving :81"
-
 # 2. Start Next.js sandbox (port 3000)
-cd /home/z/my-project && bun run dev
+# KONDISI LOCAL (user memilih runtime):
+cd /home/z/my-project && pnpm dev     # bila prefer pnpm
+# ATAU
+cd /home/z/my-project && bun run dev  # bila prefer bun (install via npm i -g bun)
 # Expected log: "Ready in ~500ms" + "Local: http://localhost:3000"
-# dev.log ada di /home/z/my-project/dev.log (tee dari bun run dev script)
+# dev.log ada di /home/z/my-project/dev.log (tee dari dev script)
 
-# 3. Lint + typecheck
-cd /home/z/my-project && bun run lint
-cd /home/z/my-project && bunx tsc --noEmit
+# KONDISI SANDBOX:
+# Next.js sudah otomatis berjalan di port 3000 (sandbox preview).
+# Bila belum jalan, jalankan: bun run dev
+cd /home/z/my-project && bun run dev  # hanya bila belum jalan
+# Expected: preview panel otomatis refresh dengan dashboard Next.js
 
-# 4. Tail dev log — pastikan tidak ada unhandled error
+# 3. Lint + typecheck (dual runtime — pilih salah satu)
+# KONDISI LOCAL:
+pnpm lint && pnpm typecheck
+# ATAU bila prefer bun:
+bun run lint && bunx tsc --noEmit
+
+# KONDISI SANDBOX (bun sudah otomatis tersedia):
+bun run lint
+bunx tsc --noEmit
+
+# 4. Tail dev log — sama kedua kondisi (dev.log ada di parent root)
 tail -n 100 /home/z/my-project/dev.log
 
 # 5. Manual quick verification via curl (dari shell lain)
-#    a. GET gateway config
-curl -i 'http://localhost:81/admin/config?XTransformPort=3002'
-# Expected: 200 OK, { "mode": "healthy", ... }
+# KONDISI LOCAL (langsung ke service, tanpa Caddy):
+curl -s http://localhost:3000/api/health | jq .     # payment-api di 3000
+curl -s http://localhost:3001/admin/config | jq .   # gateway-mock di 3001
+curl -s http://localhost:3000/api/payments | jq .   # payment-api di 3000
+curl -s http://localhost:3000/api/metrics | head -n 30
 
-#    b. PUT gateway config
-curl -i -X PUT 'http://localhost:81/admin/config?XTransformPort=3002' \
+# KONDISI SANDBOX (via Caddy dengan XTransformPort — Next.js preview di port 3000):
+curl -s "http://localhost:3000/api/health?XTransformPort=3001" | jq .      # → payment-api:3001
+curl -s "http://localhost:3000/admin/config?XTransformPort=3002" | jq .   # → gateway-mock:3002
+curl -s "http://localhost:3000/api/payments?XTransformPort=3001" | jq .   # → payment-api:3001
+curl -s "http://localhost:3000/api/metrics?XTransformPort=3001" | head -n 30
+
+#    Contoh POST new payment (untuk trigger dashboard):
+# KONDISI LOCAL:
+curl -s -X POST http://localhost:3000/api/payments \
   -H 'Content-Type: application/json' \
-  -d '{"mode":"fail-first-n","n":2}'
-# Expected: 200 OK, { "mode": "fail-first-n", "n": 2, ... }
+  -d '{"orderId":"MANUAL-001","amount":150000,"currency":"IDR"}' | jq .
 
-#    c. GET payment-api health
-curl -i 'http://localhost:81/api/health?XTransformPort=3001'
-# Expected: 200 OK, { "db": "ok", "gateway": "ok", "timestamp": "..." }
-
-#    d. GET payments list (empty bila belum ada)
-curl -i 'http://localhost:81/api/payments?XTransformPort=3001'
-# Expected: 200 OK, { "payments": [], "limit": 50, "offset": 0 }
-
-#    e. POST new payment (untuk trigger dashboard)
-curl -i -X POST 'http://localhost:81/api/payments?XTransformPort=3001' \
+# KONDISI SANDBOX:
+curl -s -X POST "http://localhost:3000/api/payments?XTransformPort=3001" \
   -H 'Content-Type: application/json' \
-  -d '{"orderId":"MANUAL-001","amount":150000,"currency":"IDR"}'
+  -d '{"orderId":"MANUAL-001","amount":150000,"currency":"IDR"}' | jq .
 # Expected: 201 Created, { "payment": { ..., "status": "succeeded"|"failed"|"scheduled_for_retry" } }
 
-#    f. GET metrics (Prometheus text)
-curl -s 'http://localhost:81/api/metrics?XTransformPort=3001' | head -n 30
-# Expected: text/plain, lines seperti:
-#   # HELP payment_gateway_requests_total ...
-#   payment_gateway_requests_total{result="success"} 5
-#   ...
+#    PUT gateway config (switch mode):
+# KONDISI LOCAL:
+curl -s -X PUT http://localhost:3001/admin/config \
+  -H 'Content-Type: application/json' \
+  -d '{"mode":"fail-first-n","n":2}' | jq .
+
+# KONDISI SANDBOX:
+curl -s -X PUT "http://localhost:3000/admin/config?XTransformPort=3002" \
+  -H 'Content-Type: application/json' \
+  -d '{"mode":"fail-first-n","n":2}' | jq .
+# Expected: 200 OK, { "mode": "fail-first-n", "n": 2, ... }
 
 # 6. Manual UI verification via browser
-#    a. Buka http://localhost:81/ di browser (via Caddy, bukan langsung :3000)
-#       - Note: bila preview panel sandbox hanya expose satu port, ganti ke :3000 langsung
-#         dan verifikasi bahwa fetch ke /api/payments?XTransformPort=3001 masih works
-#         (Caddy di belakang Next.js).
+# KONDISI LOCAL:
+#    a. Buka http://localhost:3000/ di browser (akses langsung Next.js dev server).
 #    b. Dashboard harus render tanpa hydration warning (cek DevTools console).
 #    c. Klik tombol "Demo A — transient retry" → tunggu toast hasil.
 #    d. Click row di Payment List → drawer slide-up → lihat attempt history.
 
-# 7. Preview panel (sandbox cloud)
-#    - Buka preview panel bila sandbox menyediakannya.
-#    - Klik "Open in New Tab" button untuk full-screen view.
-#    - Pastikan URL berakhiran / (root path) atau /dashboard bila pakai sub-route.
+# KONDISI SANDBOX (preview panel):
+#    a. Buka preview panel yang sudah otomatis expose port 3000.
+#    b. Klik "Open in New Tab" button untuk full-screen view di browser tab terpisah.
+#    c. Dashboard harus render tanpa hydration warning (cek DevTools console).
+#    d. Klik tombol "Demo A — transient retry" → tunggu toast hasil.
+#    e. Cross-service fetch via ?XTransformPort query param otomatis oleh Caddy
+#       yang fronting port 3000 (lihat SANDBOX_NOTES.md section 2.12).
 
-# 8. Agent Browser verification (akan diformalkan di TASK-14)
+# 7. Agent Browser verification (akan diformalkan di TASK-14)
 #    - Untuk TASK-12: minimal 1 screenshot dashboard + 1 screenshot setelah Demo A run.
 #    - Full E2E matrix (Demo A-E, manual retry, gateway mode switch, mobile viewport)
 #      → TASK-14 akan automate via Agent Browser + assertions.
+#    - Agent Browser adalah tool sandbox; di KONDISI LOCAL bisa buka browser manual.
 
-# 9. Cleanup bila perlu
+# 8. Cleanup bila perlu — sama kedua kondisi (ganti URL bila perlu)
 #    a. Reset gateway config ke healthy
-curl -X PUT 'http://localhost:81/admin/config?XTransformPort=3002' \
+# KONDISI LOCAL:
+curl -X PUT http://localhost:3001/admin/config \
+  -H 'Content-Type: application/json' \
+  -d '{"mode":"healthy"}'
+
+# KONDISI SANDBOX:
+curl -X PUT "http://localhost:3000/admin/config?XTransformPort=3002" \
   -H 'Content-Type: application/json' \
   -d '{"mode":"healthy"}'
 

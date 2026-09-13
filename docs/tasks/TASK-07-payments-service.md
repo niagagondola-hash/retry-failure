@@ -788,41 +788,96 @@ export * from './dto/create-payment.dto';
 
 ## Useful commands (run after completing this task)
 
-### 1. Start gateway mock (dependency TASK-03, port 3002)
+### Pre-flight Check
+
+> **WAJIB BACA**: sebelum menjalankan command di bawah, cek kondisi lingkungan Anda via [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 1 (Pre-flight Check).
+>
+> Ringkasan keyword:
+> - `pnpm --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
+> - `docker --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → butuh external PostgreSQL atau skip DB-dependent commands.
+> - `curl -s http://localhost:3000` sibuk → KONDISI SANDBOX → payment-api pakai PORT=3001, gateway-mock pakai PORT=3002. Bebas → KONDISI LOCAL → payment-api pakai PORT=3000, gateway-mock pakai PORT=3001.
+
+Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih salah satu sesuai kondisi.
+
+---
+
+### 1. Start gateway mock (dependency TASK-03 — port kondisional)
 
 ```bash
+# KONDISI LOCAL (gateway-mock default port 3001):
 cd /home/z/my-project/retry-failure/apps/payment-gateway-mock
-pnpm start:dev > /tmp/gateway-mock.log 2>&1 &
+PORT=3001 pnpm start:dev > /tmp/gateway-mock.log 2>&1 &
+sleep 5
+tail -n 20 /tmp/gateway-mock.log
+# Expected: "payment-gateway-mock listening on :3001"
+
+# KONDISI SANDBOX (port 3001 dipakai payment-api → gateway-mock geser ke 3002):
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock
+PORT=3002 pnpm start:dev > /tmp/gateway-mock.log 2>&1 &
 sleep 5
 tail -n 20 /tmp/gateway-mock.log
 # Expected: "payment-gateway-mock listening on :3002"
 ```
 
+> Konvensi env var: `GW_PORT="${GW_PORT:-3001}"` default LOCAL; set `GW_PORT=3002` untuk SANDBOX.
+
 ### 2. Pastikan DB migration applied (dependency TASK-02)
 
 ```bash
+# KONDISI LOCAL (Docker tersedia):
 cd /home/z/my-project/retry-failure
-docker compose up -d postgres 2>/dev/null || echo "Docker tidak tersedia — pakai external Postgres"
+docker compose up -d postgres
 sleep 5
+docker compose ps postgres
 
 cd /home/z/my-project/retry-failure/apps/payment-api
 pnpm db:migrate
 
-# Verify schema
+# Verify schema via docker exec
 docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
-  psql -U retry_failure -d retry_failure -c '\dt' 2>/dev/null || \
-  psql "$DATABASE_URL" -c '\dt'
+  psql -U retry_failure -d retry_failure -c '\dt'
+
+# KONDISI SANDBOX (Docker tidak tersedia):
+# Opsi A — external PostgreSQL instance tersedia (set DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME di .env):
+cd /home/z/my-project/retry-failure/apps/payment-api
+# Edit .env terlebih dahulu: DB_HOST=..., DB_PORT=..., dst.
+pnpm db:migrate
+
+# Verify schema via psql di host (bila tersedia):
+psql "$DATABASE_URL" -c '\dt'
+# atau via Node script bila psql CLI tidak tersedia:
+pnpm exec ts-node -e "
+import { Client } from 'pg';
+const c = new Client({ connectionString: process.env.DATABASE_URL });
+await c.connect();
+const t = await c.query(\"SELECT table_name FROM information_schema.tables WHERE table_schema='public'\");
+console.log(t.rows);
+await c.end();
+"
+
+# Opsi B — tidak ada PostgreSQL sama sekali: skip migration, gunakan NoopAuditService / mock repository.
+# Document caveat di TASK-15 production caveats. E2E service test di step 5 akan fail; jalankan unit test saja (step 4).
 ```
 
-### 3. Start payment-api (port 3001)
+### 3. Start payment-api (port kondisional)
 
 ```bash
+# KONDISI LOCAL (port 3000 bebas):
 cd /home/z/my-project/retry-failure/apps/payment-api
-pnpm start:dev > /tmp/payment-api.log 2>&1 &
+PORT=3000 pnpm start:dev > /tmp/payment-api.log 2>&1 &
+sleep 8
+tail -n 30 /tmp/payment-api.log
+# Expected: "Nest application successfully started" + listening on :3000
+
+# KONDISI SANDBOX (port 3000 dipakai Next.js preview → payment-api geser ke 3001):
+cd /home/z/my-project/retry-failure/apps/payment-api
+PORT=3001 pnpm start:dev > /tmp/payment-api.log 2>&1 &
 sleep 8
 tail -n 30 /tmp/payment-api.log
 # Expected: "Nest application successfully started" + listening on :3001
 ```
+
+> Konvensi env var: `API_PORT="${API_PORT:-3000}"` default LOCAL; set `API_PORT=3001` untuk SANDBOX.
 
 ### 4. Lint & typecheck
 
@@ -833,7 +888,7 @@ pnpm --filter payment-api lint
 pnpm --filter payment-api test
 ```
 
-### 5. Quick E2E service test via ts-node (gateway mock + DB harus sudah jalan)
+### 5. Quick E2E service test via ts-node (gateway mock + DB harus sudah jalan — port kondisional)
 
 Simpan sebagai `/tmp/smoke-payments-service.ts`:
 
@@ -847,13 +902,17 @@ import { PaymentsModule } from '../../apps/payment-api/src/modules/payments/paym
 import { PaymentsService } from '../../apps/payment-api/src/modules/payments/payments.service';
 import { DatabaseModule } from '../../apps/payment-api/src/database/database.module';
 
+// Baca gateway URL dari env. Default LOCAL (port 3001); untuk SANDBOX set GATEWAY_URL=http://localhost:3002
+// sebelum invoke ts-node (lihat command block di bawah script ini).
+const GATEWAY_URL = process.env.GATEWAY_URL || 'http://localhost:3001';
+
 @Module({
   imports: [ConfigModule.forRoot({ isGlobal: true }), DatabaseModule, PaymentsModule],
 })
 class SmokeModule {}
 
 async function setGatewayMode(mode: string, extra: Record<string, unknown> = {}): Promise<void> {
-  await axios.put('http://localhost:3002/admin/config', { mode, ...extra });
+  await axios.put(`${GATEWAY_URL}/admin/config`, { mode, ...extra });
 }
 
 async function run(label: string, fn: () => Promise<void>): Promise<void> {
@@ -916,13 +975,24 @@ Jalankan:
 
 ```bash
 cd /home/z/my-project/retry-failure
-pnpm --filter payment-api exec ts-node /tmp/smoke-payments-service.ts
+
+# KONDISI LOCAL (gateway-mock port 3001):
+GATEWAY_URL=http://localhost:3001 pnpm --filter payment-api exec ts-node /tmp/smoke-payments-service.ts
+
+# KONDISI SANDBOX (gateway-mock port 3002):
+GATEWAY_URL=http://localhost:3002 pnpm --filter payment-api exec ts-node /tmp/smoke-payments-service.ts
+
+# Atau pakai pola env var GW_PORT (default 3001 LOCAL, override 3002 SANDBOX):
+GW_PORT="${GW_PORT:-3001}" GATEWAY_URL="http://localhost:${GW_PORT}" \
+  pnpm --filter payment-api exec ts-node /tmp/smoke-payments-service.ts
 ```
 
 ### 6. Reset gateway mode ke always-success (selalu di akhir)
 
 ```bash
-curl -s -X PUT http://localhost:3002/admin/config \
+GW_PORT="${GW_PORT:-3001}"  # 3001 LOCAL, 3002 SANDBOX
+
+curl -s -X PUT "http://localhost:${GW_PORT}/admin/config" \
   -H 'Content-Type: application/json' \
   -d '{"mode":"always-success","n":0,"probability":0.5,"retryAfterSeconds":10,"timeoutMs":5000}' | jq .
 

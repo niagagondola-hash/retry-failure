@@ -243,26 +243,54 @@ Mendefinisikan TypeORM entities `Payment` dan `PaymentAttempt` dengan native Pos
 
 ## Useful commands (run after completing this task)
 
+### Pre-flight Check
+
+> **WAJIB BACA**: sebelum menjalankan command di bawah, cek kondisi lingkungan Anda via [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 1 (Pre-flight Check).
+>
+> Ringkasan keyword:
+> - `pnpm --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
+> - `docker --version` ada → KONDISI LOCAL → `docker compose up -d postgres`. Tidak ada → KONDISI SANDBOX → butuh external PostgreSQL instance, atau skip migration + gunakan mock repository untuk dev.
+> - `psql --version` ada → verifikasi schema via psql CLI. Tidak ada → verifikasi via Node script (`pg.Client`).
+>
+> Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih salah satu sesuai kondisi.
+
+---
+
 ```bash
 # 0. Enable pnpm (bila belum)
+# KONDISI LOCAL: pnpm sudah terinstall — skip, jalankan `pnpm --version` untuk verify.
+# KONDISI SANDBOX:
 corepack enable pnpm
+corepack prepare pnpm@9.12.0 --activate
 
-# 1. Start PostgreSQL (bila Docker tersedia)
+# 1. Start PostgreSQL
+# KONDISI LOCAL (Docker tersedia):
 cd /home/z/my-project/retry-failure
 docker compose up -d postgres
 sleep 5
 docker compose ps postgres
+# → PostgreSQL di localhost:5432
 
-# Bila Docker TIDAK tersedia, set DATABASE_URL ke external Postgres instance
-# (atau skip migration & gunakan mock repository untuk dev — document di TASK-15)
+# KONDISI SANDBOX (Docker tidak tersedia):
+# Opsi A: connect ke external PostgreSQL instance (set DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME di .env)
+# Opsi B: skip DB integration test, gunakan in-memory mock repository untuk dev
+# Opsi C: install postgresql native via apt (butuh sudo, tidak ada di sandbox default)
+# Lihat SANDBOX_NOTES.md section 2.5 untuk strategi alternatif.
+# Document caveat environment di TASK-15 production caveats.
 
-# 2. Run migration
+# 2. Run migration — sama kedua kondisi (asalkan DB dapat diakses)
 cd /home/z/my-project/retry-failure/apps/payment-api
 cp ../../.env.example .env  # bila belum ada
 # edit .env untuk DB credentials sesuai environment
 pnpm db:migrate
 
-# 3. Verify schema (bisa pakai psql di container, atau via Node script)
+# Bila DB TIDAK bisa diakses di SANDBOX (tanpa external PostgreSQL):
+# - Skip migration, gunakan mock repository untuk dev
+# - Document caveat di TASK-15 production caveats
+# - Unit test yang tidak butuh DB tetap bisa jalan (mock repository)
+
+# 3. Verify schema
+# KONDISI LOCAL (psql via docker exec):
 docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
   psql -U retry_failure -d retry_failure -c '\dt'
 
@@ -272,7 +300,25 @@ docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postg
 docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
   psql -U retry_failure -d retry_failure -c '\d payments'
 
-# 4. Lint & typecheck
+# KONDISI SANDBOX (psql di host, bila tersedia):
+psql -h localhost -U retry_failure -d retry_failure -c '\dt'
+psql -h localhost -U retry_failure -d retry_failure -c '\dT'
+psql -h localhost -U retry_failure -d retry_failure -c '\d payments'
+
+# KONDISI SANDBOX (psql tidak tersedia → verifikasi via Node script):
+cd /home/z/my-project/retry-failure/apps/payment-api
+pnpm exec ts-node -e "
+import { Client } from 'pg';
+const c = new Client({ host: 'localhost', port: 5432, user: 'retry_failure', password: 'retry_failure', database: 'retry_failure' });
+await c.connect();
+const t = await c.query(\"SELECT table_name FROM information_schema.tables WHERE table_schema='public'\");
+console.log(t.rows);
+const e = await c.query(\"SELECT typname FROM pg_type WHERE typtype='e'\");
+console.log('enums:', e.rows);
+await c.end();
+"
+
+# 4. Lint & typecheck — sama kedua kondisi
 cd /home/z/my-project/retry-failure/apps/payment-api
 pnpm lint
 pnpm typecheck
@@ -281,7 +327,7 @@ pnpm typecheck
 # Tambah script scripts/smoke-db.ts lalu run via ts-node:
 # pnpm exec ts-node -r tsconfig-paths/register scripts/smoke-db.ts
 
-# 6. Revert migration (test)
+# 6. Revert migration (test) — sama kedua kondisi (asalkan DB dapat diakses)
 pnpm db:migrate:revert
 pnpm db:migrate  # re-apply
 

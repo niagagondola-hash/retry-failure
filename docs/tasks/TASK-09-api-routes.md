@@ -791,83 +791,131 @@ bootstrap();
 
 ## Useful commands (run after completing this task)
 
+### Pre-flight Check
+
+> **WAJIB BACA**: sebelum menjalankan command di bawah, cek kondisi lingkungan Anda via [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 1 (Pre-flight Check).
+>
+> Ringkasan keyword:
+> - `pnpm --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
+> - `docker --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → butuh external PostgreSQL atau skip DB-dependent commands.
+> - `curl -s http://localhost:3000` sibuk → KONDISI SANDBOX → payment-api pakai PORT=3001, gateway-mock pakai PORT=3002. Bebas → KONDISI LOCAL → payment-api pakai PORT=3000, gateway-mock pakai PORT=3001.
+
+Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih salah satu sesuai kondisi.
+
+---
+
 ```bash
-# 1. Start dependency services (gateway mock + DB)
+# 1. Start dependency services (gateway mock + DB — port kondisional)
 #    Pastikan PostgreSQL sudah running (docker atau managed) + env DATABASE_URL ter-set
 #    di apps/payment-api/.env
-cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && pnpm start:dev &  # port 3002
+# KONDISI LOCAL (gateway-mock port 3001):
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && PORT=3001 pnpm start:dev &
 
-# 2. Run migration bila belum
+# KONDISI SANDBOX (gateway-mock port 3002):
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && PORT=3002 pnpm start:dev &
+
+# 2. Run migration bila belum (sama kedua kondisi — butuh DB connectable)
 cd /home/z/my-project/retry-failure/apps/payment-api && pnpm db:migrate
 
-# 3. Start payment-api dev server
-cd /home/z/my-project/retry-failure/apps/payment-api && pnpm start:dev
+# 3. Start payment-api dev server (port kondisional)
+# KONDISI LOCAL (port 3000 bebas):
+cd /home/z/my-project/retry-failure/apps/payment-api && PORT=3000 pnpm start:dev
+# Expected log: "Payment API running on http://localhost:3000" + "Swagger UI: http://localhost:3000/docs"
+
+# KONDISI SANDBOX (port 3000 dipakai Next.js preview → payment-api geser ke 3001):
+cd /home/z/my-project/retry-failure/apps/payment-api && PORT=3001 pnpm start:dev
 # Expected log: "Payment API running on http://localhost:3001" + "Swagger UI: http://localhost:3001/docs"
 
-# 4. Typecheck + lint
+# 4. Typecheck + lint — sama kedua kondisi
 cd /home/z/my-project/retry-failure && pnpm --filter payment-api typecheck
 cd /home/z/my-project/retry-failure && pnpm --filter payment-api lint
 
 # 5. Test endpoints via curl (jalan dari shell lain)
+#    Pola env var: API_PORT default 3000 LOCAL; set API_PORT=3001 untuk SANDBOX.
+#    Set sekali di sesi shell: export API_PORT=3000  (LOCAL) / export API_PORT=3001  (SANDBOX)
+API_PORT="${API_PORT:-3000}"
 
 #    a. POST /payments — create + process
-curl -i -X POST http://localhost:3001/payments \
+curl -i -X POST "http://localhost:${API_PORT}/payments" \
   -H 'Content-Type: application/json' \
   -d '{"orderId":"ORD-TEST-001","amount":150000,"currency":"IDR"}'
 # Expected: HTTP/1.1 201 Created
 #           { "payment": { "id":"...", "status":"succeeded"|"failed"|"scheduled_for_retry", ... } }
 
 #    b. POST /payments — validation error (missing orderId)
-curl -i -X POST http://localhost:3001/payments \
+curl -i -X POST "http://localhost:${API_PORT}/payments" \
   -H 'Content-Type: application/json' \
   -d '{"amount":150000}'
 # Expected: HTTP/1.1 400 Bad Request
 #           { "statusCode":400, "message":["orderId must be a string"], "error":"Bad Request" }
 
 #    c. GET /payments — list (default limit 50)
-curl -i http://localhost:3001/payments
+curl -i "http://localhost:${API_PORT}/payments"
 # Expected: HTTP/1.1 200 OK
 #           { "payments":[...], "limit":50, "offset":0 }
 
 #    d. GET /payments?status=failed — filter
-curl -i 'http://localhost:3001/payments?status=failed'
+curl -i "http://localhost:${API_PORT}/payments?status=failed"
 # Expected: HTTP/1.1 200 OK, semua payment berstatus 'failed'
 
 #    e. GET /payments/:id — detail + attempts (ganti <id> dengan ID dari step a)
-curl -i http://localhost:3001/payments/<id>
+curl -i "http://localhost:${API_PORT}/payments/<id>"
 # Expected: HTTP/1.1 200 OK
 #           { "payment":{...}, "attempts":[...] }
 
 #    f. GET /payments/<invalid-id> — 404
-curl -i http://localhost:3001/payments/00000000-0000-0000-0000-000000000000
+curl -i "http://localhost:${API_PORT}/payments/00000000-0000-0000-0000-000000000000"
 # Expected: HTTP/1.1 404 Not Found
 
 #    g. POST /payments/:id/retry — manual retry (ganti <id> dengan payment berstatus 'failed')
-curl -i -X POST http://localhost:3001/payments/<id>/retry
+curl -i -X POST "http://localhost:${API_PORT}/payments/<id>/retry"
 # Expected: HTTP/1.1 200 OK bila status='failed'/'scheduled_for_retry'
 #           HTTP/1.1 409 Conflict bila status='succeeded'
 
 #    h. GET /health
-curl -i http://localhost:3001/health
+curl -i "http://localhost:${API_PORT}/health"
 # Expected: HTTP/1.1 200 OK
 #           { "db":"ok", "gateway":"ok", "timestamp":"2025-..." }
 
 #    i. GET /metrics — Prometheus
-curl -i http://localhost:3001/metrics
+curl -i "http://localhost:${API_PORT}/metrics"
 # Expected: HTTP/1.1 200 OK
 #           Content-Type: text/plain; version=0.0.4; charset=utf-8
 #           # HELP http_requests_total ...
 #           http_requests_total{route="/metrics"} 1
 
 #    j. GET /docs — Swagger UI HTML
-curl -s http://localhost:3001/docs | head -n 5
+curl -s "http://localhost:${API_PORT}/docs" | head -n 5
 # Expected: <!DOCTYPE html><html>... Swagger UI ...
+
+# === Varian explicit (contoh dua-kondisi untuk POST /payments) ===
+# KONDISI LOCAL:
+#   curl -i -X POST http://localhost:3000/payments \
+#     -H 'Content-Type: application/json' \
+#     -d '{"orderId":"ORD-TEST-001","amount":150000,"currency":"IDR"}'
+# KONDISI SANDBOX:
+#   curl -i -X POST http://localhost:3001/payments \
+#     -H 'Content-Type: application/json' \
+#     -d '{"orderId":"ORD-TEST-001","amount":150000,"currency":"IDR"}'
+
+# === Catatan Caddy (XTransformPort) — HANYA relevan di KONDISI SANDBOX ===
+# Di KONDISI SANDBOX, browser client (Next.js preview di port 3000) tidak bisa
+# fetch langsung ke payment-api di port 3001 (cross-origin + port tidak exposed
+# ke preview panel). Z.ai sandbox menggunakan Caddy gateway yang mem-forward
+# request dengan query param ?XTransformPort=NNNN ke port NNNN internal.
+# Contoh fetch dari browser di SANDBOX:
+#   fetch('/api/payments?XTransformPort=3001')                    # → payment-api:3001
+#   fetch('/admin/config?XTransformPort=3002', { method: 'PUT' })  # → gateway-mock:3002
+# Di KONDISI LOCAL, akses langsung tanpa XTransformPort:
+#   fetch('http://localhost:3000/api/payments')                    # → payment-api:3000
+#   fetch('http://localhost:3001/admin/config', { method: 'PUT' }) # → gateway-mock:3001
+# Lihat SANDBOX_NOTES.md section 2.12 untuk detail cross-service fetch.
 
 # 6. Check dev log — pastikan tidak ada unhandled promise rejection
 tail -n 100 /home/z/my-project/retry-failure/apps/payment-api/dev.log 2>/dev/null || \
   echo "dev.log path mungkin berbeda — check start:dev script"
 
-# 7. Jest unit tests
+# 7. Jest unit tests — sama kedua kondisi (tidak butuh HTTP server)
 cd /home/z/my-project/retry-failure && pnpm --filter payment-api test -- \
   test/modules/payments/payments.controller.spec.ts \
   test/modules/health/health.controller.spec.ts

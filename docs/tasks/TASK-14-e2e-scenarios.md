@@ -1098,42 +1098,94 @@ Format template:
 
 ## Useful commands (run after completing this task)
 
+### Pre-flight Check
+
+> **WAJIB BACA**: sebelum menjalankan command di bawah, cek kondisi lingkungan Anda via [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 1 (Pre-flight Check).
+>
+> Ringkasan keyword:
+> - `pnpm --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
+> - `docker --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → butuh external PostgreSQL atau skip DB-dependent commands.
+> - `curl -s http://localhost:3000` sibuk → KONDISI SANDBOX → payment-api pakai PORT=3001, gateway-mock pakai PORT=3002. Bebas → KONDISI LOCAL → payment-api pakai PORT=3000, gateway-mock pakai PORT=3001.
+
+Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih salah satu sesuai kondisi.
+
+> **Catatan KONDISI SANDBOX tanpa Docker**: skip E2E scenarios yang butuh DB persistence (1, 4, 6, 7). Pure API scenarios (2, 3, 5) tetap bisa jalan dengan gateway mock saja. Document caveat di TASK-15 `PRODUCTION_CAVEATS.md`.
+
+---
+
 ```bash
 # 0. Pre-requisite: enable pnpm via corepack (sekali saja, bila belum)
-corepack enable pnpm
-corepack prepare pnpm@latest --activate
+# KONDISI LOCAL (pnpm sudah terinstall, skip):
+pnpm --version  # verify, expected 9.12.0
 
-# 1. Verify all services up (health endpoints)
-curl -s http://localhost:3001/api/health | jq .
+# KONDISI SANDBOX (pnpm belum terinstall):
+corepack enable pnpm
+corepack prepare pnpm@9.12.0 --activate
+pnpm --version  # verify
+
+# 1. Verify all services up (health endpoints) — port kondisional
+#    Pola env var: API_PORT default 3000 LOCAL; set API_PORT=3001 untuk SANDBOX.
+#                   GW_PORT default 3001 LOCAL; set GW_PORT=3002 untuk SANDBOX.
+#    Set sekali di sesi shell:
+#      export API_PORT=3000 GW_PORT=3001  (LOCAL)
+#      export API_PORT=3001 GW_PORT=3002  (SANDBOX)
+API_PORT="${API_PORT:-3000}"  # default 3000 LOCAL; set API_PORT=3001 untuk SANDBOX
+GW_PORT="${GW_PORT:-3001}"    # default 3001 LOCAL; set GW_PORT=3002 untuk SANDBOX
+
+curl -sf "http://localhost:${API_PORT}/api/health" | jq . || echo "payment-api DOWN"
 # Expected: { "db": "ok", "gateway": "ok", "timestamp": "..." }
 
-curl -s http://localhost:3002/health | jq .
+curl -sf "http://localhost:${GW_PORT}/health" | jq . || echo "gateway-mock DOWN"
 # Expected: { "status": "ok" } (atau similar — tergantung gateway mock)
 
-curl -s http://localhost:3000 -o /dev/null -w "%{http_code}\n"
-# Expected: 200 (Next.js sandbox home page)
+curl -s http://localhost:3000 -o /dev/null -w "%{http_code}\n" || echo "Next.js preview DOWN"
+# Expected: 200 (Next.js sandbox home page) — di KONDISI SANDBOX ini otomatis jalan
 
-curl -s http://localhost:5173 -o /dev/null -w "%{http_code}\n"
+curl -s http://localhost:5173 -o /dev/null -w "%{http_code}\n" || echo "Vue dashboard DOWN"
 # Expected: 200 (Vue dashboard)
 
-# 2. Verify no orphaned processing payments
-psql "postgresql://retry_failure:retry_failure@localhost:5432/retry_failure" \
-  -c "SELECT count(*) FROM payments WHERE status = 'processing';"
+# 2. Verify no orphaned processing payments via psql
+# KONDISI LOCAL (Docker tersedia, psql via docker exec):
+docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
+  psql -U retry_failure -d retry_failure -c \
+  "SELECT count(*) FROM payments WHERE status = 'processing';"
 # Expected: 0
 
-# 3. Verify circuit breaker CLOSED sebelum run
-curl -s http://localhost:3001/api/metrics | grep circuit_breaker_state
+# KONDISI SANDBOX (Docker tidak tersedia, psql host atau Node script):
+# Opsi A — psql host (bila psql tersedia & external PG connectable):
+#   psql "postgresql://retry_failure:retry_failure@localhost:5432/retry_failure" \
+#     -c "SELECT count(*) FROM payments WHERE status = 'processing';"
+# Opsi B — Node script via ts-node (bila psql tidak ada):
+#   cd /home/z/my-project/retry-failure/apps/payment-api && pnpm exec ts-node -e "
+#     import { Client } from 'pg';
+#     const c = new Client({ host: process.env.DB_HOST, port: Number(process.env.DB_PORT),
+#       user: process.env.DB_USER, password: process.env.DB_PASS, database: process.env.DB_NAME });
+#     await c.connect();
+#     const r = await c.query(\"SELECT count(*) FROM payments WHERE status = 'processing';\");
+#     console.log(r.rows); await c.end();
+#   "
+# Opsi C — skip bila DB tidak connectable; pure API scenarios (2, 3, 5) tetap bisa jalan.
+
+# 3. Verify circuit breaker CLOSED sebelum run — port kondisional via API_PORT
+curl -s "http://localhost:${API_PORT}/api/metrics" | grep circuit_breaker_state
 # Expected: circuit_breaker_state{service="payment-gateway"} 0
 
-# 4. Reset gateway ke always-success (clean state)
-curl -s -X PUT http://localhost:3002/admin/config \
+# 4. Reset gateway ke always-success (clean state) — port kondisional via GW_PORT
+curl -s -X PUT "http://localhost:${GW_PORT}/admin/config" \
   -H 'Content-Type: application/json' \
   -d '{"mode":"always-success"}' | jq .
 # Expected: { "mode": "always-success" }
 
-# 5. Run backend E2E (Jest + supertest)
+# 5. Run backend E2E (Jest + supertest) — sama kedua kondisi (asalkan DB accessible)
+# KONDISI LOCAL (DB dari docker compose):
 cd /home/z/my-project/retry-failure/apps/payment-api && pnpm test:e2e
-# Expected: 7 passed, 0 failed
+
+# KONDISI SANDBOX (DB dari external instance atau skip):
+# - Bila external PG connectable: command sama, pnpm test:e2e jalan.
+# - Bila DB tidak connectable: skip pnpm test:e2e untuk scenarios yang butuh persistence (1, 4, 6, 7).
+#   Pure API scenarios (2, 3, 5) tetap bisa jalan dengan gateway mock saja.
+#   Document caveat di TASK-15 PRODUCTION_CAVEATS.md.
+# Expected (bila jalan): 7 passed, 0 failed
 # Output akan menampilkan:
 #   Scenario 1 — Transient failure (fail-first-n=2)
 #     ✓ should succeed after 3 attempts (XX ms)
@@ -1143,24 +1195,28 @@ cd /home/z/my-project/retry-failure/apps/payment-api && pnpm test:e2e
 # Test Suites: 7 passed, 7 total
 # Tests:       7+ passed, 7+ total
 
-# 6. View e2e-results.md (auto-generated documentation)
+# 6. View e2e-results.md (auto-generated documentation) — sama kedua kondisi
 cat /home/z/my-project/retry-failure/docs/e2e-results.md | head -n 60
 
-# 7. Summary counts (PASS / FAIL)
+# 7. Summary counts (PASS / FAIL) — sama kedua kondisi
 PASS_COUNT=$(grep -c 'PASS' /home/z/my-project/retry-failure/docs/e2e-results.md)
 FAIL_COUNT=$(grep -c 'FAIL' /home/z/my-project/retry-failure/docs/e2e-results.md)
 echo "PASS: $PASS_COUNT, FAIL: $FAIL_COUNT"
 # Expected: PASS: 17 (7 backend + 10 UI), FAIL: 0
 
-# 8. Verify no orphaned processing payments AFTER run
-psql "postgresql://retry_failure:retry_failure@localhost:5432/retry_failure" \
-  -c "SELECT count(*) FROM payments WHERE status = 'processing';"
+# 8. Verify no orphaned processing payments AFTER run — dua varian (sama seperti step 2)
+# KONDISI LOCAL:
+docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
+  psql -U retry_failure -d retry_failure -c \
+  "SELECT count(*) FROM payments WHERE status = 'processing';"
 # Expected: 0
 
-# 9. Final metrics snapshot (post-run)
-curl -s http://localhost:3001/api/metrics | tee /tmp/metrics-final.txt | grep -E "payments_total|retry_attempts_total|circuit_breaker_state|gateway_idempotent_replays_total|payments_current_status"
+# KONDISI SANDBOX: gunakan psql host atau Node script (lihat step 2 varian SANDBOX).
 
-# 10. Final dev log check (tidak ada error fatal)
+# 9. Final metrics snapshot (post-run) — port kondisional via API_PORT
+curl -s "http://localhost:${API_PORT}/api/metrics" | tee /tmp/metrics-final.txt | grep -E "payments_total|retry_attempts_total|circuit_breaker_state|gateway_idempotent_replays_total|payments_current_status"
+
+# 10. Final dev log check — sama kedua kondisi (dev.log ada di parent root / apps)
 tail -n 200 /tmp/payment-api.log 2>/dev/null | grep -iE "error|fatal|unhandled" | head -n 20
 # Expected: kosong atau hanya warning non-fatal
 
@@ -1173,31 +1229,40 @@ tail -n 200 /tmp/frontend-vue.log 2>/dev/null | grep -iE "error|fatal" | head -n
 tail -n 200 /tmp/nextjs-sandbox.log 2>/dev/null | grep -iE "error|fatal" | head -n 20
 # Expected: kosong
 
-# 11. List screenshot evidence
+# 11. List screenshot evidence — sama kedua kondisi
 ls -lah /home/z/my-project/retry-failure/docs/e2e-evidence/
 # Expected: 10 file PNG (demo-A-nextjs, demo-A-vue, demo-B-nextjs, ..., demo-E-vue)
 
-# 12. Optional: cleanup test data (jangan dijalankan bila ingin inspect manual)
+# 12. Optional: cleanup test data — dua varien
+# KONDISI LOCAL (Docker):
+# docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
+#   psql -U retry_failure -d retry_failure -c \
+#   "DELETE FROM payment_attempts WHERE payment_id IN (SELECT id FROM payments WHERE order_id LIKE 'E2E-%');"
+# docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
+#   psql -U retry_failure -d retry_failure -c \
+#   "DELETE FROM payments WHERE order_id LIKE 'E2E-%' OR order_id LIKE 'BREAKER-RESET-%';"
+
+# KONDISI SANDBOX (psql host atau Node script):
 # psql "postgresql://retry_failure:retry_failure@localhost:5432/retry_failure" \
 #   -c "DELETE FROM payment_attempts WHERE payment_id IN (SELECT id FROM payments WHERE order_id LIKE 'E2E-%');"
 # psql "postgresql://retry_failure:retry_failure@localhost:5432/retry_failure" \
-#   -c "DELETE FROM payments WHERE order_id LIKE 'E2E-%';"
-# psql "postgresql://retry_failure:retry_failure@localhost:5432/retry_failure" \
-#   -c "DELETE FROM payments WHERE order_id LIKE 'BREAKER-RESET-%';"
+#   -c "DELETE FROM payments WHERE order_id LIKE 'E2E-%' OR order_id LIKE 'BREAKER-RESET-%';"
+# Jangan dijalankan bila ingin inspect manual.
 
-# 13. Run Agent Browser demos (manual / scripted)
+# 13. Run Agent Browser demos (manual / scripted) — sama kedua kondisi
 #    Bila agent-browser CLI tersedia:
 # agent-browser navigate http://localhost:5173
 # agent-browser click "button:has-text('Demo A')"
 # agent-browser wait 30000
 # agent-browser screenshot /home/z/my-project/retry-failure/docs/e2e-evidence/demo-A-vue-$(date +%s).png
 # ... ulangi untuk Demo B-E + Next.js sandbox (URL http://localhost:3000)
+# Agent Browser adalah tool sandbox; di KONDISI LOCAL bisa buka browser manual.
 
-# 14. Cross-check Demo D (hero) backend assertion setelah Agent Browser run
-curl -s http://localhost:3002/admin/stats | jq '{ actualCharges, totalRequests, replayCount }'
+# 14. Cross-check Demo D (hero) backend assertion setelah Agent Browser run — port kondisional
+curl -s "http://localhost:${GW_PORT}/admin/stats" | jq '{ actualCharges, totalRequests, replayCount }'
 # Expected: actualCharges < totalRequests (proof idempotency bekerja)
 
-curl -s http://localhost:3001/api/metrics | grep gateway_idempotent_replays_total
+curl -s "http://localhost:${API_PORT}/api/metrics" | grep gateway_idempotent_replays_total
 # Expected: gateway_idempotent_replays_total N (N >= 1 per demo D run)
 
 # 15. Verify DoD plan section 22 (subset — yang di-test di TASK-14)

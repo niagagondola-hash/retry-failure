@@ -918,22 +918,41 @@ Lalu `node --import otel.js dist/main.js`. Trace context di-propagate via HTTP h
 
 ## Useful commands (run after completing this task)
 
+### Pre-flight Check
+
+> **WAJIB BACA**: sebelum menjalankan command di bawah, cek kondisi lingkungan Anda via [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 1 (Pre-flight Check).
+>
+> Ringkasan keyword:
+> - `pnpm --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
+> - `docker --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → butuh external PostgreSQL atau skip DB-dependent commands.
+> - `curl -s http://localhost:3000` sibuk → KONDISI SANDBOX → payment-api pakai PORT=3001, gateway-mock pakai PORT=3002, Next.js preview sudah otomatis jalan di 3000. Bebas → KONDISI LOCAL → payment-api pakai PORT=3000, gateway-mock pakai PORT=3001, Next.js di-start manual di 3000.
+
+Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih salah satu sesuai kondisi.
+
+---
+
 ```bash
 # ============================================================
 # 1. Start all services (gateway mock + payment-api + DB)
 # ============================================================
+# KONDISI LOCAL (Docker tersedia, port 3000 bebas):
 docker compose -f /home/z/my-project/retry-failure/docker-compose.yml up -d postgres
 sleep 3
 docker compose -f /home/z/my-project/retry-failure/docker-compose.yml ps postgres
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && PORT=3001 pnpm start:dev &
+cd /home/z/my-project/retry-failure/apps/payment-api && PORT=3000 pnpm start:dev
 
-cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && pnpm start:dev &  # port 3002
-cd /home/z/my-project/retry-failure/apps/payment-api && pnpm start:dev            # port 3001
+# KONDISI SANDBOX (Docker tidak tersedia, port 3000 dipakai Next.js preview):
+# - Butuh external PostgreSQL instance (set DB_HOST/DB_PORT/DB_USER/DB_PASS/DB_NAME di apps/payment-api/.env)
+# - Atau skip DB-dependent commands (step 5, 8c); inspect via Node script (lihat step 5 varian SANDBOX)
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && PORT=3002 pnpm start:dev &
+cd /home/z/my-project/retry-failure/apps/payment-api && PORT=3001 pnpm start:dev
 # Expected early log (pino-pretty colorized):
 #   [Nest] LOG [NestApplication] Nest application successfully started
 #   INFO (app): api_request traceId=... method=POST path=/payments
 
 # ============================================================
-# 2. Typecheck + lint
+# 2. Typecheck + lint — sama kedua kondisi (asumsi pnpm sudah ter-enable via corepack di SANDBOX)
 # ============================================================
 cd /home/z/my-project/retry-failure
 pnpm --filter payment-api typecheck
@@ -941,26 +960,34 @@ pnpm --filter payment-api lint
 
 # ============================================================
 # 3. Reset gateway mode → create test payment → inspect /metrics
+#    Pola env var: API_PORT default 3000 LOCAL; set API_PORT=3001 untuk SANDBOX.
+#                   GW_PORT default 3001 LOCAL; set GW_PORT=3002 untuk SANDBOX.
+#    Set sekali di sesi shell:
+#      export API_PORT=3000 GW_PORT=3001  (LOCAL)
+#      export API_PORT=3001 GW_PORT=3002  (SANDBOX)
 # ============================================================
-curl -sS -X PUT http://localhost:3002/admin/config \
+API_PORT="${API_PORT:-3000}"  # default 3000 LOCAL; set API_PORT=3001 untuk SANDBOX
+GW_PORT="${GW_PORT:-3001}"    # default 3001 LOCAL; set GW_PORT=3002 untuk SANDBOX
+
+curl -sS -X PUT "http://localhost:${GW_PORT}/admin/config" \
   -H 'Content-Type: application/json' \
   -d '{"mode":"always-success"}' | jq .
 
-curl -sS -X POST http://localhost:3001/payments \
+curl -sS -X POST "http://localhost:${API_PORT}/payments" \
   -H 'Content-Type: application/json' \
   -d '{"orderId":"OBS-001","amount":10000,"currency":"IDR"}' | jq .
 
 # 3a. /metrics — verify all 7 metrics exist
-curl -sS http://localhost:3001/metrics | grep -E \
+curl -sS "http://localhost:${API_PORT}/metrics" | grep -E \
   '^(payment_gateway_requests_total|retry_attempts_total|circuit_breaker_state|payments_current_status|payment_gateway_request_duration_seconds|payment_processing_duration_seconds|gateway_idempotent_replays_total)'
 # Expected: 7 lines (one per metric name)
 
 # 3b. /metrics — verify specific metric value incremented
-curl -sS http://localhost:3001/metrics | grep 'payment_gateway_requests_total{outcome="success",http_status="200"}'
+curl -sS "http://localhost:${API_PORT}/metrics" | grep 'payment_gateway_requests_total{outcome="success",http_status="200"}'
 # Expected: payment_gateway_requests_total{outcome="success",http_status="200"} 1
 
 # ============================================================
-# 4. Inspect logs — grep for traceId + event fields
+# 4. Inspect logs — grep for traceId + event fields (sama kedua kondisi; dev.log ada di parent root)
 # ============================================================
 # Redirect dev log to file (or set NODE_ENV + tail stdout).
 cd /home/z/my-project/retry-failure/apps/payment-api && pnpm start:dev > /tmp/payment-api.log 2>&1 &
@@ -980,6 +1007,7 @@ grep -E '"event":"(payment_start|payment_finish|attempt_start|attempt_finish|ret
 # ============================================================
 # 5. Inspect payment_attempts.trace_id via psql
 # ============================================================
+# KONDISI LOCAL (Docker tersedia, psql via docker exec):
 docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
   psql -U retry_failure -d retry_failure -c \
   "SELECT p.order_id, pa.attempt_number, pa.outcome, pa.trace_id, pa.created_at
@@ -990,16 +1018,35 @@ docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postg
 # Expected: attempts dalam satu payment cycle → trace_id identik.
 #           Different payment → different trace_id.
 
+# KONDISI SANDBOX (Docker tidak tersedia, psql host atau Node script):
+# Opsi A — psql host (bila psql tersedia & external PG connectable):
+#   psql -h localhost -U retry_failure -d retry_failure -c \
+#     "SELECT p.order_id, pa.attempt_number, pa.outcome, pa.trace_id, pa.created_at
+#      FROM payment_attempts pa JOIN payments p ON p.id = pa.payment_id
+#      WHERE p.order_id LIKE 'OBS-%' ORDER BY p.created_at DESC, pa.attempt_number ASC;"
+# Opsi B — Node script via ts-node (bila psql tidak ada):
+#   cd /home/z/my-project/retry-failure/apps/payment-api && pnpm exec ts-node -e "
+#     import { Client } from 'pg';
+#     const c = new Client({ host: process.env.DB_HOST, port: Number(process.env.DB_PORT),
+#       user: process.env.DB_USER, password: process.env.DB_PASS, database: process.env.DB_NAME });
+#     await c.connect();
+#     const r = await c.query(\`SELECT p.order_id, pa.attempt_number, pa.outcome, pa.trace_id, pa.created_at
+#       FROM payment_attempts pa JOIN payments p ON p.id = pa.payment_id
+#       WHERE p.order_id LIKE 'OBS-%' ORDER BY p.created_at DESC, pa.attempt_number ASC;\`);
+#     console.log(r.rows); await c.end();
+#   "
+# Opsi C — skip bila DB tidak connectable; document caveat di TASK-15.
+
 # ============================================================
 # 6. Trigger circuit breaker OPEN test (always-timeout mode)
 # ============================================================
-curl -sS -X PUT http://localhost:3002/admin/config \
+curl -sS -X PUT "http://localhost:${GW_PORT}/admin/config" \
   -H 'Content-Type: application/json' \
   -d '{"mode":"always-timeout"}' | jq .
 
 # 6a. Create 3 payments berturut-turut — 3 consecutive failures trigger breaker OPEN.
 for i in 1 2 3; do
-  curl -sS -X POST http://localhost:3001/payments \
+  curl -sS -X POST "http://localhost:${API_PORT}/payments" \
     -H 'Content-Type: application/json' \
     -d "{\"orderId\":\"OBS-BREAKER-00${i}\",\"amount\":5000,\"currency\":\"IDR\"}" | jq '.payment | {id, status, failureReason}'
 done
@@ -1007,50 +1054,51 @@ done
 #           Log: breaker_state_change newState=open.
 
 # 6b. Verify breaker gauge === 1
-curl -sS http://localhost:3001/metrics | grep 'circuit_breaker_state{service="payment-gateway"}'
+curl -sS "http://localhost:${API_PORT}/metrics" | grep 'circuit_breaker_state{service="payment-gateway"}'
 # Expected: circuit_breaker_state{service="payment-gateway"} 1
 
 # 6c. Wait for half_open (halfOpenAfter: 10s), then switch gateway → success.
 sleep 10
-curl -sS -X PUT http://localhost:3002/admin/config \
+curl -sS -X PUT "http://localhost:${GW_PORT}/admin/config" \
   -H 'Content-Type: application/json' \
   -d '{"mode":"always-success"}' | jq .
 
 # 6d. Create 1 more payment → breaker HALF_OPEN → success → CLOSED.
-curl -sS -X POST http://localhost:3001/payments \
+curl -sS -X POST "http://localhost:${API_PORT}/payments" \
   -H 'Content-Type: application/json' \
   -d '{"orderId":"OBS-BREAKER-RECOVER","amount":5000,"currency":"IDR"}' | jq '.payment.status'
 # Expected: "succeeded"
 
 # 6e. Verify breaker gauge back to 0
-curl -sS http://localhost:3001/metrics | grep 'circuit_breaker_state{service="payment-gateway"}'
+curl -sS "http://localhost:${API_PORT}/metrics" | grep 'circuit_breaker_state{service="payment-gateway"}'
 # Expected: circuit_breaker_state{service="payment-gateway"} 0
 
 # ============================================================
-# 7. Reset gateway mode (cleanup)
+# 7. Reset gateway mode (cleanup) — port kondisional via GW_PORT
 # ============================================================
-curl -sS -X PUT http://localhost:3002/admin/config \
+curl -sS -X PUT "http://localhost:${GW_PORT}/admin/config" \
   -H 'Content-Type: application/json' \
   -d '{"mode":"always-success"}' | jq .
 
 # ============================================================
 # 8. Idempotency replay test (succeed-but-drop-response mode)
 # ============================================================
-curl -sS -X PUT http://localhost:3002/admin/config \
+curl -sS -X PUT "http://localhost:${GW_PORT}/admin/config" \
   -H 'Content-Type: application/json' \
   -d '{"mode":"succeed-but-drop-response"}' | jq .
 
 # 8a. Create 1 payment → first attempt: gateway simpan Idempotency-Key, lalu drop response.
 #     Cockatiel retry → second attempt: gateway detect Idempotency-Key, return replayed=true.
-curl -sS -X POST http://localhost:3001/payments \
+curl -sS -X POST "http://localhost:${API_PORT}/payments" \
   -H 'Content-Type: application/json' \
   -d '{"orderId":"OBS-REPLAY-001","amount":15000,"currency":"IDR"}' | jq '.payment | {id, status, attemptCount, gatewayReference}'
 
 # 8b. Verify replay counter incremented
-curl -sS http://localhost:3001/metrics | grep 'gateway_idempotent_replays_total'
+curl -sS "http://localhost:${API_PORT}/metrics" | grep 'gateway_idempotent_replays_total'
 # Expected: gateway_idempotent_replays_total 1
 
 # 8c. Verify attempt rows: 1 row replayed=true, trace_id sama untuk kedua attempts.
+# KONDISI LOCAL (Docker tersedia, psql via docker exec):
 docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
   psql -U retry_failure -d retry_failure -c \
   "SELECT attempt_number, outcome, replayed, trace_id
@@ -1059,10 +1107,17 @@ docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postg
    ORDER BY attempt_number ASC;"
 # Expected: 2 rows, replayed=true di row 2, trace_id identical.
 
+# KONDISI SANDBOX (Docker tidak tersedia):
+#   psql -h localhost -U retry_failure -d retry_failure -c \
+#     "SELECT attempt_number, outcome, replayed, trace_id FROM payment_attempts
+#      WHERE payment_id = (SELECT id FROM payments WHERE order_id='OBS-REPLAY-001')
+#      ORDER BY attempt_number ASC;"
+#   Atau via Node script (lihat step 5 varian SANDBOX Opsi B).
+
 # ============================================================
-# 9. Reset gateway mode (final cleanup)
+# 9. Reset gateway mode (final cleanup) — port kondisional via GW_PORT
 # ============================================================
-curl -sS -X PUT http://localhost:3002/admin/config \
+curl -sS -X PUT "http://localhost:${GW_PORT}/admin/config" \
   -H 'Content-Type: application/json' \
   -d '{"mode":"always-success"}' | jq .
 ```

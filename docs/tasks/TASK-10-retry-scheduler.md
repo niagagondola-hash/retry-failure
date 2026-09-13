@@ -612,34 +612,63 @@ const nextRetryAt = new Date(Date.now() + delayMs);
 
 ## Useful commands (run after completing this task)
 
+### Pre-flight Check
+
+> **WAJIB BACA**: sebelum menjalankan command di bawah, cek kondisi lingkungan Anda via [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 1 (Pre-flight Check).
+>
+> Ringkasan keyword:
+> - `pnpm --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
+> - `docker --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → butuh external PostgreSQL atau skip DB-dependent commands.
+> - `curl -s http://localhost:3000` sibuk → KONDISI SANDBOX → payment-api pakai PORT=3001, gateway-mock pakai PORT=3002. Bebas → KONDISI LOCAL → payment-api pakai PORT=3000, gateway-mock pakai PORT=3001.
+
+Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih salah satu sesuai kondisi.
+
+---
+
 ```bash
-# 1. Start dependency services (gateway mock + PostgreSQL)
+# 1. Start dependency services (gateway mock + PostgreSQL — port kondisional)
 #    Pastikan PostgreSQL jalan + migration sudah di-run.
+# KONDISI LOCAL (Docker tersedia — gateway-mock di port 3001):
 docker compose -f /home/z/my-project/retry-failure/docker-compose.yml up -d postgres
 sleep 3
 docker compose -f /home/z/my-project/retry-failure/docker-compose.yml ps postgres
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && PORT=3001 pnpm start:dev &
 
-cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && pnpm start:dev &  # port 3002
+# KONDISI SANDBOX (Docker tidak tersedia — gateway-mock di port 3002):
+# - Opsi A: connect ke external PostgreSQL instance (set DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME di apps/payment-api/.env).
+# - Opsi B: skip scenario 6/7 yang butuh persistence; jalankan unit test (step 5) saja.
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && PORT=3002 pnpm start:dev &
 
-# 2. Run migration bila belum
+# 2. Run migration bila belum (sama kedua kondisi — butuh DB connectable)
 cd /home/z/my-project/retry-failure/apps/payment-api && pnpm db:migrate
 
-# 3. Start payment-api (port 3001) — scheduler otomatis aktif via RetrySchedulerModule
-cd /home/z/my-project/retry-failure/apps/payment-api && pnpm start:dev
+# 3. Start payment-api (port kondisional) — scheduler otomatis aktif via RetrySchedulerModule
+# KONDISI LOCAL (port 3000 bebas):
+cd /home/z/my-project/retry-failure/apps/payment-api && PORT=3000 pnpm start:dev
 # Expected early log:
 #   [Nest] LOG [RetrySchedulerService] Scheduler started: intervalMs=5000, batchSize=50, maxTotalRetries=5
 #   [Nest] LOG [NestApplication] Nest application successfully started
 
-# 4. Typecheck + lint
+# KONDISI SANDBOX (port 3000 dipakai Next.js preview → payment-api geser ke 3001):
+cd /home/z/my-project/retry-failure/apps/payment-api && PORT=3001 pnpm start:dev
+# Expected early log: same as above + "listening on :3001"
+
+# 4. Typecheck + lint — sama kedua kondisi
 cd /home/z/my-project/retry-failure
 pnpm --filter payment-api typecheck
 pnpm --filter payment-api lint
 
-# 5. Jest unit tests
+# 5. Jest unit tests (tidak butuh DB / HTTP server — selalu jalan)
 pnpm --filter payment-api test -- --testPathPattern=retry-scheduler.service.spec
 
+# === Env var konvensi (set sekali di sesi shell) ===
+# KONDISI LOCAL:  export API_PORT=3000 GW_PORT=3001
+# KONDISI SANDBOX: export API_PORT=3001 GW_PORT=3002
+API_PORT="${API_PORT:-3000}"  # default 3000 LOCAL; set API_PORT=3001 untuk SANDBOX
+GW_PORT="${GW_PORT:-3001}"    # default 3001 LOCAL; set GW_PORT=3002 untuk SANDBOX
+
 # 6. Verify /scheduler-health endpoint
-curl -sS http://localhost:3001/scheduler-health | jq .
+curl -sS "http://localhost:${API_PORT}/scheduler-health" | jq .
 # Expected: { "status": "idle", "processedCount": 0, "errorCount": 0, "lastError": null, "intervalMs": 5000, "batchSize": 50, "maxTotalRetries": 5 }
 
 # ============================================================
@@ -648,32 +677,32 @@ curl -sS http://localhost:3001/scheduler-health | jq .
 
 # 6a. Set gateway mock mode = server-error → create payment →
 #     expected: payment jadi scheduled_for_retry setelah Cockatiel exhausted (3 attempts).
-curl -sS -X PUT http://localhost:3002/admin/config \
+curl -sS -X PUT "http://localhost:${GW_PORT}/admin/config" \
   -H 'Content-Type: application/json' \
   -d '{"mode":"server-error"}' | jq .
 
-curl -sS -X POST http://localhost:3001/payments \
+curl -sS -X POST "http://localhost:${API_PORT}/payments" \
   -H 'Content-Type: application/json' \
   -d '{"orderId":"SCHED-SCENARIO6-001","amount":10000,"currency":"IDR"}' | jq .
 # Expected: { "payment": { "status": "scheduled_for_retry", "totalRetryCount": 1, "nextRetryAt": "<10s from now>" } }
 
 # 6b. Switch gateway ke always-success → scheduler akan pick payment tsb
 #     dalam ~10s (SCHEDULER_BASE_DELAY_MS) + 5s (SCHEDULER_INTERVAL_MS poll).
-curl -sS -X PUT http://localhost:3002/admin/config \
+curl -sS -X PUT "http://localhost:${GW_PORT}/admin/config" \
   -H 'Content-Type: application/json' \
   -d '{"mode":"always-success"}' | jq .
 
 # 6c. Tunggu ~15-20 detik (2 scheduler cycles dengan interval=5s), lalu cek payment state.
 sleep 20
-PAYMENT_ID=$(curl -sS 'http://localhost:3001/payments?status=succeeded&limit=5' \
+PAYMENT_ID=$(curl -sS "http://localhost:${API_PORT}/payments?status=succeeded&limit=5" \
   | jq -r '.payments[] | select(.orderId=="SCHED-SCENARIO6-001") | .id' | head -n1)
-curl -sS "http://localhost:3001/payments/${PAYMENT_ID}" \
+curl -sS "http://localhost:${API_PORT}/payments/${PAYMENT_ID}" \
   | jq '.payment | {id, status, attemptCount, totalRetryCount, gatewayReference}'
 # Expected: status="succeeded", totalRetryCount=1, attemptCount=1
 #           (Cockatiel attempt #1 di cycle ke-2 = success), gatewayReference set.
 
 # 6d. Verify scheduler stats — processedCount >= 1, errorCount = 0.
-curl -sS http://localhost:3001/scheduler-health | jq .
+curl -sS "http://localhost:${API_PORT}/scheduler-health" | jq .
 # Expected: { "status": "idle", "processedCount": >=1, "errorCount": 0, "lastPollAt": "<recent ISO 8601>" }
 
 # ============================================================
@@ -681,11 +710,11 @@ curl -sS http://localhost:3001/scheduler-health | jq .
 # ============================================================
 
 # 7a. Keep gateway di server-error, create payment baru.
-curl -sS -X PUT http://localhost:3002/admin/config \
+curl -sS -X PUT "http://localhost:${GW_PORT}/admin/config" \
   -H 'Content-Type: application/json' \
   -d '{"mode":"server-error"}' | jq .
 
-curl -sS -X POST http://localhost:3001/payments \
+curl -sS -X POST "http://localhost:${API_PORT}/payments" \
   -H 'Content-Type: application/json' \
   -d '{"orderId":"SCHED-SCENARIO7-001","amount":20000,"currency":"IDR"}' | jq .
 # Expected: status=scheduled_for_retry, totalRetryCount=1
@@ -701,20 +730,21 @@ curl -sS -X POST http://localhost:3001/payments \
 sleep 70
 
 # 7c. Cek final state.
-PAYMENT_ID=$(curl -sS 'http://localhost:3001/payments?status=failed&limit=5' \
+PAYMENT_ID=$(curl -sS "http://localhost:${API_PORT}/payments?status=failed&limit=5" \
   | jq -r '.payments[] | select(.orderId=="SCHED-SCENARIO7-001") | .id' | head -n1)
-curl -sS "http://localhost:3001/payments/${PAYMENT_ID}" \
+curl -sS "http://localhost:${API_PORT}/payments/${PAYMENT_ID}" \
   | jq '.payment | {id, status, attemptCount, totalRetryCount, failureReason}'
 # Expected: status="failed", totalRetryCount=5, failureReason="max_total_retries_exceeded"
 
 # 7d. Verify scheduler stats — processedCount >= 5 (5 scheduler cycles untuk payment ini).
-curl -sS http://localhost:3001/scheduler-health | jq .
+curl -sS "http://localhost:${API_PORT}/scheduler-health" | jq .
 
 # ============================================================
 # Verify state transitions via psql
 # ============================================================
 
 # 8a. List payments dengan scheduler state
+# KONDISI LOCAL (docker exec):
 docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
   psql -U retry_failure -d retry_failure -c \
   "SELECT id, order_id, status, attempt_count, total_retry_count,
@@ -723,8 +753,17 @@ docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postg
    WHERE order_id LIKE 'SCHED-%'
    ORDER BY created_at DESC;"
 
+# KONDISI SANDBOX (host psql, atau Node script fallback bila psql CLI tidak tersedia):
+psql -h localhost -U retry_failure -d retry_failure -c \
+  "SELECT id, order_id, status, attempt_count, total_retry_count,
+          next_retry_at, failure_reason, updated_at
+   FROM payments
+   WHERE order_id LIKE 'SCHED-%'
+   ORDER BY created_at DESC;"
+
 # 8b. List attempts per scheduler-triggered cycle — verify trace_id sama per cycle,
 #     berbeda antar cycle (traceId di-generate per executePayment call di TASK-07).
+# KONDISI LOCAL:
 docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
   psql -U retry_failure -d retry_failure -c \
   "SELECT payment_id, attempt_number, outcome, breaker_state, trace_id, created_at
@@ -735,18 +774,33 @@ docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postg
    ORDER BY created_at ASC;"
 # Expected: 6 cycles × 3 attempts = 18 rows. trace_id berbeda antar cycle, sama dalam cycle.
 
+# KONDISI SANDBOX:
+psql -h localhost -U retry_failure -d retry_failure -c \
+  "SELECT payment_id, attempt_number, outcome, breaker_state, trace_id, created_at
+   FROM payment_attempts
+   WHERE payment_id = (
+     SELECT id FROM payments WHERE order_id='SCHED-SCENARIO7-001' LIMIT 1
+   )
+   ORDER BY created_at ASC;"
+
 # 8c. Verify scheduler no longer picks failed payment
+# KONDISI LOCAL:
 docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
   psql -U retry_failure -d retry_failure -c \
   "SELECT COUNT(*) FROM payments
    WHERE status='scheduled_for_retry' AND next_retry_at <= NOW();"
 # Expected: 0 bila semua scenario 7 payment sudah failed (atau >0 bila ada scenario 6 lain yang belum selesai).
 
+# KONDISI SANDBOX:
+psql -h localhost -U retry_failure -d retry_failure -c \
+  "SELECT COUNT(*) FROM payments
+   WHERE status='scheduled_for_retry' AND next_retry_at <= NOW();"
+
 # 8d. Verify scheduler registered interval via /scheduler-health (alternative)
-curl -sS http://localhost:3001/scheduler-health | jq '.intervalMs, .batchSize, .maxTotalRetries'
+curl -sS "http://localhost:${API_PORT}/scheduler-health" | jq '.intervalMs, .batchSize, .maxTotalRetries'
 
 # 9. Reset gateway ke default (always-success) untuk cleanup.
-curl -sS -X PUT http://localhost:3002/admin/config \
+curl -sS -X PUT "http://localhost:${GW_PORT}/admin/config" \
   -H 'Content-Type: application/json' \
   -d '{"mode":"always-success"}' | jq .
 ```

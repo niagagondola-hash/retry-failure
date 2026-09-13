@@ -65,17 +65,22 @@ Menyiapkan monorepo pnpm workspaces di `/home/z/my-project/retry-failure/` denga
 
 1. Enable pnpm:
    ```bash
+   # KONDISI LOCAL (pnpm sudah terinstall):
+   pnpm --version  # verify
+
+   # KONDISI SANDBOX (pnpm belum terinstall):
    corepack enable pnpm
-   corepack prepare pnpm@latest --activate
-   pnpm --version
+   corepack prepare pnpm@9.12.0 --activate
+   pnpm --version  # verify
    ```
-2. Buat root `package.json`:
+2. Buat root `package.json` — **WAJIB pin `packageManager` dan `engines`** agar kedua kondisi (LOCAL & SANDBOX) memakai pnpm v9.12.0 yang identik via corepack. Lockfile akan compatible di kedua lingkungan.
    ```json
    {
      "name": "retry-failure",
      "version": "0.1.0",
      "private": true,
      "engines": { "node": ">=20", "pnpm": ">=9" },
+     "packageManager": "pnpm@9.12.0",
      "scripts": {
        "dev": "pnpm -r --parallel run dev",
        "build": "pnpm -r run build",
@@ -97,6 +102,9 @@ Menyiapkan monorepo pnpm workspaces di `/home/z/my-project/retry-failure/` denga
      }
    }
    ```
+   - **`packageManager: "pnpm@9.12.0"`** — Node corepack membaca field ini dan otomatis activate pnpm v9.12.0 saat `pnpm` dipanggil. Kedua kondisi (LOCAL dengan pnpm global terinstall, SANDBOX dengan pnpm via corepack) akan resolve ke versi yang sama → `pnpm-lock.yaml` compatible, tidak ada drift.
+   - **`engines.node: ">=20"`** — Node v20, v22, v24 semua OK. Plan minta v20.19.0; kita pakai floor `>=20` agar sandbox (yang sering dapat v24) tetap jalan tanpa API breaking. Document caveat Node 24 vs 20 di TASK-15.
+   - **`engines.pnpm: ">=9"`** — pelengkap pin `packageManager`; memberi error jelas bila ada dev yang masih pakai pnpm v8.
 3. `pnpm-workspace.yaml`:
    ```yaml
    packages:
@@ -269,13 +277,30 @@ Menyiapkan monorepo pnpm workspaces di `/home/z/my-project/retry-failure/` denga
 
 ## Useful commands (run after completing this task)
 
-```bash
-# 1. Enable pnpm via corepack (sekali saja)
-corepack enable pnpm
-corepack prepare pnpm@latest --activate
-pnpm --version
+### Pre-flight Check
 
-# 2. Install dependencies monorepo
+> **WAJIB BACA**: sebelum menjalankan command di bawah, cek kondisi lingkungan Anda via [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 1 (Pre-flight Check).
+>
+> Ringkasan keyword:
+> - `pnpm --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu (versi pin ke `packageManager` field di root `package.json`).
+> - `docker --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → butuh external PostgreSQL atau skip DB-dependent commands (lihat TASK-02).
+> - `curl -s http://localhost:3000` sibuk → KONDISI SANDBOX → pakai PORT=3001 (payment-api), PORT=3002 (gateway-mock). Bebas → KONDISI LOCAL → pakai PORT=3000 (payment-api), PORT=3001 (gateway-mock).
+
+Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih salah satu sesuai kondisi.
+
+---
+
+```bash
+# 1. Enable pnpm via corepack
+# KONDISI LOCAL (pnpm sudah terinstall):
+pnpm --version  # verify, expected 9.12.0 (auto via packageManager pin)
+
+# KONDISI SANDBOX (pnpm belum terinstall):
+corepack enable pnpm
+corepack prepare pnpm@9.12.0 --activate
+pnpm --version  # verify, expected 9.12.0
+
+# 2. Install dependencies monorepo (sama kedua kondisi)
 cd /home/z/my-project/retry-failure
 pnpm install
 
@@ -283,44 +308,65 @@ pnpm install
 ls -la apps/ packages/
 
 # 4. Start payment-api (background)
+# KONDISI LOCAL (port 3000 bebas):
 cd /home/z/my-project/retry-failure/apps/payment-api
-pnpm start:dev > /tmp/payment-api.log 2>&1 &
+PORT=3000 pnpm start:dev > /tmp/payment-api.log 2>&1 &
+sleep 5
+tail -n 20 /tmp/payment-api.log
+curl -s http://localhost:3000/ 2>&1 || echo "no route yet — OK if NestJS default 404"
+
+# KONDISI SANDBOX (port 3000 dipakai Next.js preview):
+cd /home/z/my-project/retry-failure/apps/payment-api
+PORT=3001 pnpm start:dev > /tmp/payment-api.log 2>&1 &
 sleep 5
 tail -n 20 /tmp/payment-api.log
 curl -s http://localhost:3001/ 2>&1 || echo "no route yet — OK if NestJS default 404"
 
 # 5. Start gateway-mock (background)
+# KONDISI LOCAL:
 cd /home/z/my-project/retry-failure/apps/payment-gateway-mock
-pnpm start:dev > /tmp/gateway-mock.log 2>&1 &
+PORT=3001 pnpm start:dev > /tmp/gateway-mock.log 2>&1 &
 sleep 5
 tail -n 20 /tmp/gateway-mock.log
 
-# 6. Start Vue frontend (background)
+# KONDISI SANDBOX:
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock
+PORT=3002 pnpm start:dev > /tmp/gateway-mock.log 2>&1 &
+sleep 5
+tail -n 20 /tmp/gateway-mock.log
+
+# 6. Start Vue frontend (background) — sama kedua kondisi (port 5173)
 cd /home/z/my-project/retry-failure/apps/frontend-vue
 pnpm dev > /tmp/frontend-vue.log 2>&1 &
 sleep 5
 tail -n 20 /tmp/frontend-vue.log
 curl -s http://localhost:5173/ | head -20
 
-# 7. Lint & typecheck
+# 7. Lint & typecheck — sama kedua kondisi
 cd /home/z/my-project/retry-failure
 pnpm lint
 pnpm typecheck
 
-# 8. Test config validation (start with missing env)
+# 8. Test config validation (start with missing env) — sama kedua kondisi
 cd /home/z/my-project/retry-failure/apps/payment-api
 unset DB_HOST DB_PORT DB_USER DB_PASS DB_NAME
 pnpm start:dev 2>&1 | head -20  # expected: Joi validation error
 
-# 9. Cleanup background services
+# 9. Cleanup background services — sama kedua kondisi
 pkill -f "nest start" 2>/dev/null
 pkill -f "vite" 2>/dev/null
 
-# 10. Verify Docker compose (bila Docker tersedia)
+# 10. Verify Docker compose
+# KONDISI LOCAL (Docker tersedia):
 docker compose -f /home/z/my-project/retry-failure/docker-compose.yml up -d postgres
 sleep 5
 docker compose -f /home/z/my-project/retry-failure/docker-compose.yml ps
 docker compose -f /home/z/my-project/retry-failure/docker-compose.yml down
+
+# KONDISI SANDBOX (Docker tidak tersedia):
+# Skip command ini. Butuh external PostgreSQL instance, atau gunakan mock repository untuk dev.
+# Lihat SANDBOX_NOTES.md section 2.5 untuk strategi alternatif.
+# Document caveat environment di TASK-15 production caveats.
 ```
 
 ## Notes

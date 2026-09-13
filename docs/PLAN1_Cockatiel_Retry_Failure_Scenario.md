@@ -1144,4 +1144,3 @@ Project dianggap selesai ketika seluruh kondisi berikut terpenuhi:
 - PrimeVue: https://primevue.org/
 
 Referensi di atas digunakan untuk memastikan API dan capability Cockatiel yang dijadikan asumsi arsitektur pada dokumen ini, serta dokumentasi resmi stack tambahan (PostgreSQL, TypeORM, NestJS, PrimeVue).
-                                                                                                                                                                                                                   

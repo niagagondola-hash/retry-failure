@@ -2290,98 +2290,146 @@ nav a.router-link-active {
 
 ## Useful commands (run after completing this task)
 
+### Pre-flight Check
+
+> **WAJIB BACA**: sebelum menjalankan command di bawah, cek kondisi lingkungan Anda via [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 1 (Pre-flight Check).
+>
+> Ringkasan keyword:
+> - `pnpm --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
+> - `docker --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → butuh external PostgreSQL atau skip DB-dependent commands.
+> - `curl -s http://localhost:3000` sibuk → KONDISI SANDBOX → payment-api pakai PORT=3001, gateway-mock pakai PORT=3002. Bebas → KONDISI LOCAL → payment-api pakai PORT=3000, gateway-mock pakai PORT=3001.
+> - Vue dashboard port 5173 tidak konflik dengan Next.js preview 3000 → `pnpm dev` tetap di port 5173 di kedua kondisi.
+
+Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih salah satu sesuai kondisi.
+
+---
+
 ```bash
 # 0. Pre-requisite: enable pnpm via corepack (sekali saja, bila belum)
+# KONDISI LOCAL (pnpm sudah terinstall, skip):
+pnpm --version  # verify, expected 9.12.0
+
+# KONDISI SANDBOX (pnpm belum terinstall):
 corepack enable pnpm
-corepack prepare pnpm@latest --activate
+corepack prepare pnpm@9.12.0 --activate
+pnpm --version  # verify
 
 # 1. Start backend services (di terminal terpisah, urutan penting)
 #    a. PostgreSQL (bila pakai docker-compose)
+# KONDISI LOCAL (Docker tersedia):
 cd /home/z/my-project/retry-failure && docker compose up -d postgres
 # Atau bila PostgreSQL managed eksternal, skip — pastikan DATABASE_URL reachable.
 
-#    b. Gateway mock (port 3002)
-cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && pnpm start:dev
+# KONDISI SANDBOX (Docker tidak tersedia):
+# - Butuh external PostgreSQL instance (set DB_HOST/DB_PORT/DB_USER/DB_PASS/DB_NAME di apps/payment-api/.env)
+# - Atau skip DB-dependent endpoints; Vue app masih bisa render (mock API responses)
+
+#    b. Gateway mock (port kondisional)
+# KONDISI LOCAL (port 3001 bebas):
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && PORT=3001 pnpm start:dev
+# Expected log: "Gateway mock running on http://localhost:3001"
+
+# KONDISI SANDBOX (port 3002, karena 3001 dipakai payment-api):
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && PORT=3002 pnpm start:dev
 # Expected log: "Gateway mock running on http://localhost:3002"
 
-#    c. Payment API (port 3001)
-cd /home/z/my-project/retry-failure/apps/payment-api && pnpm start:dev
+#    c. Payment API (port kondisional)
+# KONDISI LOCAL (port 3000 bebas):
+cd /home/z/my-project/retry-failure/apps/payment-api && PORT=3000 pnpm start:dev
+# Expected log: "Payment API running on http://localhost:3000" + "Swagger UI: http://localhost:3000/docs"
+
+# KONDISI SANDBOX (port 3001, karena 3000 dipakai Next.js preview):
+cd /home/z/my-project/retry-failure/apps/payment-api && PORT=3001 pnpm start:dev
 # Expected log: "Payment API running on http://localhost:3001" + "Swagger UI: http://localhost:3001/docs"
 
-# 2. Install frontend dependencies (first time only)
+# 2. Install frontend dependencies (first time only) — sama kedua kondisi
 cd /home/z/my-project/retry-failure/apps/frontend-vue && pnpm install
 # Expected: lockfile created, node_modules populated, ~200 packages installed.
 
-# 3. Dev mode (port 5173)
+# 3. Dev mode (port 5173) — sama kedua kondisi (Vite port 5173 tidak konflik)
 cd /home/z/my-project/retry-failure/apps/frontend-vue && pnpm dev
 # Expected log: "VITE v5.4.x ready in ~300ms" + "Local: http://localhost:5173/"
-# Note: ini BUKAN port 3000 (Next.js sandbox) — buka tab baru di browser.
+# Note: ini BUKAN port 3000 (Next.js preview) — buka tab baru di browser.
 
-# 4. Typecheck (vue-tsc)
+# 4. Typecheck (vue-tsc) — sama kedua kondisi
 cd /home/z/my-project/retry-failure/apps/frontend-vue && pnpm typecheck
 # Expected: exit 0, no output (all good).
 
-# 5. Lint (eslint)
+# 5. Lint (eslint) — sama kedua kondisi
 cd /home/z/my-project/retry-failure/apps/frontend-vue && pnpm lint
 # Expected: exit 0, no warnings.
 
-# 6. Production build
+# 6. Production build — sama kedua kondisi
 cd /home/z/my-project/retry-failure/apps/frontend-vue && pnpm build
 # Expected: "dist/index.html" + "dist/assets/index-*.js" + "dist/assets/index-*.css" + sourcemaps.
 
-# 7. Preview production build (port 4173)
+# 7. Preview production build (port 4173) — sama kedua kondisi
 cd /home/z/my-project/retry-failure/apps/frontend-vue && pnpm preview
 # Expected: "Local: http://localhost:4173/"
 
 # 8. Open browser
-#    - Buka http://localhost:5173 di browser (NEW TAB — bukan preview sandbox 3000)
-#    - Dashboard harus render tanpa console error (cek DevTools Console).
-#    - Click "Create Payment" → Dialog muncul → submit → payment muncul di Recent Payments.
-#    - Click row → navigate ke /payments/:id → AttemptTimeline muncul.
-#    - Click "Run All + Show Results" di Demo Scenario Runner → 5 demo run → Dialog result.
+# KONDISI LOCAL: buka http://localhost:5173 di browser (NEW TAB — bukan preview sandbox 3000)
+#   - Dashboard harus render tanpa console error (cek DevTools Console).
+#   - Click "Create Payment" → Dialog muncul → submit → payment muncul di Recent Payments.
+#   - Click row → navigate ke /payments/:id → AttemptTimeline muncul.
+#   - Click "Run All + Show Results" di Demo Scenario Runner → 5 demo run → Dialog result.
+# KONDISI SANDBOX: klik "Open in New Tab" di preview panel (port 5173 di-expose via Caddy)
+#   - Preview panel otomatis expose port 5173; gunakan tombol "Open in New Tab"
+#     untuk full-screen view di browser tab terpisah.
+#   - Cross-service fetch ke backend: Vue app di 5173 fetch langsung ke
+#     http://localhost:${API_PORT}/api/... (port kondisional sesuai backend service).
+#     Bila preview panel tidak allow cross-port fetch, gunakan Caddy XTransformPort
+#     pattern (lihat SANDBOX_NOTES.md section 2.12).
 
 # 9. Manual curl verification of API endpoints the Vue app will call
 #    (semua harus 200 OK atau 201 Created)
+#    Pola env var: API_PORT default 3000 LOCAL; set API_PORT=3001 untuk SANDBOX.
+#                   GW_PORT default 3001 LOCAL; set GW_PORT=3002 untuk SANDBOX.
+#    Set sekali di sesi shell:
+#      export API_PORT=3000 GW_PORT=3001  (LOCAL)
+#      export API_PORT=3001 GW_PORT=3002  (SANDBOX)
+API_PORT="${API_PORT:-3000}"  # default 3000 LOCAL; set API_PORT=3001 untuk SANDBOX
+GW_PORT="${GW_PORT:-3001}"    # default 3001 LOCAL; set GW_PORT=3002 untuk SANDBOX
 
-#    a. GET gateway config (port 3002, NOT via Caddy)
-curl -i http://localhost:3002/admin/config
+#    a. GET gateway config
+curl -i "http://localhost:${GW_PORT}/admin/config"
 # Expected: 200 OK, { "mode": "healthy", ... }
 
-#    b. PUT gateway config (port 3002)
-curl -i -X PUT http://localhost:3002/admin/config \
+#    b. PUT gateway config
+curl -i -X PUT "http://localhost:${GW_PORT}/admin/config" \
   -H 'Content-Type: application/json' \
   -d '{"mode":"fail-first-n","n":2}'
 # Expected: 200 OK, { "mode": "fail-first-n", "n": 2, ... }
 
-#    c. GET gateway stats (port 3002)
-curl -i http://localhost:3002/admin/stats
+#    c. GET gateway stats
+curl -i "http://localhost:${GW_PORT}/admin/stats"
 # Expected: 200 OK, { "totalRequests": ..., "successCount": ..., ... }
 
-#    d. GET payment-api health (port 3001)
-curl -i http://localhost:3001/api/health
+#    d. GET payment-api health
+curl -i "http://localhost:${API_PORT}/api/health"
 # Expected: 200 OK, { "db": "ok", "gateway": "ok", "timestamp": "..." }
 
-#    e. GET payments list (port 3001)
-curl -i http://localhost:3001/api/payments
+#    e. GET payments list
+curl -i "http://localhost:${API_PORT}/api/payments"
 # Expected: 200 OK, { "payments": [...], "total": N, "limit": 50, "offset": 0 }
 
-#    f. POST new payment (port 3001)
-curl -i -X POST http://localhost:3001/api/payments \
+#    f. POST new payment
+curl -i -X POST "http://localhost:${API_PORT}/api/payments" \
   -H 'Content-Type: application/json' \
   -d '{"orderId":"MANUAL-VUE-001","amount":150000,"currency":"IDR"}'
 # Expected: 201 Created, { "payment": { ..., "status": "succeeded"|"failed"|"scheduled_for_retry" } }
 
-#    g. GET payment detail by id (port 3001) — replace <id> dari response (f)
-curl -i http://localhost:3001/api/payments/<id>
+#    g. GET payment detail by id — replace <id> dari response (f)
+curl -i "http://localhost:${API_PORT}/api/payments/<id>"
 # Expected: 200 OK, { "payment": { ... }, "attempts": [...] }
 
-#    h. POST manual retry (port 3001) — only bila status failed/scheduled_for_retry
-curl -i -X POST http://localhost:3001/api/payments/<id>/retry
+#    h. POST manual retry — only bila status failed/scheduled_for_retry
+curl -i -X POST "http://localhost:${API_PORT}/api/payments/<id>/retry"
 # Expected: 200 OK, { "payment": { ..., "status": "processing" } }
 # Atau 409 Conflict bila status=succeeded.
 
-#    i. GET metrics (port 3001, Prometheus text format)
-curl -s http://localhost:3001/api/metrics | head -n 30
+#    i. GET metrics (Prometheus text format)
+curl -s "http://localhost:${API_PORT}/api/metrics" | head -n 30
 # Expected: text/plain, lines seperti:
 #   # HELP payment_gateway_requests_total ...
 #   payment_gateway_requests_total{result="success"} 5
@@ -2389,8 +2437,8 @@ curl -s http://localhost:3001/api/metrics | head -n 30
 #   circuit_breaker_state{state="closed"} 1
 #   ...
 
-#    j. CORS preflight check (bila Vue app di 5173 fetch ke 3001)
-curl -i -X OPTIONS http://localhost:3001/api/payments \
+#    j. CORS preflight check (Vue app di 5173 fetch ke backend port)
+curl -i -X OPTIONS "http://localhost:${API_PORT}/api/payments" \
   -H 'Origin: http://localhost:5173' \
   -H 'Access-Control-Request-Method: GET'
 # Expected: 204 No Content + header:
@@ -2404,10 +2452,11 @@ curl -i -X OPTIONS http://localhost:3001/api/payments \
 #       (3) PaymentDetailView dengan AttemptTimeline
 #     - Full E2E matrix (Demo A-E, manual retry, gateway mode switch, mobile viewport)
 #       → TASK-14 akan automate via Agent Browser + assertions.
+#     - Agent Browser adalah tool sandbox; di KONDISI LOCAL bisa buka browser manual.
 
-# 11. Cleanup bila perlu
+# 11. Cleanup bila perlu — port kondisional via GW_PORT
 #     a. Reset gateway config ke healthy
-curl -X PUT http://localhost:3002/admin/config \
+curl -X PUT "http://localhost:${GW_PORT}/admin/config" \
   -H 'Content-Type: application/json' \
   -d '{"mode":"healthy"}'
 

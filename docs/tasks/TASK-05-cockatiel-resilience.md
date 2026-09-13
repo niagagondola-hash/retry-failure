@@ -474,21 +474,36 @@ export * from './server-directed-backoff';
 
 ## Useful commands (run after completing this task)
 
+### Pre-flight Check
+
+> **WAJIB BACA**: sebelum menjalankan command di bawah, cek kondisi lingkungan Anda via [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 1 (Pre-flight Check).
+>
+> Ringkasan keyword:
+> - `pnpm --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu (lihat [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 2.1).
+>
+> Tidak ada port-specific atau Docker-dependent command di task ini (pure TypeScript package, Jest unit test + ts-node sanity check). Command di bawah sama untuk kedua kondisi (LOCAL & SANDBOX).
+
+---
+
 ```bash
 # 1. Install dependencies monorepo (sekali saja bila belum)
+# KONDISI LOCAL (pnpm sudah terinstall) & KONDISI SANDBOX (pnpm via corepack):
 cd /home/z/my-project/retry-failure
-corepack enable pnpm
+# Bila pnpm belum terinstall (KONDISI SANDBOX), jalankan `corepack enable pnpm` dulu
+# (lihat SANDBOX_NOTES.md section 2.1). Setelah root package.json dipin ke
+# `packageManager: "pnpm@9.12.0"` (TASK-01), corepack akan otomatis activate versi yang sama.
+corepack enable pnpm  # hanya bila belum di-enable; no-op bila sudah
 pnpm install
 
-# 2. Run Jest tests untuk packages/resilience
+# 2. Run Jest tests untuk packages/resilience — sama kedua kondisi
 cd /home/z/my-project/retry-failure
 pnpm --filter @retry-failure/resilience test
 
-# 3. Lint & typecheck
+# 3. Lint & typecheck — sama kedua kondisi
 pnpm --filter @retry-failure/resilience lint
 pnpm --filter @retry-failure/resilience typecheck
 
-# 4. Quick sanity check via ts-node — mock fn yang gagal 2x lalu sukses
+# 4. Quick sanity check via ts-node — mock fn yang gagal 2x lalu sukses (sama kedua kondisi, pure TS, no port)
 cd /home/z/my-project/retry-failure/packages/resilience
 pnpm exec ts-node -e '
 import { executeWithResilience } from "./src/policies";
@@ -508,7 +523,7 @@ import { executeWithResilience } from "./src/policies";
 })();
 '
 
-# 5. Quick breaker trip test via ts-node
+# 5. Quick breaker trip test via ts-node (sama kedua kondisi, pure TS, no port)
 cd /home/z/my-project/retry-failure/packages/resilience
 pnpm exec ts-node -e '
 import { executeWithResilience, resetBreakerStore } from "./src/policies";
@@ -529,7 +544,7 @@ import { executeWithResilience, resetBreakerStore } from "./src/policies";
 # Expected: call #1, #2, #3 → exhausted=true (breaker still CLOSED)
 #           call #4 → breakerTripped=true, duration < 50ms (breaker OPEN, fast-fail)
 
-# 6. Verifikasi signature Cockatiel di node_modules
+# 6. Verifikasi signature Cockatiel di node_modules — sama kedua kondisi
 cat /home/z/my-project/retry-failure/node_modules/cockatiel/dist/index.d.ts | head -200
 ```
 

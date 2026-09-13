@@ -886,30 +886,43 @@ Pastikan tidak ada link ke path yang tidak ada.
 
 ## Useful commands (run after completing this task)
 
+### Pre-flight Check
+
+> **WAJIB BACA**: sebelum menjalankan command di bawah, cek kondisi lingkungan Anda via [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 1 (Pre-flight Check).
+>
+> Ringkasan keyword:
+> - `pnpm --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
+> - `docker --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → butuh external PostgreSQL atau skip DB-dependent commands.
+> - `curl -s http://localhost:3000` sibuk → KONDISI SANDBOX → payment-api pakai PORT=3001, gateway-mock pakai PORT=3002. Bebas → KONDISI LOCAL → payment-api pakai PORT=3000, gateway-mock pakai PORT=3001.
+
+Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih salah satu sesuai kondisi. Untuk TASK-15 (documentation task), kebanyakan command sama kedua kondisi karena hanya manipulasi file markdown.
+
+---
+
 ```bash
-# 1. Verify all 4 doc files exist
+# 1. Verify all 4 doc files exist — sama kedua kondisi
 ls -la /home/z/my-project/retry-failure/README.md \
        /home/z/my-project/retry-failure/docs/DEMO_SCENARIOS.md \
        /home/z/my-project/retry-failure/docs/PRODUCTION_CAVEATS.md \
        /home/z/my-project/retry-failure/docs/ADAPTATION_NOTES.md
 
-# 2. Verify README content — quick start section
+# 2. Verify README content — quick start section (sama kedua kondisi)
 rg -n '## Quick start|## Payment Retry Demo|## Services & ports|## Project structure|## Documentation index' \
   /home/z/my-project/retry-failure/README.md
 
-# 3. Verify DEMO_SCENARIOS content
+# 3. Verify DEMO_SCENARIOS content (sama kedua kondisi)
 rg -n '## Demo [A-E]|## Hero|## Demo recap|## Cara menjalankan' \
   /home/z/my-project/retry-failure/docs/DEMO_SCENARIOS.md
 
-# 4. Verify PRODUCTION_CAVEATS content — all 4 plan caveats + adaptation bullets
+# 4. Verify PRODUCTION_CAVEATS content — all 4 plan caveats + adaptation bullets (sama)
 rg -n '### 20\.[1-4]|### B\.[0-9]+|## C\. Hal yang sengaja' \
   /home/z/my-project/retry-failure/docs/PRODUCTION_CAVEATS.md
 
-# 5. Verify ADAPTATION_NOTES comparison table row count
+# 5. Verify ADAPTATION_NOTES comparison table row count (sama kedua kondisi)
 rg -n '^\| [0-9]+ ' /home/z/my-project/retry-failure/docs/ADAPTATION_NOTES.md | wc -l
 # expected: >= 22
 
-# 6. Quick link check — all relative markdown links resolve
+# 6. Quick link check — all relative markdown links resolve (sama kedua kondisi)
 cd /home/z/my-project/retry-failure
 rg -o '\]\((\.\./[^)]+|README\.md|docs/[^)]+)\)' \
   --no-filename README.md docs/*.md docs/tasks/README.md \
@@ -918,27 +931,41 @@ rg -o '\]\((\.\./[^)]+|README\.md|docs/[^)]+)\)' \
       echo "$p -> $resolved"
     done
 
-# 7. Verify cross-link section added to docs/tasks/README.md
+# 7. Verify cross-link section added to docs/tasks/README.md (sama kedua kondisi)
 rg -n '## 6\. Final Documentation' /home/z/my-project/retry-failure/docs/tasks/README.md
 
 # 8. Final lint (catch stray TS issues if doc imports code — shouldn't, but run anyway)
+# KONDISI LOCAL:
+cd /home/z/my-project/retry-failure && pnpm lint
+
+# KONDISI SANDBOX (asalkan pnpm sudah ter-enable via corepack):
 cd /home/z/my-project/retry-failure && pnpm lint
 
 # 9. Final typecheck
+# KONDISI LOCAL:
+cd /home/z/my-project/retry-failure && pnpm typecheck
+
+# KONDISI SANDBOX (asalkan pnpm sudah ter-enable via corepack):
 cd /home/z/my-project/retry-failure && pnpm typecheck
 
 # 10. Sanity: open dashboard one last time via Agent Browser
 #     - Verify all 5 demo buttons visible (A/B/C/D/E)
 #     - Verify sticky footer
 #     - Verify mobile responsive (resize to 375px width)
+# KONDISI SANDBOX: Agent Browser adalah tool sandbox, bisa langsung dipakai.
 #     (manual via skill agent-browser; screenshot tidak wajib di-attach ke TASK-15)
+# KONDISI LOCAL: user bisa buka browser manual di http://localhost:5173 (Vue dashboard)
+#     atau http://localhost:3000 (Next.js sandbox). Tidak perlu Agent Browser bila sudah
+#     punya browser grafis lokal.
 
-# 11. Final dev log check — pastikan services still up & healthy
-curl -sf http://localhost:3001/api/health | jq .
-curl -sf http://localhost:3002/health | jq .
+# 11. Final dev log check — pastikan services still up & healthy (port kondisional)
+API_PORT="${API_PORT:-3000}"  # default 3000 LOCAL; set API_PORT=3001 untuk SANDBOX
+GW_PORT="${GW_PORT:-3001}"    # default 3001 LOCAL; set GW_PORT=3002 untuk SANDBOX
+curl -sf "http://localhost:${API_PORT}/api/health" | jq .
+curl -sf "http://localhost:${GW_PORT}/health" | jq .
 curl -sf http://localhost:5173/ > /dev/null && echo "frontend-vue OK"
 
-# 12. Optional cleanup: kill background services bila tidak diperlukan lagi
+# 12. Optional cleanup: kill background services bila tidak diperlukan lagi (sama kedua kondisi)
 #     pkill -f "pnpm start:dev" ; pkill -f "pnpm dev"
 ```
 
