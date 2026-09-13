@@ -4,6 +4,7 @@
 export { buildRetryPolicy, buildTimeoutPolicy, buildBreakerPolicy } from './policies';
 export { getBreaker, getBreakerState, resetBreakerStore } from './breaker-store';
 export { executeWithResilience } from './composition';
+export type { ExecuteOptions } from './composition';
 export type {
   ResilienceConfig,
   ResilienceOutcome,
@@ -12,4 +13,4 @@ export type {
   OnAttemptCallback,
   OnBreakerStateChangeCallback,
 } from './types';
-export type { ExecuteOptions } from './composition';
+export { DEFAULT_RESILIENCE_CONFIG } from './types';

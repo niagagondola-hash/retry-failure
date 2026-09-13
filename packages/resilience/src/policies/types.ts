@@ -5,6 +5,20 @@
  */
 
 /**
+ * Default config values (plan section 15).
+ * Dipakai oleh gateway.module.ts (TASK-06) bila env tidak set.
+ */
+export const DEFAULT_RESILIENCE_CONFIG: ResilienceConfig = {
+  retryMaxAttempts: 3,
+  retryBaseDelayMs: 500,
+  retryMaxDelayMs: 8000,
+  retryJitterRatio: 0.1,
+  gatewayTimeoutMs: 2000,
+  breakerFailureThreshold: 3,
+  breakerCooldownMs: 10000,
+};
+
+/**
  * Configuration for Cockatiel policy composition.
  * Sourced from env (plan section 15).
  */
