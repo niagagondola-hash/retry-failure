@@ -94,8 +94,8 @@ importers:
         specifier: ^11.0.0
         version: 11.4.7(@nestjs/common@11.2.3(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.2.3)(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)
       '@nestjs/typeorm':
-        specifier: ^12.0.1
-        version: 12.0.1(@nestjs/common@11.2.3(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.2.3)(reflect-metadata@0.2.2)(rxjs@7.8.2)(typeorm@0.3.31(pg@8.23.0)(ts-node@10.9.2(@types/node@20.19.43)(typescript@5.9.3)))
+        specifier: ^10.0.2
+        version: 10.0.2(@nestjs/common@11.2.3(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.2.3)(reflect-metadata@0.2.2)(rxjs@7.8.2)(typeorm@0.3.31(pg@8.23.0)(ts-node@10.9.2(@types/node@20.19.43)(typescript@5.9.3)))
       '@retry-failure/resilience':
         specifier: workspace:^
         version: link:../../packages/resilience
@@ -1284,15 +1284,14 @@ packages:
       '@nestjs/platform-express':
         optional: true
 
-  '@nestjs/typeorm@12.0.1':
-    resolution: {integrity: sha512-7dsdaD/PSiwCAAhv78+ScS3e6lW41BOMZ8LB7/v5p/hovSUc1wUH1DBXhLgqYx0ChXYLzDybBIADN6lvBhiM6w==}
-    engines: {node: '>=20.19.0'}
+  '@nestjs/typeorm@10.0.2':
+    resolution: {integrity: sha512-H738bJyydK4SQkRCTeh1aFBxoO1E9xdL/HaLGThwrqN95os5mEyAtK7BLADOS+vldP4jDZ2VQPLj4epWwRqCeQ==}
     peerDependencies:
-      '@nestjs/common': ^10.0.0 || ^11.0.0 || ^12.0.0
-      '@nestjs/core': ^10.0.0 || ^11.0.0 || ^12.0.0
+      '@nestjs/common': ^8.0.0 || ^9.0.0 || ^10.0.0
+      '@nestjs/core': ^8.0.0 || ^9.0.0 || ^10.0.0
       reflect-metadata: ^0.1.13 || ^0.2.0
       rxjs: ^7.2.0
-      typeorm: ^0.3.0 || ^1.0.0-dev
+      typeorm: ^0.3.0
 
   '@noble/hashes@1.8.0':
     resolution: {integrity: sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==}
@@ -4198,6 +4197,11 @@ packages:
     resolution: {integrity: sha512-vIYxrBCC/N/K+Js3qSN88go7kIfNPssr/hHCesKCQNAjmgvYS2oqr69kIufEG+O4+PfezOH4EbIeHCfFov8ZgQ==}
     hasBin: true
 
+  uuid@9.0.1:
+    resolution: {integrity: sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==}
+    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
+    hasBin: true
+
   v8-compile-cache-lib@3.0.1:
     resolution: {integrity: sha512-wa7YjyUGfNZngI/vtK0UHAN+lgDCxBPCylVXGp0zu59Fz5aiGtNXaq3DhIov063MorB+VfufLh3JlF2KdTK3xg==}
 
@@ -5445,13 +5449,14 @@ snapshots:
     optionalDependencies:
       '@nestjs/platform-express': 11.2.3(@nestjs/common@11.2.3(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.2.3)
 
-  '@nestjs/typeorm@12.0.1(@nestjs/common@11.2.3(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.2.3)(reflect-metadata@0.2.2)(rxjs@7.8.2)(typeorm@0.3.31(pg@8.23.0)(ts-node@10.9.2(@types/node@20.19.43)(typescript@5.9.3)))':
+  '@nestjs/typeorm@10.0.2(@nestjs/common@11.2.3(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.2.3)(reflect-metadata@0.2.2)(rxjs@7.8.2)(typeorm@0.3.31(pg@8.23.0)(ts-node@10.9.2(@types/node@20.19.43)(typescript@5.9.3)))':
     dependencies:
       '@nestjs/common': 11.2.3(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2)
       '@nestjs/core': 11.2.3(@nestjs/common@11.2.3(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.2.3)(reflect-metadata@0.2.2)(rxjs@7.8.2)
       reflect-metadata: 0.2.2
       rxjs: 7.8.2
       typeorm: 0.3.31(pg@8.23.0)(ts-node@10.9.2(@types/node@20.19.43)(typescript@5.9.3))
+      uuid: 9.0.1
 
   '@noble/hashes@1.8.0': {}
 
@@ -8658,6 +8663,8 @@ snapshots:
   uuid@11.0.3: {}
 
   uuid@11.1.1: {}
+
+  uuid@9.0.1: {}
 
   v8-compile-cache-lib@3.0.1: {}
 
