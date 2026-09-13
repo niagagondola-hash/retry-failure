@@ -2,8 +2,38 @@
 
 > **Source plan**: `upload/PLAN1_Cockatiel_Retry_Failure_Scenario.md` (rev 2 — PostgreSQL + dual frontend)
 > **Execution model**: satu per satu (sequential, dengan checkpoint command di setiap task)
-> **Stack target**: NestJS 11 + TypeORM 0.3 + PostgreSQL 16 + Cockatiel + pnpm workspaces + dual frontend (Next.js sandbox + Vue+PrimeVue)
+> **Stack target**: NestJS 11 + TypeORM 0.3 + PostgreSQL 16 + Cockatiel + pnpm workspaces + dual frontend (Next.js + Vue+PrimeVue)
 > **Monorepo root**: `/home/z/my-project/retry-failure/`
+
+---
+
+## 0. WAJIB BACA Sebelum Mulai Task
+
+**Sebelum menjalankan task apapun, baca [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md).**
+
+File tersebut berisi:
+- **Pre-flight Check** — script untuk deteksi kondisi lingkungan (local vs sandbox)
+- **Command Matrix** — command alternatif per kondisi (pnpm/docker/port)
+- **Keyword Quick Reference** — tabel cek command + output + tindakan
+- **Default env values** per kondisi
+- **Quick Decision Tree**
+
+Contoh keyword dari SANDBOX_NOTES.md:
+```
+Cek: pnpm --version
+  ├── ada output version → KONDISI LOCAL → pnpm install langsung
+  └── command not found → KONDISI SANDBOX → corepack enable pnpm dulu
+
+Cek: docker --version
+  ├── ada output version → KONDISI LOCAL → docker compose up -d postgres
+  └── command not found → KONDISI SANDBOX → butuh external PostgreSQL atau mock repository
+
+Cek: curl -s http://localhost:3000
+  ├── sibuk → KONDISI SANDBOX → payment-api di port 3001, gateway-mock di port 3002
+  └── bebas → KONDISI LOCAL → payment-api di port 3000, gateway-mock di port 3001
+```
+
+Setiap task file (`TASK-*.md`) punya section "Useful commands". Saat menjalankan command tersebut, cek dulu kondisi via Pre-flight Check, lalu ikuti Command Matrix di SANDBOX_NOTES.md.
 
 ---
 
@@ -13,7 +43,7 @@ Plan rev 2 ditulis ulang untuk stack yang faithful dengan plan asli:
 - **Backend**: NestJS 11 (AppModule + modules + controllers + services).
 - **Database**: PostgreSQL 16 dengan native ENUM, `uuid`, `timestamp(3)`.
 - **ORM**: TypeORM 0.3 dengan driver `pg` (node-postgres).
-- **Monorepo**: pnpm workspaces (via corepack).
+- **Monorepo**: pnpm workspaces.
 - **HTTP client**: axios via `@nestjs/axios`.
 - **Resilience**: Cockatiel 4 di `packages/resilience`.
 - **Scheduler**: `@nestjs/schedule`.
@@ -22,21 +52,13 @@ Plan rev 2 ditulis ulang untuk stack yang faithful dengan plan asli:
 - **Tracing**: OpenTelemetry SDK + Jaeger.
 - **Testing**: Jest + supertest.
 - **Validation**: class-validator + class-transformer.
-- **Config**: `@nestjs/config` + Joi schema validation.
+- **Config**: `@nestjs/config` + schema validation.
 - **Container**: Docker multi-stage + docker-compose.
 - **Frontend (dual)**:
-  - **Next.js sandbox** di parent root (port 3000) — preview ringkas di sandbox cloud.
-  - **Vue 3 + PrimeVue** di `apps/frontend-vue/` (port 5173) — dashboard resmi.
+  - **Next.js** — dashboard ringkas.
+  - **Vue 3 + PrimeVue** di `apps/frontend-vue/` — dashboard resmi lengkap.
 
-### Adaptasi lingkungan sandbox
-
-| Constraint sandbox | Strategi |
-|---|---|
-| `pnpm` belum terpasang | enable via `corepack enable pnpm` di TASK-01 |
-| `docker` tidak tersedia | PostgreSQL dijalankan via package Node.js (`pg` connect ke instance eksternal bila ada) atau skip integration test DB-dependent; gunakan in-memory mock repository untuk dev bila DB unavailable. Document caveat di TASK-15. |
-| Port 3000 dipakai Next.js sandbox | `payment-api` di port 3001, `payment-gateway-mock` di port 3002, `frontend-vue` di 5173 |
-| `node` v24 (lebih baru dari plan v20) | acceptable — pin `engines.node >= 20` di root `package.json` |
-| Caddy gateway (1 port eksternal) | Next.js sandbox di port 3000; akses ke backend NestJS via `?XTransformPort=3001` (payment-api) atau `?XTransformPort=3002` (gateway-mock). Vue frontend dev di 5173 — akses langsung via browser dev. |
+Adaptasi lingkungan spesifik (port conflict, pnpm availability, Docker availability, dll.) TIDAK ditulis di plan maupun task files. Semua hal lingkungan-specific didokumentasikan di [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md).
 
 ---
 
@@ -46,7 +68,7 @@ Plan rev 2 ditulis ulang untuk stack yang faithful dengan plan asli:
 |---|---|---|---|---|
 | 1 | `TASK-01-scaffolding.md` | pnpm workspaces + NestJS monorepo + config | — | S |
 | 2-a | `TASK-02-database.md` | PostgreSQL + TypeORM entities + migrations | 1 | M |
-| 2-b | `TASK-03-gateway-mock.md` | Payment gateway mock (NestJS app, port 3002) | 1 | M |
+| 2-b | `TASK-03-gateway-mock.md` | Payment gateway mock (NestJS app) | 1 | M |
 | 2-c | `TASK-04-error-classification.md` | Error classification + Retry-After parsing | 1 | S |
 | 3 | `TASK-05-cockatiel-resilience.md` | Cockatiel policy composition (`packages/resilience`) | 2-c | M |
 | 4 | `TASK-06-gateway-adapter.md` | PaymentGatewayPort + HTTP + resilient adapter | 2-a, 2-b, 3 | M |
@@ -55,7 +77,7 @@ Plan rev 2 ditulis ulang untuk stack yang faithful dengan plan asli:
 | 6-b | `TASK-09-api-routes.md` | NestJS controllers (payments/health/metrics) | 5, 6-a | M |
 | 7 | `TASK-10-retry-scheduler.md` | Durable retry scheduler (`@nestjs/schedule`) | 6-b | M |
 | 8 | `TASK-11-observability.md` | nestjs-pino + prom-client + OTel | 3, 5 | M |
-| 9 | `TASK-12-nextjs-preview.md` | Next.js preview sandbox (parent root, port 3000) | 6-b | M |
+| 9 | `TASK-12-nextjs-preview.md` | Next.js frontend (dashboard ringkas) | 6-b | M |
 | 10 | `TASK-13-vue-frontend.md` | Vue 3 + PrimeVue dashboard (`apps/frontend-vue`) | 6-b | L |
 | 11 | `TASK-14-e2e-scenarios.md` | E2E: Jest+supertest + Agent Browser | 7, 8, 9, 10 | M |
 | 12 | `TASK-15-documentation.md` | README + demo guide + production caveats | 11 | S |
@@ -143,40 +165,34 @@ cd /home/z/my-project/retry-failure/apps/payment-api && pnpm db:migrate:revert
 # Dev mode (semua apps)
 cd /home/z/my-project/retry-failure && pnpm dev
 
-# Dev mode per-app
-cd /home/z/my-project/retry-failure/apps/payment-api && pnpm start:dev        # port 3001
-cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && pnpm start:dev # port 3002
-cd /home/z/my-project/retry-failure/apps/frontend-vue && pnpm dev              # port 5173
+# Dev mode per-app (port tergantung kondisi — lihat SANDBOX_NOTES.md)
+cd /home/z/my-project/retry-failure/apps/payment-api && pnpm start:dev
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && pnpm start:dev
+cd /home/z/my-project/retry-failure/apps/frontend-vue && pnpm dev
 
-# Next.js sandbox (parent root, port 3000)
+# Next.js frontend (parent root)
 cd /home/z/my-project && bun run dev
 ```
 
-### Port assignments
+### Port assignments (default, per plan asli)
 
-| Service | Port | Lokasi |
+| Service | Port default | Catatan |
 |---|---|---|
-| `payment-api` (NestJS) | 3001 | `retry-failure/apps/payment-api/` |
-| `payment-gateway-mock` (NestJS) | 3002 | `retry-failure/apps/payment-gateway-mock/` |
-| `frontend-vue` (Vite dev) | 5173 | `retry-failure/apps/frontend-vue/` |
-| Next.js sandbox | 3000 | parent root `/home/z/my-project/` |
+| `payment-api` (NestJS) | 3000 | via env `PORT` |
+| `payment-gateway-mock` (NestJS) | 3001 | via env `PORT` |
+| `frontend-vue` (Vite dev) | 5173 | Vite default |
+| Next.js frontend | 3000 | bila dipakai (lihat SANDBOX_NOTES.md untuk konflik port) |
 | PostgreSQL | 5432 | docker-compose atau managed |
 | Prometheus | 9090 | docker-compose |
-| Grafana | 3001-conflict? → 3003 | docker-compose |
+| Grafana | 3000 | default; bila konflik, pindah ke 3003 (lihat SANDBOX_NOTES.md) |
 | Jaeger UI | 16686 | docker-compose |
 | OTel OTLP | 4318 | docker-compose |
 
-> **Catatan konflik port**: Grafana default 3000 konflik dengan Next.js sandbox. Pindah ke 3003 di `docker-compose.yml`.
+> Bila port default konflik di lingkungan Anda, lihat [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section "Command Matrix" untuk strategi per kondisi (Local vs Sandbox).
 
-### Akses via Caddy (untuk Next.js sandbox di port 3000)
+### Akses cross-service
 
-```bash
-# Next.js fetch ke payment-api (port 3001) atau gateway-mock (port 3002)
-fetch('/api/payments?XTransformPort=3001')              # via Caddy → :3001
-fetch('/admin/config?XTransformPort=3002', { method: 'PUT', ... })  # via Caddy → :3002
-```
-
-> **PENTING**: dari Next.js client code, semua request cross-service WAJIB pakai relative path + `?XTransformPort=NNNN`. Jangan hardcode `http://localhost:3001` di client.
+Untuk komunikasi antar service, gunakan env variable (`process.env.GATEWAY_URL`, `process.env.PAYMENT_API_URL`, dst.). JANGAN hardcode port di kode aplikasi. Bila di lingkungan tertentu ada gateway/proxy (mis. Caddy dengan `?XTransformPort`), ikuti konvensi lingkungan tersebut — lihat [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section "Cross-service fetch".
 
 ---
 
@@ -184,6 +200,7 @@ fetch('/admin/config?XTransformPort=3002', { method: 'PUT', ... })  # via Caddy 
 
 - Original plan (rev 2): `/home/z/my-project/upload/PLAN1_Cockatiel_Retry_Failure_Scenario.md`
 - Subtask files: `/home/z/my-project/retry-failure/docs/tasks/TASK-*.md`
+- Sandbox notes (lingkungan-specific): `/home/z/my-project/retry-failure/docs/tasks/SANDBOX_NOTES.md`
 - Worklog (cross-agent): `/home/z/my-project/worklog.md` — **setiap sub-agent WAJIB membaca & menambahkan entry di sini**.
 
 ---
