@@ -3,25 +3,27 @@
 > **Task ID**: 2-c
 > **Depends on**: 1 (scaffolding)
 > **Can run in parallel with**: TASK-02, TASK-03
-> **Estimated effort**: S (~30 min)
+> **Estimated effort**: S (~45 min)
 > **Plan reference**: Section 5.3 (Error classification), Section 6 (Retry-After)
 
 ---
 
 ## Goal
 
-Implementasi pure functions untuk:
+Implementasi pure functions (TypeScript) untuk:
 1. Mengklasifikasikan HTTP/network error sebagai **retryable** atau **permanent**.
 2. Mengekstrak `Retry-After` header (delta-seconds atau HTTP-date) menjadi milidetik.
 
-Function ini adalah **application policy** (bukan Cockatiel concern), sesuai responsibility boundary plan section 2.1.
+Function ini adalah **application policy** (bukan Cockatiel concern), sesuai responsibility boundary plan section 2.1. Letaknya di `packages/resilience/src/errors/` agar dapat dipakai lintas apps.
 
 ## Scope
 
 **In scope**:
-- `src/lib/payments/errors/types.ts` — `ErrorClassification` type.
-- `src/lib/payments/errors/classifier.ts` — `classifyError(input): ErrorClassification`.
-- `src/lib/payments/errors/retry-after.ts` — `parseRetryAfter(headerValue: string | null, now: Date): number | null`.
+- `packages/resilience/src/errors/types.ts` — `ErrorClassification` type + `ClassifiableInput` union.
+- `packages/resilience/src/errors/classifier.ts` — `classifyError(input): ErrorClassification`.
+- `packages/resilience/src/errors/retry-after.ts` — `parseRetryAfter(value, now?): number | null`.
+- `packages/resilience/src/errors/index.ts` — barrel export.
+- Jest unit tests untuk classifier & retry-after parser.
 
 **Out of scope**:
 - Integrasi dengan Cockatiel (di TASK-05).
@@ -56,10 +58,13 @@ NEVER sum Retry-After + exponential backoff. Pilih salah satu:
 
 ## Files to create
 
-- `/home/z/my-project/src/lib/payments/errors/types.ts`
-- `/home/z/my-project/src/lib/payments/errors/classifier.ts`
-- `/home/z/my-project/src/lib/payments/errors/retry-after.ts`
-- `/home/z/my-project/src/lib/payments/errors/index.ts` — barrel export.
+- `/home/z/my-project/retry-failure/packages/resilience/src/errors/types.ts`
+- `/home/z/my-project/retry-failure/packages/resilience/src/errors/classifier.ts`
+- `/home/z/my-project/retry-failure/packages/resilience/src/errors/retry-after.ts`
+- `/home/z/my-project/retry-failure/packages/resilience/src/errors/index.ts`
+- `/home/z/my-project/retry-failure/packages/resilience/test/errors/classifier.spec.ts`
+- `/home/z/my-project/retry-failure/packages/resilience/test/errors/retry-after.spec.ts`
+- `/home/z/my-project/retry-failure/packages/resilience/jest.config.js`
 
 ## Implementation steps
 
@@ -68,12 +73,11 @@ NEVER sum Retry-After + exponential backoff. Pilih salah satu:
    export interface ErrorClassification {
      retryable: boolean;
      reason: string;
-     retryAfterMs?: number;        // jika ada Retry-After header
-     errorCode?: string;           // e.g. 'invalid_card', 'ECONNREFUSED'
+     retryAfterMs?: number;
+     errorCode?: string;
      errorMessage?: string;
      httpStatus?: number;
    }
-
    export type ClassifiableInput =
      | { kind: 'http'; status: number; body?: unknown; headers?: Record<string, string | string[] | undefined> }
      | { kind: 'network'; code: string; message: string }
@@ -81,66 +85,85 @@ NEVER sum Retry-After + exponential backoff. Pilih salah satu:
    ```
 2. `errors/classifier.ts`:
    - Export `classifyError(input: ClassifiableInput): ErrorClassification`.
-   - Untuk `kind: 'http'`:
-     - Ambil `retry-after` header (case-insensitive), parse via `parseRetryAfter`.
-     - 5xx → retryable, `reason: 'server_error'`.
-     - 429 → retryable, `reason: 'rate_limited'`, sertakan `retryAfterMs` jika ada.
-     - 4xx selain 429 → permanent, `reason: 'client_error'`. Coba ekstrak `error_code` dari body (`{ error_code: '...' }`).
-     - 2xx/3xx → tidak classify (success). Return `retryable: false, reason: 'success'` (akan diabaikan caller).
-   - Untuk `kind: 'network'`: cek `code`:
+   - `kind: 'http'`:
+     - 5xx → `{ retryable: true, reason: 'server_error', httpStatus }`.
+     - 429 → `{ retryable: true, reason: 'rate_limited', httpStatus, retryAfterMs: parseRetryAfter(retryAfterHeader) }`.
+     - 4xx selain 429 → `{ retryable: false, reason: 'client_error', httpStatus, errorCode, errorMessage }`. Coba ekstrak `error_code` dari body jika `{ error_code: string }`.
+     - 2xx/3xx → `{ retryable: false, reason: 'success', httpStatus }` (caller ignore).
+   - `kind: 'network'`: cek `code`:
      - `ECONNREFUSED`, `ECONNRESET`, `ETIMEDOUT`, `ENOTFOUND`, `EAI_AGAIN` → retryable.
-     - lainnya → permanent (safe default).
-   - Untuk `kind: 'timeout'` → retryable, `reason: 'timeout'`.
+     - Lainnya → permanent (safe default).
+   - `kind: 'timeout'` → retryable, `reason: 'timeout'`.
 3. `errors/retry-after.ts`:
-   - Export `parseRetryAfter(value: string | null | undefined, now: Date = new Date()): number | null`.
-   - Jika `value` null/empty → return null.
-   - Jika `value` match `/^\d+$/` → return `parseInt(value, 10) * 1000`.
-   - Jika `value` parseable sebagai `Date` (HTTP-date) → return `Math.max(0, date.getTime() - now.getTime())`.
-   - Jika parse gagal → return null (bukan throw).
-4. `errors/index.ts`: re-export semua.
+   ```ts
+   export function parseRetryAfter(value: string | null | undefined, now: Date = new Date()): number | null {
+     if (!value) return null;
+     const trimmed = value.trim();
+     // Try delta-seconds
+     if (/^\d+$/.test(trimmed)) {
+       const seconds = parseInt(trimmed, 10);
+       return seconds * 1000;
+     }
+     // Try HTTP-date
+     const date = new Date(trimmed);
+     if (!isNaN(date.getTime())) {
+       const diff = date.getTime() - now.getTime();
+       return Math.max(0, diff);
+     }
+     return null;  // invalid
+   }
+   ```
+4. `errors/index.ts`: barrel export.
+5. Jest tests:
+   - `classifier.spec.ts`: cover semua case di acceptance criteria.
+   - `retry-after.spec.ts`: delta-seconds, HTTP-date, null, invalid.
+6. `jest.config.js` di `packages/resilience` — preset `ts-jest`.
 
 ## Acceptance criteria
 
-- [ ] `classifyError({ kind: 'http', status: 500 })` → `{ retryable: true, reason: 'server_error' }`.
-- [ ] `classifyError({ kind: 'http', status: 429, headers: { 'retry-after': '10' } })` → `{ retryable: true, reason: 'rate_limited', retryAfterMs: 10000 }`.
-- [ ] `classifyError({ kind: 'http', status: 400, body: { error_code: 'invalid_card' } })` → `{ retryable: false, reason: 'client_error', errorCode: 'invalid_card' }`.
-- [ ] `classifyError({ kind: 'network', code: 'ECONNREFUSED', message: '...' })` → `{ retryable: true, reason: 'connection_refused' }`.
-- [ ] `classifyError({ kind: 'timeout', message: '...' })` → `{ retryable: true, reason: 'timeout' }`.
+- [ ] `classifyError({ kind: 'http', status: 500 })` → `{ retryable: true, reason: 'server_error', httpStatus: 500 }`.
+- [ ] `classifyError({ kind: 'http', status: 429, headers: { 'retry-after': '10' } })` → `{ retryable: true, reason: 'rate_limited', httpStatus: 429, retryAfterMs: 10000 }`.
+- [ ] `classifyError({ kind: 'http', status: 400, body: { error_code: 'invalid_card' } })` → `{ retryable: false, reason: 'client_error', httpStatus: 400, errorCode: 'invalid_card' }`.
+- [ ] `classifyError({ kind: 'network', code: 'ECONNREFUSED', message: 'x' })` → `{ retryable: true, reason: 'connection_refused' }`.
+- [ ] `classifyError({ kind: 'timeout', message: 'x' })` → `{ retryable: true, reason: 'timeout' }`.
 - [ ] `parseRetryAfter('10')` → `10000`.
 - [ ] `parseRetryAfter('Wed, 21 Oct 2025 07:28:00 GMT', new Date('2025-10-21T07:27:50Z'))` → `10000`.
 - [ ] `parseRetryAfter(null)` → `null`.
 - [ ] `parseRetryAfter('garbage')` → `null` (tidak throw).
-- [ ] `bun run lint` bersih.
-- [ ] `bunx tsc --noEmit` bersih.
+- [ ] `pnpm test` di `packages/resilience` lulus semua.
+- [ ] `pnpm lint` & `pnpm typecheck` lulus.
 
 ## Useful commands (run after completing this task)
 
 ```bash
-# 1. Type check
-bunx tsc --noEmit
+# 1. Install deps untuk packages/resilience
+cd /home/z/my-project/retry-failure
+pnpm install
 
-# 2. Lint
-bun run lint
+# 2. Run Jest tests
+pnpm --filter @retry-failure/resilience test
 
-# 3. Quick sanity check (Bun REPL / inline script)
-bun -e '
-import { classifyError, parseRetryAfter } from "./src/lib/payments/errors";
+# 3. Lint & typecheck
+pnpm --filter @retry-failure/resilience lint
+pnpm --filter @retry-failure/resilience typecheck
+
+# 4. Quick sanity check via ts-node (bila mau cek manual)
+cd /home/z/my-project/retry-failure/packages/resilience
+pnpm exec ts-node -e '
+import { classifyError, parseRetryAfter } from "./src/errors";
 console.log(classifyError({ kind: "http", status: 500 }));
 console.log(classifyError({ kind: "http", status: 429, headers: { "retry-after": "10" } }));
-console.log(classifyError({ kind: "http", status: 400, body: { error_code: "invalid_card" } }));
 console.log(classifyError({ kind: "network", code: "ECONNREFUSED", message: "x" }));
 console.log(parseRetryAfter("10"));
 console.log(parseRetryAfter(null));
 '
-
-# 4. Bila ingin unit test cepat (optional, no test framework install)
-# Tambah file src/lib/payments/errors/__sanity__.ts dan jalankan:
-# bun src/lib/payments/errors/__sanity__.ts
 ```
 
 ## Notes
 
-- Pure functions, tidak boleh ada side effect atau I/O — mudah diuji & di-reuse.
-- `errorCode` dari body hanya di-ekstrak jika body punya shape `{ error_code: string }` (mock gateway contract). Generic snake_case `error_code` sudah dipakai di TASK-03.
-- **PENTING untuk TASK-05 & TASK-06**: classifier ini yang menentukan apakah Cockatiel retry berlanjut. Cockatiel punya `retry.handleWhen` / error filter — di TASK-05 kita sambungkan.
-- Untuk HTTP-date parsing, gunakan `new Date(value)` bawaan JS — tetap handle invalid dengan try/catch.
+- **Pure functions**: tidak ada side effect atau I/O — mudah diuji & di-reuse.
+- **No framework dependency**: package ini tidak import NestJS — bisa dipakai di apps manapun.
+- **Error code dari body**: hanya diekstrak bila body punya shape `{ error_code: string }` (mock gateway contract dari TASK-03). Generic snake_case dipakai.
+- **HTTP-date parsing**: gunakan `new Date(value)` bawaan JS. Handle invalid dengan cek `isNaN(date.getTime())`.
+- **Jest config**: `packages/resilience/jest.config.js` pakai `preset: 'ts-jest'`, `testEnvironment: 'node'`, `roots: ['<rootDir>/test']`.
+- Setelah task ini selesai, TASK-05 bisa import `classifyError` & `parseRetryAfter` dari `@retry-failure/resilience`.

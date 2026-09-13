@@ -1,159 +1,300 @@
-# TASK-02 — Prisma Schema (payments + payment_attempts)
+# TASK-02 — PostgreSQL 16 + TypeORM Entities + Migrations
 
 > **Task ID**: 2-a
 > **Depends on**: 1 (scaffolding)
 > **Can run in parallel with**: TASK-03, TASK-04
-> **Estimated effort**: S (~30 min)
-> **Plan reference**: Section 11 (Persistence), Section 15 (Configuration)
+> **Estimated effort**: M (~1.5 jam)
+> **Plan reference**: Section 11 (Persistence rev 2 — PostgreSQL-native), Section 15 (Configuration)
 
 ---
 
 ## Goal
 
-Mendefinisikan model Prisma `Payment` dan `PaymentAttempt` sesuai plan section 11, dengan adaptasi untuk SQLite. Mempersiapkan enum types TypeScript yang dipakai lintas aplikasi.
+Mendefinisikan TypeORM entities `Payment` dan `PaymentAttempt` dengan native PostgreSQL types (`uuid`, `numeric`, `timestamp(3)`, native `ENUM`), plus migration script. Set up DataSource untuk TypeORM CLI.
 
 ## Scope
 
 **In scope**:
-- Tambah model `Payment` dan `PaymentAttempt` di `prisma/schema.prisma`.
-- Buat `src/lib/payments/types.ts` dengan TypeScript enums / union types untuk `PaymentStatus`, `AttemptOutcome`, `BreakerState`.
-- Run `bun run db:push` dan `bun run db:generate`.
-- Buat factory helper `src/lib/payments/db-helpers.ts` untuk mapping Prisma row ↔ domain object.
+- `apps/payment-api/src/database/entities/payment.entity.ts`
+- `apps/payment-api/src/database/entities/payment-attempt.entity.ts`
+- `apps/payment-api/src/database/entities/enums.ts` — PG enum definitions.
+- `apps/payment-api/src/database/data-source.ts` — DataSource for CLI.
+- `apps/payment-api/src/database/database.module.ts` — TypeOrmModule.forRootAsync (ConfigService inject).
+- `apps/payment-api/src/database/migrations/0001_init.ts` — initial migration (create tables + enums + indexes).
+- `docker/postgres/init.sql` — create extension pgcrypto (bila perlu), create database bila belum.
+- Repository classes: `PaymentRepository`, `PaymentAttemptRepository` (TypeORM custom repositories).
 
 **Out of scope**:
-- Repository implementation (di TASK-07 / TASK-08).
-- Migration files (pakai `db:push` untuk demo; production akan pakai `prisma migrate`).
-- User & Post model yang sudah ada — biarkan.
+- Business logic service (TASK-07).
+- Audit trail service (TASK-08).
+- Mock repository untuk testing (di TASK-14 e2e).
 
-## Adaptation notes (SQLite constraints)
+## Entity design (plan section 11 rev 2)
 
-| Plan column | SQLite adaptation |
-|---|---|
-| `enum status` | `String` + validator di app layer (`PaymentStatus` union) |
-| `datetime(3)` (ms precision) | `DateTime` (Prisma → ISO 8601 string di SQLite, second precision OK untuk demo) |
-| `decimal(12,2)` | `Decimal` (Prisma → numeric di SQLite) |
-| `char(36) PK` | `String @id @default(cuid())` (cuid lebih pendek tapi unik) |
-| Foreign key + index | Prisma handle otomatis via `@relation` |
+### `payments` entity
+- `id: string` (uuid PK, default `gen_random_uuid()`)
+- `orderId: string` (varchar 64, unique)
+- `amount: string` (numeric 12,2 — TypeORM `numeric` return as string untuk precision)
+- `currency: string` (char 3, default `'IDR'`)
+- `status: PaymentStatus` (enum)
+- `gatewayReference: string | null` (varchar 64)
+- `attemptCount: number` (int, default 0)
+- `totalRetryCount: number` (int, default 0)
+- `nextRetryAt: Date | null` (timestamp 3, nullable)
+- `failureReason: string | null` (varchar 500)
+- `createdAt: Date` (timestamp 3, default now)
+- `updatedAt: Date` (timestamp 3, update on change)
+- Index: `idx_payments_status`, `idx_payments_next_retry_at`
 
-> **Catatan**: SQLite tidak punya native ENUM atau ms-precision datetime. Untuk demo ini acceptable. Catatan adaptasi ditulis di TASK-14.
+### `payment_attempts` entity
+- `id: string` (uuid PK)
+- `paymentId: string` (uuid FK → payments.id, ON DELETE CASCADE)
+- `attemptNumber: number` (int)
+- `outcome: AttemptOutcome` (enum)
+- `httpStatus: number | null` (int, nullable)
+- `errorCode: string | null` (varchar, nullable)
+- `errorMessage: string | null` (varchar, nullable)
+- `delayBeforeNextMs: number | null` (int, nullable)
+- `breakerState: string` (varchar 12)
+- `durationMs: number` (int)
+- `traceId: string | null` (char 32, nullable)
+- `idempotencyKey: string` (varchar 64)
+- `gatewayReference: string | null` (varchar 64, nullable)
+- `createdAt: Date` (timestamp 3, default now)
+- Index: `idx_payment_attempts_payment_id`, `idx_payment_attempts_idempotency_key`
 
-## Files to create / modify
+## Files to create
 
-- `/home/z/my-project/prisma/schema.prisma` — tambah 2 model.
-- `/home/z/my-project/src/lib/payments/types.ts` — enums/unions + DTOs.
-- `/home/z/my-project/src/lib/payments/db-helpers.ts` — mapping helpers.
+- `/home/z/my-project/retry-failure/apps/payment-api/src/database/entities/enums.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/database/entities/payment.entity.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/database/entities/payment-attempt.entity.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/database/entities/index.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/database/data-source.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/database/database.module.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/database/repositories/payment.repository.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/database/repositories/payment-attempt.repository.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/database/migrations/0001_init.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/database/index.ts`
+- `/home/z/my-project/retry-failure/docker/postgres/init.sql`
 
 ## Implementation steps
 
-1. Edit `prisma/schema.prisma`:
-   - Pertahankan model `User` & `Post` yang ada.
-   - Tambah model `Payment`:
-     ```prisma
-     model Payment {
-       id              String    @id @default(cuid())
-       orderId         String    @unique
-       amount          Decimal
-       currency        String    @default("IDR")
-       status          String    // PaymentStatus enum (string)
-       gatewayReference String?  // map: gateway_reference
-       attemptCount    Int       @default(0)
-       totalRetryCount Int       @default(0)
-       nextRetryAt     DateTime?
-       failureReason   String?
-       createdAt       DateTime  @default(now())
-       updatedAt       DateTime  @updatedAt
-       attempts        PaymentAttempt[]
-       @@index([status])
-       @@index([nextRetryAt])
-     }
-     ```
-   - Tambah model `PaymentAttempt`:
-     ```prisma
-     model PaymentAttempt {
-       id                String   @id @default(cuid())
-       paymentId         String
-       attemptNumber     Int
-       outcome           String   // AttemptOutcome enum (string)
-       httpStatus        Int?
-       errorCode         String?
-       errorMessage      String?
-       delayBeforeNextMs Int?
-       breakerState      String   // BreakerState enum (string)
-       durationMs        Int
-       traceId           String?
-       idempotencyKey    String
-       gatewayReference  String?
-       createdAt         DateTime @default(now())
-       payment           Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
-       @@index([paymentId])
-       @@index([idempotencyKey])
-     }
-     ```
-2. Tulis `src/lib/payments/types.ts`:
+1. `entities/enums.ts`:
    ```ts
-   export const PaymentStatus = {
-     PROCESSING: 'processing',
-     SUCCEEDED: 'succeeded',
-     FAILED: 'failed',
-     SCHEDULED_FOR_RETRY: 'scheduled_for_retry',
-   } as const;
-   export type PaymentStatus = typeof PaymentStatus[keyof typeof PaymentStatus];
-
-   export const AttemptOutcome = {
-     SUCCESS: 'success',
-     RETRYABLE_FAILURE: 'retryable_failure',
-     PERMANENT_FAILURE: 'permanent_failure',
-     TIMEOUT: 'timeout',
-     CIRCUIT_OPEN: 'circuit_open',
-   } as const;
-   export type AttemptOutcome = typeof AttemptOutcome[keyof typeof AttemptOutcome];
-
-   export const BreakerState = {
-     CLOSED: 'closed',
-     OPEN: 'open',
-     HALF_OPEN: 'half_open',
-   } as const;
-   export type BreakerState = typeof BreakerState[keyof typeof BreakerState];
+   export enum PaymentStatus {
+     PROCESSING = 'processing',
+     SUCCEEDED = 'succeeded',
+     FAILED = 'failed',
+     SCHEDULED_FOR_RETRY = 'scheduled_for_retry',
+   }
+   export enum AttemptOutcome {
+     SUCCESS = 'success',
+     RETRYABLE_FAILURE = 'retryable_failure',
+     PERMANENT_FAILURE = 'permanent_failure',
+     TIMEOUT = 'timeout',
+     CIRCUIT_OPEN = 'circuit_open',
+   }
    ```
-   Tambah juga DTOs: `CreatePaymentInput`, `PaymentView`, `AttemptView`.
-3. Tulis `src/lib/payments/db-helpers.ts`:
-   - `toPaymentView(row): PaymentView` — mapping snake_case plan → camelCase + type cast.
-   - `toAttemptView(row): AttemptView`.
-4. Run `bun run db:push` (akan prompt konfirmasi — pakai `--accept-data-loss` jika aman).
-5. Run `bun run db:generate`.
+2. `entities/payment.entity.ts`:
+   ```ts
+   import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index, OneToMany, ManyToOne } from 'typeorm';
+   import { PaymentStatus } from './enums';
+   import { PaymentAttempt } from './payment-attempt.entity';
+
+   @Entity('payments')
+   @Index('idx_payments_status', ['status'])
+   @Index('idx_payments_next_retry_at', ['nextRetryAt'])
+   export class Payment {
+     @PrimaryGeneratedColumn('uuid')
+     id: string;
+
+     @Column({ name: 'order_id', type: 'varchar', length: 64, unique: true })
+     orderId: string;
+
+     @Column({ type: 'numeric', precision: 12, scale: 2 })
+     amount: string;  // numeric returns string to preserve precision
+
+     @Column({ type: 'char', length: 3, default: 'IDR' })
+     currency: string;
+
+     @Column({ type: 'enum', enum: PaymentStatus, default: PaymentStatus.PROCESSING })
+     status: PaymentStatus;
+
+     @Column({ name: 'gateway_reference', type: 'varchar', length: 64, nullable: true })
+     gatewayReference: string | null;
+
+     @Column({ name: 'attempt_count', type: 'int', default: 0 })
+     attemptCount: number;
+
+     @Column({ name: 'total_retry_count', type: 'int', default: 0 })
+     totalRetryCount: number;
+
+     @Column({ name: 'next_retry_at', type: 'timestamp(3)', nullable: true })
+     nextRetryAt: Date | null;
+
+     @Column({ name: 'failure_reason', type: 'varchar', length: 500, nullable: true })
+     failureReason: string | null;
+
+     @CreateDateColumn({ name: 'created_at', type: 'timestamp(3)' })
+     createdAt: Date;
+
+     @UpdateDateColumn({ name: 'updated_at', type: 'timestamp(3)' })
+     updatedAt: Date;
+
+     @OneToMany(() => PaymentAttempt, (a) => a.payment)
+     attempts: PaymentAttempt[];
+   }
+   ```
+3. `entities/payment-attempt.entity.ts` — similar pattern, with `ManyToOne` to Payment.
+4. `data-source.ts` (untuk TypeORM CLI):
+   ```ts
+   import 'dotenv/config';
+   import { DataSource } from 'typeorm';
+   import { Payment } from './entities/payment.entity';
+   import { PaymentAttempt } from './entities/payment-attempt.entity';
+
+   export default new DataSource({
+     type: 'postgres',
+     host: process.env.DB_HOST,
+     port: Number(process.env.DB_PORT ?? 5432),
+     username: process.env.DB_USER,
+     password: process.env.DB_PASS,
+     database: process.env.DB_NAME,
+     schema: process.env.DB_SCHEMA ?? 'public',
+     entities: [Payment, PaymentAttempt],
+     migrations: [__dirname + '/migrations/*.{ts,js}'],
+     synchronize: false,
+     logging: ['error', 'warn'],
+   });
+   ```
+5. `database.module.ts`:
+   ```ts
+   @Global() @Module({
+     imports: [
+       TypeOrmModule.forRootAsync({
+         inject: [ConfigService],
+         useFactory: (cfg: ConfigService) => ({
+           type: 'postgres',
+           host: cfg.get('DB_HOST'),
+           port: cfg.get<number>('DB_PORT'),
+           username: cfg.get('DB_USER'),
+           password: cfg.get('DB_PASS'),
+           database: cfg.get('DB_NAME'),
+           schema: cfg.get('DB_SCHEMA'),
+           entities: [Payment, PaymentAttempt],
+           synchronize: false,
+           logging: cfg.get('LOG_LEVEL') === 'debug' ? 'all' : ['error', 'warn'],
+         }),
+       }),
+       TypeOrmModule.forFeature([Payment, PaymentAttempt]),
+     ],
+     exports: [TypeOrmModule],
+   })
+   export class DatabaseModule {}
+   ```
+6. Repositories — pakai custom repository pattern TypeORM 0.3:
+   ```ts
+   @Injectable()
+   export class PaymentRepository {
+     constructor(@InjectRepository(Payment) private repo: Repository<Payment>) {}
+     async create(data: Partial<Payment>): Promise<Payment> { return this.repo.save(this.repo.create(data)); }
+     async findById(id: string): Promise<Payment | null> { return this.repo.findOne({ where: { id } }); }
+     async list(filter: { status?: PaymentStatus }): Promise<Payment[]> { return this.repo.find({ where: filter, order: { createdAt: 'DESC' }, take: 100 }); }
+     async findDueRetries(now: Date, limit = 50): Promise<Payment[]> {
+       return this.repo.createQueryBuilder('p')
+         .where('p.status = :status', { status: PaymentStatus.SCHEDULED_FOR_RETRY })
+         .andWhere('p.next_retry_at <= :now', { now })
+         .orderBy('p.next_retry_at', 'ASC')
+         .limit(limit)
+         .getMany();
+     }
+     async atomicUpdateStatus(id: string, expectedFrom: PaymentStatus, patch: Partial<Payment>): Promise<boolean> {
+       const r = await this.repo.update({ id, status: expectedFrom }, patch);
+       return r.affected === 1;
+     }
+   }
+   ```
+7. Migration `0001_init.ts`:
+   - Create enum types `payment_status_enum` dan `attempt_outcome_enum`.
+   - Create tables `payments` dan `payment_attempts` dengan semua kolom.
+   - Create indexes.
+   - Down migration: drop tables lalu enum types.
+8. `docker/postgres/init.sql`:
+   ```sql
+   -- Run once on container init
+   CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+   ```
+9. Wire `DatabaseModule` ke `AppModule`.
+10. Run migration:
+    ```bash
+    cd apps/payment-api && pnpm db:migrate
+    ```
 
 ## Acceptance criteria
 
-- [ ] `prisma/schema.prisma` memuat model `Payment` & `PaymentAttempt` dengan relasi + index.
-- [ ] `bun run db:push` berhasil; cek `db/custom.db` berisi tabel baru (`sqlite3 db/custom.db ".tables"`).
-- [ ] `bun run db:generate` berhasil; Prisma Client mengetahui model baru.
-- [ ] `src/lib/payments/types.ts` mengekspor 3 union types + DTOs.
-- [ ] `src/lib/payments/db-helpers.ts` mengekspor `toPaymentView` & `toAttemptView`.
-- [ ] `bun run lint` bersih.
-- [ ] `bunx tsc --noEmit` bersih.
+- [ ] `pnpm db:migrate` di `apps/payment-api` berhasil (membutuhkan PostgreSQL jalan di port 5432 — start via `docker compose up -d postgres` atau connect ke external instance).
+- [ ] Tabel `payments` dan `payment_attempts` ada di schema `public`.
+- [ ] Native enum types `payment_status_enum` dan `attempt_outcome_enum` ada (`\dT` di psql).
+- [ ] Index `idx_payments_status`, `idx_payments_next_retry_at`, `idx_payment_attempts_payment_id`, `idx_payment_attempts_idempotency_key` ada.
+- [ ] `PaymentRepository.create()` & `findById()` bekerja (test via script atau jest).
+- [ ] `findDueRetries()` return hanya payment `scheduled_for_retry` dengan `next_retry_at <= now`.
+- [ ] `atomicUpdateStatus()` return `false` bila `status` tidak match `expectedFrom`.
+- [ ] `pnpm typecheck` & `pnpm lint` lulus untuk `apps/payment-api`.
 
 ## Useful commands (run after completing this task)
 
 ```bash
-# 1. Push schema ke SQLite (accept data loss OK karena dev)
-bun run db:push
+# 0. Enable pnpm (bila belum)
+corepack enable pnpm
 
-# 2. Regenerate Prisma Client
-bun run db:generate
+# 1. Start PostgreSQL (bila Docker tersedia)
+cd /home/z/my-project/retry-failure
+docker compose up -d postgres
+sleep 5
+docker compose ps postgres
 
-# 3. Verifikasi tabel ada (sqlite3 CLI)
-sqlite3 /home/z/my-project/db/custom.db ".tables"
-sqlite3 /home/z/my-project/db/custom.db ".schema Payment"
-sqlite3 /home/z/my-project/db/custom.db ".schema PaymentAttempt"
+# Bila Docker TIDAK tersedia, set DATABASE_URL ke external Postgres instance
+# (atau skip migration & gunakan mock repository untuk dev — document di TASK-15)
+
+# 2. Run migration
+cd /home/z/my-project/retry-failure/apps/payment-api
+cp ../../.env.example .env  # bila belum ada
+# edit .env untuk DB credentials sesuai environment
+pnpm db:migrate
+
+# 3. Verify schema (bisa pakai psql di container, atau via Node script)
+docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
+  psql -U retry_failure -d retry_failure -c '\dt'
+
+docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
+  psql -U retry_failure -d retry_failure -c '\dT'
+
+docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
+  psql -U retry_failure -d retry_failure -c '\d payments'
 
 # 4. Lint & typecheck
-bun run lint
-bunx tsc --noEmit
+cd /home/z/my-project/retry-failure/apps/payment-api
+pnpm lint
+pnpm typecheck
+
+# 5. Quick repository test (Node script — butuh DB up)
+# Tambah script scripts/smoke-db.ts lalu run via ts-node:
+# pnpm exec ts-node -r tsconfig-paths/register scripts/smoke-db.ts
+
+# 6. Revert migration (test)
+pnpm db:migrate:revert
+pnpm db:migrate  # re-apply
+
+# 7. Generate new migration (untuk task berikutnya)
+# pnpm db:migration:generate src/database/migrations/0002_add_something
 ```
 
 ## Notes
 
-- Tabel `User` & `Post` yang lama biarkan tetap ada (tidak diganggu).
-- Jika `db:push` komplain soal data loss, aman untuk di-accept karena dev environment.
-- Setelah task ini selesai, TASK-06 (gateway adapter) & TASK-07 (payments service) bisa pakai `db.payment.findMany(...)` langsung.
-- Untuk datetime ms precision (plan pakai `datetime(3)`): SQLite tidak mendukung. Acceptable untuk demo. Production caveat di TASK-14.
+- **`numeric` returns string**: TypeORM `numeric` column returns JS `string` untuk preserve precision (avoid float rounding). Aplikasi harus handle ini — di TASK-07 service akan `Number(amount)` bila perlu, atau tetap sebagai string untuk display.
+- **Native enum**: TypeORM 0.3 dengan PostgreSQL mendukung `type: 'enum'` yang otomatis create PG enum type. Migration pertama generate harusnya handle ini.
+- **`synchronize: false`**: WAJIB. Jangan pernah `true` di production.
+- **`pgcrypto` extension**: PostgreSQL 13+ sudah punya `gen_random_uuid()` builtin di `pgcrypto`-less mode, tapi tetap best practice enable extension untuk safety.
+- **Migration sequence**: `0001_init.ts` create enum + tables + indexes. Migration berikutnya (bila ada schema change) pakai `0002_*.ts` dst.
+- **Sandbox tanpa Docker**: bila Docker tidak tersedia di sandbox, dokumentasikan di TASK-15 bahwa PostgreSQL butuh external instance (atau gunakan in-memory mock repository). Untuk dev/test, mock repository cukup untuk most scenarios kecuali E2E.
+- Setelah task ini selesai, TASK-06 (gateway adapter) & TASK-07 (payments service) bisa pakai repository ini.

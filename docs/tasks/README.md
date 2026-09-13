@@ -1,57 +1,74 @@
-# Plan 1 — Cockatiel Retry/Failure Scenario — Subtask Index
+# Plan 1 — Cockatiel Retry/Failure Scenario — Subtask Index (rev 2)
 
-> **Source plan**: `upload/PLAN1_Cockatiel_Retry_Failure_Scenario.md`
+> **Source plan**: `upload/PLAN1_Cockatiel_Retry_Failure_Scenario.md` (rev 2 — PostgreSQL + dual frontend)
 > **Execution model**: satu per satu (sequential, dengan checkpoint command di setiap task)
-> **Stack target**: Next.js 16 (App Router) + TypeScript + Prisma/SQLite + Cockatiel + shadcn/ui
+> **Stack target**: NestJS 11 + TypeORM 0.3 + PostgreSQL 16 + Cockatiel + pnpm workspaces + dual frontend (Next.js sandbox + Vue+PrimeVue)
+> **Monorepo root**: `/home/z/my-project/retry-failure/`
 
 ---
 
 ## 1. Ringkasan Eksekusi
 
-Plan aslinya dirancang untuk **NestJS + MySQL + pnpm workspaces**. Karena environment kita adalah **Next.js 16 + Prisma/SQLite + single-port 3000 dengan Caddy gateway**, plan ini diadaptasi dengan prinsip berikut:
+Plan rev 2 ditulis ulang untuk stack yang faithful dengan plan asli:
+- **Backend**: NestJS 11 (AppModule + modules + controllers + services).
+- **Database**: PostgreSQL 16 dengan native ENUM, `uuid`, `timestamp(3)`.
+- **ORM**: TypeORM 0.3 dengan driver `pg` (node-postgres).
+- **Monorepo**: pnpm workspaces (via corepack).
+- **HTTP client**: axios via `@nestjs/axios`.
+- **Resilience**: Cockatiel 4 di `packages/resilience`.
+- **Scheduler**: `@nestjs/schedule`.
+- **Logging**: `nestjs-pino`.
+- **Metrics**: `prom-client`.
+- **Tracing**: OpenTelemetry SDK + Jaeger.
+- **Testing**: Jest + supertest.
+- **Validation**: class-validator + class-transformer.
+- **Config**: `@nestjs/config` + Joi schema validation.
+- **Container**: Docker multi-stage + docker-compose.
+- **Frontend (dual)**:
+  - **Next.js sandbox** di parent root (port 3000) — preview ringkas di sandbox cloud.
+  - **Vue 3 + PrimeVue** di `apps/frontend-vue/` (port 5173) — dashboard resmi.
 
-1. **Konsep arsitektur tetap utuh**: Cockatiel sebagai resilience engine, error classification milik aplikasi, idempotency, durable retry, audit trail, observability, dan payment gateway mock.
-2. **NestJS controllers/services → Next.js App Router + lib modules**: business logic disimpan di `src/lib/payments/*` (pure TS, framework-agnostic), diatur lewat API routes di `src/app/api/*`.
-3. **TypeORM + MySQL → Prisma + SQLite**: enum menggunakan `String` + validator (SQLite tidak punya native enum), `Decimal` untuk amount, `DateTime` (ISO string) untuk timestamps.
-4. **Monorepo (pnpm workspaces) → single project + mini-services**: `payment-gateway-mock` & `retry-scheduler` berjalan sebagai mini-service Bun terpisah di port 3001 & 3002, diakses lewat Caddy dengan `?XTransformPort=`.
-5. **`@nestjs/schedule` → mini-service poller** pada `mini-services/retry-scheduler`.
-6. **OTel + Jaeger**: diadaptasi menjadi optional / simplified (trace_id disimpan di `payment_attempts` + structured log), kecuali user meminta full OTel stack.
-7. **Docker compose stack**: tidak dijalankan (environment ini sudah menyediakan dev server). Yang dipertahankan adalah dev mode + mini-services.
+### Adaptasi lingkungan sandbox
 
-> Lihat `TASK-14-documentation.md` untuk catatan adaptasi lengkap.
+| Constraint sandbox | Strategi |
+|---|---|
+| `pnpm` belum terpasang | enable via `corepack enable pnpm` di TASK-01 |
+| `docker` tidak tersedia | PostgreSQL dijalankan via package Node.js (`pg` connect ke instance eksternal bila ada) atau skip integration test DB-dependent; gunakan in-memory mock repository untuk dev bila DB unavailable. Document caveat di TASK-15. |
+| Port 3000 dipakai Next.js sandbox | `payment-api` di port 3001, `payment-gateway-mock` di port 3002, `frontend-vue` di 5173 |
+| `node` v24 (lebih baru dari plan v20) | acceptable — pin `engines.node >= 20` di root `package.json` |
+| Caddy gateway (1 port eksternal) | Next.js sandbox di port 3000; akses ke backend NestJS via `?XTransformPort=3001` (payment-api) atau `?XTransformPort=3002` (gateway-mock). Vue frontend dev di 5173 — akses langsung via browser dev. |
 
 ---
 
 ## 2. Execution Order & Task IDs
 
-Task IDs mengikuti konvensi global (1 = foundation, 2-a/2-b/2-c = parallel setelah 1, dst.). Eksekusi default adalah **sequential by file number**, tetapi task parallel ditandai agar bisa dipercepat bila dikerjakan oleh sub-agent terpisah.
-
 | Task ID | File | Title | Depends on | Est. |
 |---|---|---|---|---|
-| 1 | `TASK-01-scaffolding.md` | Project scaffolding & dependencies | — | S |
-| 2-a | `TASK-02-database.md` | Prisma schema (payments + payment_attempts) | 1 | S |
-| 2-b | `TASK-03-gateway-mock.md` | Payment gateway mock (mini-service port 3001) | 1 | M |
+| 1 | `TASK-01-scaffolding.md` | pnpm workspaces + NestJS monorepo + config | — | S |
+| 2-a | `TASK-02-database.md` | PostgreSQL + TypeORM entities + migrations | 1 | M |
+| 2-b | `TASK-03-gateway-mock.md` | Payment gateway mock (NestJS app, port 3002) | 1 | M |
 | 2-c | `TASK-04-error-classification.md` | Error classification + Retry-After parsing | 1 | S |
-| 3 | `TASK-05-cockatiel-resilience.md` | Cockatiel policy composition (retry/timeout/breaker) | 2-c | M |
+| 3 | `TASK-05-cockatiel-resilience.md` | Cockatiel policy composition (`packages/resilience`) | 2-c | M |
 | 4 | `TASK-06-gateway-adapter.md` | PaymentGatewayPort + HTTP + resilient adapter | 2-a, 2-b, 3 | M |
 | 5 | `TASK-07-payments-service.md` | Payments domain service + state machine | 2-a, 4 | M |
-| 6-a | `TASK-08-audit-trail.md` | Attempt audit (AuditPort + Prisma impl) | 2-a | S |
-| 6-b | `TASK-09-api-routes.md` | Next.js API routes (payments/health/metrics) | 5, 6-a | M |
-| 7 | `TASK-10-retry-scheduler.md` | Durable retry scheduler (mini-service port 3002) | 6-b | M |
-| 8 | `TASK-11-observability.md` | Structured logging + Prometheus metrics | 3, 5 | M |
-| 9 | `TASK-12-frontend-dashboard.md` | Demo dashboard UI (`src/app/page.tsx`) | 6-b | L |
-| 10 | `TASK-13-e2e-scenarios.md` | E2E scenarios via Agent Browser | 7, 8, 9 | M |
-| 11 | `TASK-14-documentation.md` | README + demo guide + production caveats | 10 | S |
+| 6-a | `TASK-08-audit-trail.md` | Attempt audit (TypeORM PaymentAttempt service) | 2-a | S |
+| 6-b | `TASK-09-api-routes.md` | NestJS controllers (payments/health/metrics) | 5, 6-a | M |
+| 7 | `TASK-10-retry-scheduler.md` | Durable retry scheduler (`@nestjs/schedule`) | 6-b | M |
+| 8 | `TASK-11-observability.md` | nestjs-pino + prom-client + OTel | 3, 5 | M |
+| 9 | `TASK-12-nextjs-preview.md` | Next.js preview sandbox (parent root, port 3000) | 6-b | M |
+| 10 | `TASK-13-vue-frontend.md` | Vue 3 + PrimeVue dashboard (`apps/frontend-vue`) | 6-b | L |
+| 11 | `TASK-14-e2e-scenarios.md` | E2E: Jest+supertest + Agent Browser | 7, 8, 9, 10 | M |
+| 12 | `TASK-15-documentation.md` | README + demo guide + production caveats | 11 | S |
 
 ### Dependency graph
 
 ```text
-1 (scaffolding)
-├── 2-a (database)
-├── 2-b (gateway mock)
-└── 2-c (error classification)
+1 (pnpm workspaces + NestJS monorepo)
+├── 2-a (PostgreSQL + TypeORM entities + migrations)
+├── 2-b (gateway mock NestJS app)
+└── 2-c (error classification — pure TS)
         │
-        └── 3 (cockatiel policies)
+        └── 3 (cockatiel policies, packages/resilience)
                 │
                 └── 4 (gateway adapter) ── uses 2-a, 2-b, 3
                         │
@@ -59,15 +76,16 @@ Task IDs mengikuti konvensi global (1 = foundation, 2-a/2-b/2-c = parallel setel
                                 │
                                 ├── 6-a (audit trail) ── uses 2-a
                                 │
-                                └── 6-b (API routes) ── uses 5, 6-a
+                                └── 6-b (NestJS controllers)
                                         │
                                         ├── 7 (retry scheduler)
                                         ├── 8 (observability) ── uses 3, 5
-                                        └── 9 (frontend dashboard)
+                                        ├── 9 (Next.js sandbox preview)
+                                        └── 10 (Vue+PrimeVue dashboard)
                                                 │
-                                                └── 10 (e2e) ── uses 7, 8, 9
+                                                └── 11 (e2e) ── uses 7, 8, 9, 10
                                                         │
-                                                        └── 11 (docs)
+                                                        └── 12 (docs)
 ```
 
 ### Recommended execution batches
@@ -75,9 +93,10 @@ Task IDs mengikuti konvensi global (1 = foundation, 2-a/2-b/2-c = parallel setel
 - **Batch 1** (sequential): `TASK-01`
 - **Batch 2** (parallel, 3 agents): `TASK-02`, `TASK-03`, `TASK-04`
 - **Batch 3** (sequential): `TASK-05` → `TASK-06` → `TASK-07`
-- **Batch 4** (parallel, 2 agents): `TASK-08`, lalu `TASK-09` (setelah `TASK-08` selesai)
+- **Batch 4** (parallel, 2 agents): `TASK-08`, lalu `TASK-09` setelah `TASK-08` selesai
 - **Batch 5** (parallel, 2 agents): `TASK-10`, `TASK-11`
-- **Batch 6** (sequential): `TASK-12` → `TASK-13` → `TASK-14`
+- **Batch 6** (parallel, 2 agents): `TASK-12` (Next.js sandbox), `TASK-13` (Vue+PrimeVue)
+- **Batch 7** (sequential): `TASK-14` → `TASK-15`
 
 ---
 
@@ -87,57 +106,91 @@ Setiap file task memakai template yang sama:
 
 1. **Goal** — apa yang dicapai
 2. **Scope** — in/out of scope
-3. **Files to create/modify** — path absolut
+3. **Files to create/modify** — path absolut (relatif ke `/home/z/my-project/retry-failure/` bila di monorepo, atau parent root untuk Next.js sandbox)
 4. **Implementation steps** — urutan konkret
 5. **Acceptance criteria** — checklist
-6. **Useful commands** — command yang WAJIB dijalankan setelah task selesai (lint, typecheck, db:push, dev server, curl, agent-browser)
+6. **Useful commands** — command yang WAJIB dijalankan setelah task selesai
 
 ### Command umum (tersedia di seluruh task)
 
 ```bash
-# Lint (wajib setelah setiap task)
-bun run lint
+# Enable pnpm via corepack (sekali saja)
+corepack enable pnpm
+corepack prepare pnpm@latest --activate
 
-# Typecheck cepat
-bunx tsc --noEmit
+# Install dependencies monorepo (root)
+cd /home/z/my-project/retry-failure && pnpm install
 
-# Push schema ke SQLite
-bun run db:push
+# Lint (root)
+cd /home/z/my-project/retry-failure && pnpm lint
 
-# Generate prisma client
-bun run db:generate
+# Typecheck (root)
+cd /home/z/my-project/retry-failure && pnpm typecheck
 
-# Baca dev log (cek error runtime)
-tail -n 80 /home/z/my-project/dev.log
+# Build all
+cd /home/z/my-project/retry-failure && pnpm build
 
-# Restart mini-service (background)
-# Contoh: payment-gateway-mock
-cd /home/z/my-project/mini-services/payment-gateway-mock && bun run dev &
+# Run all tests
+cd /home/z/my-project/retry-failure && pnpm test
+
+# Run E2E tests
+cd /home/z/my-project/retry-failure && pnpm test:e2e
+
+# DB migrations (TypeORM CLI)
+cd /home/z/my-project/retry-failure/apps/payment-api && pnpm db:migrate
+cd /home/z/my-project/retry-failure/apps/payment-api && pnpm db:migrate:revert
+
+# Dev mode (semua apps)
+cd /home/z/my-project/retry-failure && pnpm dev
+
+# Dev mode per-app
+cd /home/z/my-project/retry-failure/apps/payment-api && pnpm start:dev        # port 3001
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && pnpm start:dev # port 3002
+cd /home/z/my-project/retry-failure/apps/frontend-vue && pnpm dev              # port 5173
+
+# Next.js sandbox (parent root, port 3000)
+cd /home/z/my-project && bun run dev
 ```
 
-### Mini-service ports
+### Port assignments
 
-| Service | Port | Akses dari browser (via Caddy) |
+| Service | Port | Lokasi |
 |---|---|---|
-| `payment-api` (Next.js) | 3000 | `/` (default) |
-| `payment-gateway-mock` | 3001 | `/?XTransformPort=3001` atau `/v1/charges?XTransformPort=3001` |
-| `retry-scheduler` | 3002 | `/?XTransformPort=3002` |
+| `payment-api` (NestJS) | 3001 | `retry-failure/apps/payment-api/` |
+| `payment-gateway-mock` (NestJS) | 3002 | `retry-failure/apps/payment-gateway-mock/` |
+| `frontend-vue` (Vite dev) | 5173 | `retry-failure/apps/frontend-vue/` |
+| Next.js sandbox | 3000 | parent root `/home/z/my-project/` |
+| PostgreSQL | 5432 | docker-compose atau managed |
+| Prometheus | 9090 | docker-compose |
+| Grafana | 3001-conflict? → 3003 | docker-compose |
+| Jaeger UI | 16686 | docker-compose |
+| OTel OTLP | 4318 | docker-compose |
 
-> **PENTING**: dari frontend Next.js, request ke mini-service WAJIB memakai relative path + `?XTransformPort=NNNN`. Jangan pernah hardcode `http://localhost:3001` di client code.
+> **Catatan konflik port**: Grafana default 3000 konflik dengan Next.js sandbox. Pindah ke 3003 di `docker-compose.yml`.
+
+### Akses via Caddy (untuk Next.js sandbox di port 3000)
+
+```bash
+# Next.js fetch ke payment-api (port 3001) atau gateway-mock (port 3002)
+fetch('/api/payments?XTransformPort=3001')              # via Caddy → :3001
+fetch('/admin/config?XTransformPort=3002', { method: 'PUT', ... })  # via Caddy → :3002
+```
+
+> **PENTING**: dari Next.js client code, semua request cross-service WAJIB pakai relative path + `?XTransformPort=NNNN`. Jangan hardcode `http://localhost:3001` di client.
 
 ---
 
 ## 4. Source of Truth Files
 
-- Original plan: `/home/z/my-project/upload/PLAN1_Cockatiel_Retry_Failure_Scenario.md`
-- Subtask files: `/home/z/my-project/docs/tasks/TASK-*.md`
+- Original plan (rev 2): `/home/z/my-project/upload/PLAN1_Cockatiel_Retry_Failure_Scenario.md`
+- Subtask files: `/home/z/my-project/retry-failure/docs/tasks/TASK-*.md`
 - Worklog (cross-agent): `/home/z/my-project/worklog.md` — **setiap sub-agent WAJIB membaca & menambahkan entry di sini**.
 
 ---
 
-## 5. Definition of Done (dari plan section 22, diadaptasi)
+## 5. Definition of Done (dari plan section 22 rev 2)
 
-- [ ] Payment API (`POST /api/payments`) dapat membuat payment.
+- [ ] Payment API (`POST /payments`) dapat membuat payment.
 - [ ] Gateway mock dapat mengganti failure mode saat runtime via dashboard.
 - [ ] Cockatiel menangani request-level retry (bukti di `payment_attempts`).
 - [ ] Exponential backoff + jitter terkonfigurasi (config-driven).
@@ -148,10 +201,13 @@ cd /home/z/my-project/mini-services/payment-gateway-mock && bun run dev &
 - [ ] Scheduler memproses due payment (scenario 6).
 - [ ] `MAX_TOTAL_RETRIES` mengakhiri payment menjadi `failed` (scenario 7).
 - [ ] Idempotency menjamin `actualCharges <= 1` walaupun `calls >= 2` (scenario 4 — hero).
-- [ ] Audit attempt tersimpan di SQLite (`payment_attempts`).
-- [ ] Metrics tersedia di `/api/metrics`.
-- [ ] Trace ID tersimpan di `payment_attempts.trace_id` + terlihat di log.
-- [ ] Mini-service gateway mock + scheduler berjalan.
-- [ ] Unit test (lint + typecheck) lulus.
-- [ ] Dashboard UI menjalankan semua scenario A-E.
+- [ ] Audit attempt tersimpan di PostgreSQL (`payment_attempts`).
+- [ ] Metrics tersedia di `/metrics`.
+- [ ] Grafana dashboard tersedia.
+- [ ] Trace payment dapat ditemukan di Jaeger.
+- [ ] Docker full stack berjalan (postgres + payment-api + gateway-mock + prometheus + grafana + jaeger).
+- [ ] Dev mode berjalan tanpa Docker.
+- [ ] Unit + E2E test lulus (Jest + supertest).
+- [ ] Frontend Vue+PrimeVue dapat menjalankan semua scenario A–E.
+- [ ] Frontend Next.js preview sandbox dapat menampilkan data dari payment-api.
 - [ ] README menjelaskan failure scenarios + business impact.

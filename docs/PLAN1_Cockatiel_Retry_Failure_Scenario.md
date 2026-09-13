@@ -1,9 +1,20 @@
 # Technical Plan — Retry Failure Scenario (Payment Processing) — Cockatiel Edition
 
-> **Status**: Draft for implementation  
-> **Created**: 2026-09-10  
+> **Status**: Draft for implementation (rev 2 — PostgreSQL + dual frontend)
+> **Created**: 2026-09-10
+> **Last updated**: 2026-09-13 — perubahan database ke PostgreSQL 16, tambah strategi dual frontend (Next.js sandbox + Vue+PrimeVue di monorepo)
 > **Baseline**: Evolusi dari plan simulasi retry sebelumnya  
 > **Purpose**: Mendemonstrasikan failure handling pada proses payment secara production-like dengan memanfaatkan library resilience **Cockatiel**, sehingga fokus utama tetap pada business flow, failure scenario, idempotency, durable retry, dan observability.
+>
+> **Changelog rev 2**:
+> - Section 3: Database MySQL 8 → PostgreSQL 16. ORM TypeORM 0.3.x dengan driver `pg`.
+> - Section 4: Struktur monorepo ditambah `apps/frontend-vue/` (Vue 3 + PrimeVue).
+> - Section 11: Tipe data persistence disesuaikan ke native PostgreSQL (`uuid`, `numeric`, `timestamp(3)`, native `ENUM`).
+> - Section 15: Konfigurasi DB diubah ke PostgreSQL (port 5432, schema `public`).
+> - Section 16: Service Docker `mysql` diganti `postgres`.
+> - Section 17 (baru): Strategi dual frontend — Next.js sebagai preview sandbox ringkas, Vue+PrimeVue sebagai dashboard lengkap di monorepo.
+> - Section 21: Urutan implementasi ditambah dua task frontend.
+> - Section 22: DoD ditambah Vue dashboard dan Next.js preview.
 
 ---
 
@@ -90,12 +101,12 @@ Business layer tidak boleh menyebarkan import Cockatiel ke seluruh application.
 
 ## 3. Stack Teknologi
 
-- **Runtime**: Node.js 20.19.0
+- **Runtime**: Node.js 20.19.0 (catatan sandbox: terpaku pada versi yang tersedia, minimal Node 20)
 - **Language**: TypeScript 5.x, strict mode
-- **Framework**: NestJS 11.x
-- **Database**: Postgres 16.x
-- **ORM**: TypeORM 0.3.x + driver menyesuikan database
-- **Monorepo**: pnpm workspaces
+- **Framework (backend)**: NestJS 11.x
+- **Database**: PostgreSQL 16.x
+- **ORM**: TypeORM 0.3.x + driver `pg` (node-postgres)
+- **Monorepo**: pnpm workspaces (via corepack)
 - **HTTP client**: axios melalui `@nestjs/axios`
 - **Resilience**: Cockatiel 4.x
 - **Scheduler**: `@nestjs/schedule`
@@ -105,10 +116,13 @@ Business layer tidak boleh menyebarkan import Cockatiel ke seluruh application.
 - **Testing**: Jest + supertest
 - **API docs**: Swagger/OpenAPI
 - **Validation**: class-validator + class-transformer
-- **Config**: `@nestjs/config` + schema validation
+- **Config**: `@nestjs/config` + schema validation (Joi atau class-validator)
 - **Container**: Docker multi-stage + docker-compose
+- **Frontend (preview sandbox)**: Next.js 16 (App Router) + shadcn/ui — dashboard ringkas, berjalan di parent root (port 3000) untuk visualisasi cepat di sandbox. Bukan bagian backend monorepo.
+- **Frontend (versi Vue di monorepo)**: Vue 3 + PrimeVue + Vite — dashboard lengkap sebagai konsumen resmi API `payment-api`. Dipublish sebagai static build / dev server di port terpisah.
 
 > Catatan: versi package sebaiknya dipin di `package.json`/lockfile pada saat implementasi.
+> Frontend Next.js hanya untuk preview di sandbox (port 3000); bila tidak diperlukan, dapat diabaikan. Vue+PrimeVue adalah dashboard resmi yang dipakai untuk demo user-facing.
 
 ---
 
@@ -132,10 +146,22 @@ retry-failure/
 │   │   │   ├── app.module.ts
 │   │   │   └── main.ts
 │   │   └── test/
-│   └── payment-gateway-mock/
-│       └── src/
-│           ├── modules/charges/
-│           └── modules/admin/
+│   ├── payment-gateway-mock/
+│   │   └── src/
+│   │       ├── modules/charges/
+│   │       └── modules/admin/
+│   └── frontend-vue/
+│       ├── src/
+│       │   ├── components/
+│       │   ├── views/
+│       │   ├── stores/        # Pinia
+│       │   ├── api/           # axios client + composables
+│       │   ├── router/
+│       │   ├── App.vue
+│       │   └── main.ts
+│       ├── index.html
+│       ├── vite.config.ts
+│       └── tsconfig.json
 ├── packages/
 │   └── resilience/
 │       ├── src/
@@ -146,6 +172,8 @@ retry-failure/
 │       │   └── index.ts
 │       └── test/
 ├── docker/
+│   ├── postgres/
+│   │   └── init.sql
 │   ├── prometheus/prometheus.yml
 │   └── grafana/
 │       ├── provisioning/
@@ -159,6 +187,8 @@ retry-failure/
 ├── .env.example
 └── README.md
 ```
+
+Frontend Vue di `apps/frontend-vue/` adalah dashboard resmi yang dipakai untuk demo user-facing. PrimeVue dipilih karena menyediakan komponen siap pakai (DataTable, Card, Button, Toast, Dialog) sehingga implementasi UI cepat.
 
 ### 4.1 Perubahan dari versi custom
 
@@ -509,27 +539,29 @@ RetryScheduler
 
 | Column | Type | Notes |
 |---|---|---|
-| `id` | char(36) PK | UUID |
+| `id` | uuid PK | default `gen_random_uuid()` |
 | `order_id` | varchar(64) | unique |
-| `amount` | decimal(12,2) | |
-| `currency` | char(3) | default IDR |
-| `status` | enum | processing/succeeded/failed/scheduled_for_retry |
+| `amount` | numeric(12,2) | |
+| `currency` | char(3) | default `'IDR'` |
+| `status` | enum | native PG enum `payment_status_enum`: processing/succeeded/failed/scheduled_for_retry |
 | `gateway_reference` | varchar(64) | nullable |
 | `attempt_count` | int | attempts dalam execution cycle |
 | `total_retry_count` | int | durable retry cycles |
-| `next_retry_at` | datetime(3) | nullable |
+| `next_retry_at` | timestamp(3) | nullable, ms precision |
 | `failure_reason` | varchar(500) | nullable |
-| `created_at` | datetime(3) | |
-| `updated_at` | datetime(3) | |
+| `created_at` | timestamp(3) | default `now()` |
+| `updated_at` | timestamp(3) | trigger update |
+
+Index: `idx_payments_status` (status), `idx_payments_next_retry_at` (next_retry_at).
 
 ### 11.2 `payment_attempts`
 
 | Column | Type | Notes |
 |---|---|---|
-| `id` | char(36) PK | UUID |
-| `payment_id` | char(36) FK | index |
+| `id` | uuid PK | default `gen_random_uuid()` |
+| `payment_id` | uuid FK | index → `payments.id` ON DELETE CASCADE |
 | `attempt_number` | int | |
-| `outcome` | enum | success/retryable_failure/permanent_failure/timeout/circuit_open |
+| `outcome` | enum | native PG enum `attempt_outcome_enum`: success/retryable_failure/permanent_failure/timeout/circuit_open |
 | `http_status` | int | nullable |
 | `error_code` | varchar | nullable |
 | `error_message` | varchar | nullable |
@@ -539,9 +571,13 @@ RetryScheduler
 | `trace_id` | char(32) | nullable |
 | `idempotency_key` | varchar(64) | recommended for audit clarity |
 | `gateway_reference` | varchar(64) | nullable |
-| `created_at` | datetime(3) | |
+| `created_at` | timestamp(3) | default `now()` |
 
-Migrations menggunakan TypeORM. `synchronize: false` selalu.
+Index: `idx_payment_attempts_payment_id` (payment_id), `idx_payment_attempts_idempotency_key` (idempotency_key).
+
+Migrations menggunakan TypeORM (`typeorm migration:generate` + `migration:run`). `synchronize: false` selalu. Native ENUM PostgreSQL dipakai untuk `status` dan `outcome`; TypeORM mendukung deklarasi enum via `@Column({ type: 'enum', enum: ... })`.
+
+Extension `pgcrypto` (atau PG 13+ `gen_random_uuid()` builtin) wajib diaktifkan bila memakai default UUID PG.
 
 ---
 
@@ -770,13 +806,19 @@ BREAKER_COOLDOWN_MS=10000
 SCHEDULER_INTERVAL_MS=5000
 
 DB_HOST=localhost
-DB_PORT=3306
-DB_USER=sso
-DB_PASS=...
+DB_PORT=5432
+DB_USER=retry_failure
+DB_PASS=retry_failure
 DB_NAME=retry_failure
+DB_SCHEMA=public
 
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
 LOG_LEVEL=info
+
+# Frontend URLs
+PAYMENT_API_URL=http://localhost:3001
+GATEWAY_MOCK_URL=http://localhost:3002
+FRONTEND_VUE_URL=http://localhost:5173
 ```
 
 Nilai retry/circuit breaker di atas adalah application configuration yang diteruskan ke Cockatiel policy builder.
@@ -788,13 +830,16 @@ Nilai retry/circuit breaker di atas adalah application configuration yang diteru
 Services:
 
 ```text
-mysql
-payment-api
-payment-gateway-mock
+postgres          # PostgreSQL 16
+payment-api      # NestJS (port 3001)
+payment-gateway-mock  # NestJS (port 3002)
+frontend-vue      # Vite dev server (port 5173)
 prometheus
 grafana
 jaeger
 ```
+
+Catatan port: bila dijalankan di sandbox Next.js preview (port 3000 dipakai root Next.js), `payment-api` ditaruh di 3001 dan `payment-gateway-mock` di 3002. Konfigurasi port ini ditulis via env (`PORT`, `GATEWAY_MOCK_PORT`, `FRONTEND_VUE_PORT`).
 
 ### Full stack
 
@@ -805,7 +850,7 @@ docker compose up --build
 ### Dev mode
 
 ```bash
-docker compose up -d mysql prometheus grafana jaeger
+docker compose up -d postgres prometheus grafana jaeger
 pnpm dev
 ```
 
@@ -821,11 +866,48 @@ db:migrate
 db:migrate:revert
 docker:up
 docker:down
+frontend:vue:dev    # vite dev server untuk apps/frontend-vue
+frontend:vue:build   # vite build untuk apps/frontend-vue
 ```
 
 ---
 
-## 17. Demonstration Scenarios
+## 17. Frontend Dashboard Strategy
+
+Project mempunyai **dua versi frontend** dengan tujuan berbeda:
+
+### 17.1 Next.js Preview Sandbox (di parent root, di luar monorepo)
+
+- **Tujuan**: Visualisasi cepat di sandbox cloud yang hanya mempermit satu port (3000).
+- **Stack**: Next.js 16 (App Router) + shadcn/ui + TanStack Query.
+- **Scope**: Subset fungsionalitas — gateway mode selector, create payment, list, detail drawer, metrics snapshot. Cukup untuk verifikasi visual.
+- **Konsumen**: Hanya dipakai bila environment sandbox Next.js aktif. Bukan bagian resmi demo bila dijalankan dengan full Docker stack.
+- **Implementasi**: 1 task (TASK-12).
+
+### 17.2 Vue 3 + PrimeVue (di `apps/frontend-vue/`)
+
+- **Tujuan**: Dashboard user-facing resmi yang dipakai untuk demo scenario A–E (section 17 lama).
+- **Stack**: Vue 3 (Composition API) + Vite + PrimeVue + Pinia + Vue Router + axios.
+- **Komponen PrimeVue yang dipakai**: `DataTable`, `Card`, `Button`, `Toast`, `Dialog`, `Select`, `InputText`, `InputNumber`, `Tag`, `Timeline`, `Chart` (wrapper Chart.js).
+- **Scope**: Lengkap — gateway mode selector, create payment, list + filter + sort, detail dialog dengan attempt history timeline, manual retry, circuit breaker card, metrics charts, demo scenario runner (A–E).
+- **Implementasi**: 1 task (TASK-13).
+
+### 17.3 Perbandingan
+
+| Aspek | Next.js Sandbox | Vue+PrimeVue |
+|---|---|---|
+| Lokasi | parent root (di luar monorepo) | `apps/frontend-vue/` |
+| Tujuan | Preview sandbox | Dashboard resmi |
+| Stack UI | shadcn/ui | PrimeVue |
+| State | TanStack Query | Pinia + composables |
+| Port | 3000 | 5173 (Vite dev) |
+| Dependency backend | fetch ke `payment-api` via Caddy `?XTransformPort` | fetch langsung ke `payment-api:3001` |
+
+Keduanya konsumen API yang sama (`/api/payments`, `/api/health`, `/api/metrics`, gateway mock `/admin/config`). Tidak ada logic bisnis di frontend — pure presentation layer.
+
+---
+
+## 18. Demonstration Scenarios
 
 Project sebaiknya mempunyai demo script / documentation yang menjelaskan business impact, bukan hanya API call.
 
@@ -1009,24 +1091,28 @@ Metrics dan logs adalah diagnostic signals; database payment state tetap menjadi
 
 Task implementation sebaiknya mengikuti dependency berikut:
 
-1. Monorepo + workspace + Node pinning
-2. Shared configuration + application bootstrap
-3. MySQL + TypeORM + migrations
+1. Monorepo + workspace + Node pinning + corepack
+2. Shared configuration + application bootstrap (`@nestjs/config`)
+3. PostgreSQL 16 + TypeORM + migrations (native ENUM, uuid, timestamp(3))
 4. Payment domain + repository
-5. Gateway mock + runtime failure modes
-6. PaymentGatewayPort + HTTP adapter
-7. Cockatiel resilience adapter
+5. Gateway mock + runtime failure modes (NestJS app di `apps/payment-gateway-mock`)
+6. PaymentGatewayPort + HTTP adapter (axios via `@nestjs/axios`)
+7. Cockatiel resilience adapter (`packages/resilience`)
 8. Error classification + Retry-After handling
 9. Payment execution + idempotency
 10. Attempt audit
-11. Durable retry scheduler
-12. Observability: logs + metrics
+11. Durable retry scheduler (`@nestjs/schedule`)
+12. Observability: logs + metrics (`nestjs-pino` + `prom-client`)
 13. OpenTelemetry + Jaeger
-14. E2E scenarios
-15. Docker integration
-16. Documentation/demo scenarios
+14. E2E scenarios (Jest + supertest)
+15. Docker integration (postgres + jaeger + prometheus + grafana)
+16. Next.js preview sandbox frontend (parent root, port 3000)
+17. Vue + PrimeVue frontend (`apps/frontend-vue`, port 5173)
+18. Documentation + demo scenarios
 
 Setiap task harus memiliki acceptance criteria dan checkpoint commit.
+
+Urutan paralel yang diperbolehkan: task 16 dan 17 dapat berjalan paralel setelah task 14 selesai (frontend tidak memblokir backend).
 
 ---
 
@@ -1045,13 +1131,15 @@ Project dianggap selesai ketika seluruh kondisi berikut terpenuhi:
 - [ ] Scheduler memproses due payment.
 - [ ] `MAX_TOTAL_RETRIES` mengakhiri payment menjadi failed.
 - [ ] Idempotency menjamin actual charge maksimal satu.
-- [ ] Audit attempt tersimpan di MySQL.
-- [ ] Metrics tersedia.
+- [ ] Audit attempt tersimpan di PostgreSQL.
+- [ ] Metrics tersedia di `/metrics`.
 - [ ] Grafana dashboard tersedia.
 - [ ] Trace payment dapat ditemukan di Jaeger.
-- [ ] Docker full stack berjalan.
-- [ ] Dev mode berjalan.
-- [ ] Unit + E2E test lulus.
+- [ ] Docker full stack berjalan (postgres + payment-api + gateway-mock + prometheus + grafana + jaeger).
+- [ ] Dev mode berjalan tanpa Docker (database lokal/managed).
+- [ ] Unit + E2E test lulus (Jest + supertest).
+- [ ] Frontend Vue+PrimeVue dapat menjalankan semua scenario A–E.
+- [ ] Frontend Next.js preview sandbox dapat menampilkan data dari payment-api.
 - [ ] README menjelaskan failure scenarios dan business impact.
 
 ---
@@ -1060,5 +1148,9 @@ Project dianggap selesai ketika seluruh kondisi berikut terpenuhi:
 
 - Cockatiel npm: https://www.npmjs.com/package/cockatiel
 - Cockatiel GitHub: https://github.com/connor4312/cockatiel
+- PostgreSQL 16 docs: https://www.postgresql.org/docs/16/
+- TypeORM 0.3.x docs: https://typeorm.io/
+- NestJS 11 docs: https://docs.nestjs.com/
+- PrimeVue: https://primevue.org/
 
-Referensi di atas digunakan untuk memastikan API dan capability Cockatiel yang dijadikan asumsi arsitektur pada dokumen ini.
+Referensi di atas digunakan untuk memastikan API dan capability Cockatiel yang dijadikan asumsi arsitektur pada dokumen ini, serta dokumentasi resmi stack tambahan (PostgreSQL, TypeORM, NestJS, PrimeVue).
