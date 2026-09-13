@@ -33,8 +33,9 @@ Menyiapkan monorepo pnpm workspaces di `/home/z/my-project/retry-failure/` denga
 - `/home/z/my-project/retry-failure/package.json`
 - `/home/z/my-project/retry-failure/pnpm-workspace.yaml`
 - `/home/z/my-project/retry-failure/tsconfig.base.json`
-- `/home/z/my-project/retry-failure/.gitignore`
-- `/home/z/my-project/retry-failure/.env.example`
+- `/home/z/my-project/retry-failure/.gitignore` — ignore `.env`, allow `.env.example` + `.env.sandbox.example`
+- `/home/z/my-project/retry-failure/.env.example` — **KONDISI LOCAL** (port 3000, gateway 3001, Docker available)
+- `/home/z/my-project/retry-failure/.env.sandbox.example` — **KONDISI SANDBOX** (port 3001, gateway 3002, no Docker)
 - `/home/z/my-project/retry-failure/.nvmrc` — pin Node version
 - `/home/z/my-project/retry-failure/apps/payment-api/package.json`
 - `/home/z/my-project/retry-failure/apps/payment-api/tsconfig.json`
@@ -112,7 +113,21 @@ Menyiapkan monorepo pnpm workspaces di `/home/z/my-project/retry-failure/` denga
      - 'packages/*'
    ```
 4. `tsconfig.base.json` strict mode, extends NestJS defaults.
-5. `apps/payment-api/package.json`:
+5. **Buat dua env example files** — strategi Opsi B (lihat `docs/tasks/SANDBOX_NOTES.md` section 5):
+   - `.env.example` — KONDISI LOCAL: `PORT=3000`, `GATEWAY_URL=http://localhost:3001`, DB credentials default untuk `docker compose postgres`.
+   - `.env.sandbox.example` — KONDISI SANDBOX: `PORT=3001`, `GATEWAY_URL=http://localhost:3002`, DB credentials sama (asumsi external PostgreSQL) atau skip DB.
+   - **Tidak buat `.env` di sini** — user/agent akan copy salah satu saat menjalankan task (lihat TASK-02 step 1).
+   - Kedua file sudah committed (template). `.env` (aktual) di-gitignore.
+6. **`.gitignore`** — pattern:
+   ```gitignore
+   .env
+   .env.local
+   .env.*.local
+   !.env.example
+   !.env.sandbox.example
+   ```
+   Artinya: `.env` (aktual) di-ignore, `.env.example` + `.env.sandbox.example` (template) di-commit.
+7. `apps/payment-api/package.json`:
    ```json
    {
      "name": "payment-api",

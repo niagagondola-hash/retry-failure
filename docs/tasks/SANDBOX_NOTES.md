@@ -133,16 +133,23 @@ PORT=3002 pnpm start:dev
 # → gateway-mock di port 3002
 ```
 
-### 2.4 Update env (.env) berdasarkan kondisi
+### 2.4 Setup env file (.env) berdasarkan kondisi
+
+Strategi: **dua env example files** yang di-commit. Copy salah satu jadi `.env` (aktual). Lihat section 5 untuk detail lengkap.
 
 ```bash
-# KONDISI LOCAL (.env):
-PORT=3000
-GATEWAY_URL=http://localhost:3001
+cd /home/z/my-project/retry-failure/apps/payment-api
 
-# KONDISI SANDBOX (.env):
-PORT=3001
-GATEWAY_URL=http://localhost:3002
+# KONDISI LOCAL:
+cp ../../.env.example .env
+# Default sudah set: PORT=3000, GATEWAY_URL=http://localhost:3001, DB credentials docker compose.
+# Tidak perlu edit manual.
+
+# KONDISI SANDBOX:
+cp ../../.env.sandbox.example .env
+# Default sudah set: PORT=3001, GATEWAY_URL=http://localhost:3002 (port shift karena Next.js preview di 3000).
+# Bila ada external PostgreSQL dengan credentials berbeda → edit DB_* sesuai instance.
+# Bila TIDAK ada DB → skip migration + gunakan mock repository.
 ```
 
 ### 2.5 PostgreSQL setup
@@ -338,70 +345,75 @@ Setiap task di `retry-failure/docs/tasks/TASK-*.md` punya section "Useful comman
 
 ---
 
-## 5. Default Env Values per Kondisi
+## 5. Env File Strategy (Opsi B — Dua Example Files)
 
-### KONDISI LOCAL (`.env` di `apps/payment-api/`):
+Project menggunakan strategi **dua env example files** yang di-commit ke repository:
 
-```bash
-PORT=3000
-GATEWAY_URL=http://localhost:3001
-GATEWAY_TIMEOUT_MS=2000
-
-RETRY_MAX_ATTEMPTS=3
-RETRY_BASE_DELAY_MS=500
-RETRY_MAX_DELAY_MS=8000
-RETRY_JITTER_RATIO=0.1
-
-MAX_TOTAL_RETRIES=5
-
-BREAKER_FAILURE_THRESHOLD=3
-BREAKER_COOLDOWN_MS=10000
-
-SCHEDULER_INTERVAL_MS=5000
-
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=retry_failure
-DB_PASS=retry_failure
-DB_NAME=retry_failure
-DB_SCHEMA=public
-
-OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
-LOG_LEVEL=info
+```
+retry-failure/
+├── .env.example           ← committed, KONDISI LOCAL (port 3000, gateway 3001, Docker available)
+├── .env.sandbox.example   ← committed, KONDISI SANDBOX (port 3001, gateway 3002, no Docker)
+├── .gitignore             ← ignore .env (aktual), allow .env.example + .env.sandbox.example
+└── apps/payment-api/
+    └── .env               ← gitignored, file aktual yang dipakai aplikasi
 ```
 
-### KONDISI SANDBOX (`.env` di `apps/payment-api/`):
+### Cara Pakai
+
+**KONDISI LOCAL** (Docker tersedia, pnpm terinstall, port 3000 bebas):
 
 ```bash
-# Port shifted karena port 3000 dipakai Next.js preview
-PORT=3001
-GATEWAY_URL=http://localhost:3002
-GATEWAY_TIMEOUT_MS=2000
-
-RETRY_MAX_ATTEMPTS=3
-RETRY_BASE_DELAY_MS=500
-RETRY_MAX_DELAY_MS=8000
-RETRY_JITTER_RATIO=0.1
-
-MAX_TOTAL_RETRIES=5
-
-BREAKER_FAILURE_THRESHOLD=3
-BREAKER_COOLDOWN_MS=10000
-
-SCHEDULER_INTERVAL_MS=5000
-
-# PostgreSQL: butuh external instance (sandbox tidak ada Docker)
-# Set ke external PostgreSQL credentials, atau skip bila tidak ada
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=retry_failure
-DB_PASS=retry_failure
-DB_NAME=retry_failure
-DB_SCHEMA=public
-
-OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
-LOG_LEVEL=info
+cd /home/z/my-project/retry-failure/apps/payment-api
+cp ../../.env.example .env
+# Tidak perlu edit manual. Default sudah set DB credentials untuk docker compose postgres.
+# Jalankan:
+docker compose -f ../../docker-compose.yml up -d postgres
+pnpm db:migrate
+pnpm start:dev   # payment-api di port 3000
 ```
+
+**KONDISI SANDBOX** (Docker tidak tersedia, pnpm via corepack, port 3000 dipakai Next.js preview):
+
+```bash
+cd /home/z/my-project/retry-failure/apps/payment-api
+cp ../../.env.sandbox.example .env
+# Bila ada external PostgreSQL → edit DB_HOST/DB_USER/DB_PASS/DB_NAME sesuai instance.
+# Bila TIDAK ada DB → skip migration + gunakan mock repository.
+# Jalankan:
+corepack enable pnpm
+corepack prepare pnpm@9.12.0 --activate
+pnpm install
+pnpm db:migrate   # bila DB accessible
+pnpm start:dev    # payment-api di port 3001 (port 3000 dipakai Next.js preview)
+```
+
+### Perbandingan isi kedua file
+
+| Variable | `.env.example` (LOCAL) | `.env.sandbox.example` (SANDBOX) |
+|---|---|---|
+| `PORT` | 3000 | 3001 |
+| `GATEWAY_URL` | http://localhost:3001 | http://localhost:3002 |
+| `GATEWAY_TIMEOUT_MS` | 2000 | 2000 (sama) |
+| `RETRY_*`, `BREAKER_*`, `MAX_TOTAL_RETRIES`, `SCHEDULER_INTERVAL_MS` | sama | sama (config aplikasi tidak bergantung lingkungan) |
+| `DB_HOST` | localhost | localhost (asumsi external PG di host yang sama) |
+| `DB_PORT` | 5432 | 5432 (sama) |
+| `DB_USER` / `DB_PASS` / `DB_NAME` / `DB_SCHEMA` | retry_failure (docker compose default) | retry_failure (asumsi external PG pakai credentials sama) |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | http://localhost:4318 | http://localhost:4318 (Jaeger mungkin tidak jalan di sandbox → no-op) |
+| `LOG_LEVEL` | info | info |
+
+### Catatan penting
+
+1. **Kedua file example di-commit** ke repository. File `.env` (aktual) di-gitignore.
+2. **Tidak ada edit manual** bila default sesuai. User/agent cukup `cp` salah satu.
+3. **Bila DB credentials berbeda** dari default (mis. external PostgreSQL di sandbox pakai password lain), edit `.env` setelah copy. Jangan edit file `.example` — itu adalah template.
+4. **`.env.local`** (opsional) untuk personal override user. Juga di-gitignore.
+5. **Jangan hardcode** port atau URL di kode aplikasi. Selalu baca dari env (`process.env.PORT`, `process.env.GATEWAY_URL`, dst.). Ini memungkinkan aplikasi jalan di kedua kondisi tanpa perubahan kode.
+
+### Why Opsi B (bukan C atau D)
+
+- **Opsi C** (NODE_ENV switch via `@nestjs/config` `envFilePath`): kompleks, butuh `NODE_ENV` env var untuk switch, bisa conflict key. Tidak worth untuk use case kita (sandbox selalu sandbox, local selalu local).
+- **Opsi D** (1 file dengan commented blocks): rawan human error (lupa uncomment atau comment tidak konsisten). Tidak rekomendasi.
+- **Opsi B** (copy pattern): paling simple, paling eksplisit, paling reliable. Agent sandbox bisa `cp .env.sandbox.example .env` → langsung jalan. User local bisa `cp .env.example .env` → langsung jalan.
 
 ---
 

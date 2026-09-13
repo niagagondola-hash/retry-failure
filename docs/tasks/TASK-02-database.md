@@ -278,10 +278,21 @@ docker compose ps postgres
 # Lihat SANDBOX_NOTES.md section 2.5 untuk strategi alternatif.
 # Document caveat environment di TASK-15 production caveats.
 
-# 2. Run migration — sama kedua kondisi (asalkan DB dapat diakses)
+# 2. Copy env example ke .env (pilih salah satu sesuai kondisi)
 cd /home/z/my-project/retry-failure/apps/payment-api
-cp ../../.env.example .env  # bila belum ada
-# edit .env untuk DB credentials sesuai environment
+
+# KONDISI LOCAL (Docker tersedia):
+cp ../../.env.example .env
+# Default .env.example sudah set DB credentials untuk docker compose postgres service.
+# Tidak perlu edit manual.
+
+# KONDISI SANDBOX (Docker tidak tersedia):
+cp ../../.env.sandbox.example .env
+# .env.sandbox.example punya port shift (PORT=3001, GATEWAY_URL=http://localhost:3002).
+# Bila ada external PostgreSQL → edit DB_HOST/DB_USER/DB_PASS/DB_NAME sesuai instance.
+# Bila TIDAK ada DB → skip migration + gunakan mock repository.
+
+# 3. Run migration — sama kedua kondisi (asalkan DB dapat diakses)
 pnpm db:migrate
 
 # Bila DB TIDAK bisa diakses di SANDBOX (tanpa external PostgreSQL):
@@ -289,7 +300,7 @@ pnpm db:migrate
 # - Document caveat di TASK-15 production caveats
 # - Unit test yang tidak butuh DB tetap bisa jalan (mock repository)
 
-# 3. Verify schema
+# 4. Verify schema
 # KONDISI LOCAL (psql via docker exec):
 docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
   psql -U retry_failure -d retry_failure -c '\dt'
