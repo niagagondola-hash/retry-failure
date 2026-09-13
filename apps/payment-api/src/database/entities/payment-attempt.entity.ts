@@ -64,6 +64,9 @@ export class PaymentAttempt {
   @Column({ name: 'gateway_reference', type: 'varchar', length: 64, nullable: true })
   gatewayReference: string | null = null;
 
+  @Column({ name: 'replayed', type: 'boolean', default: false })
+  replayed: boolean = false;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamp', precision: 3 })
   createdAt!: Date;
 

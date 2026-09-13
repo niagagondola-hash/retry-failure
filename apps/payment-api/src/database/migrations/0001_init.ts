@@ -76,6 +76,7 @@ export class Init0001170000000000 implements MigrationInterface {
         "trace_id"               char(32),
         "idempotency_key"        varchar(64) NOT NULL,
         "gateway_reference"      varchar(64),
+        "replayed"               boolean NOT NULL DEFAULT false,
         "created_at"             timestamp(3) NOT NULL DEFAULT now(),
         CONSTRAINT "pk_payment_attempts" PRIMARY KEY ("id"),
         CONSTRAINT "fk_payment_attempts_payment_id"
