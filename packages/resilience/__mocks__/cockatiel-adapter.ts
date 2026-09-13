@@ -239,8 +239,8 @@ export {
   handleAll,
   wrap,
   ExponentialBackoff,
-  ConsecutiveBreaker: MockConsecutiveBreaker,
-  TimeoutStrategy: TIMEOUT_STRATEGY,
+  MockConsecutiveBreaker as ConsecutiveBreaker,
+  TIMEOUT_STRATEGY as TimeoutStrategy,
   BrokenCircuitError,
   isBrokenCircuitError,
 };
