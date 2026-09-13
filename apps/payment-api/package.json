@@ -11,9 +11,9 @@
     "typecheck": "tsc --noEmit",
     "test": "jest",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "db:migrate": "typeorm migration:run -- -d src/database/data-source.ts",
-    "db:migrate:revert": "typeorm migration:revert -- -d src/database/data-source.ts",
-    "db:migration:generate": "typeorm migration:generate -- -d src/database/data-source.ts"
+    "db:migrate": "tsx node_modules/typeorm/cli.js migration:run -d src/database/data-source.ts",
+    "db:migrate:revert": "tsx node_modules/typeorm/cli.js migration:revert -d src/database/data-source.ts",
+    "db:migration:generate": "tsx node_modules/typeorm/cli.js migration:generate -d src/database/data-source.ts"
   },
   "dependencies": {
     "@nestjs/axios": "^3.1.0",
@@ -50,6 +50,7 @@
     "supertest": "^7.0.0",
     "ts-jest": "^29.2.0",
     "ts-node": "^10.9.0",
+    "tsx": "^4.23.13",
     "typescript": "^5.6.0",
     "typescript-eslint": "^8.70.0"
   }

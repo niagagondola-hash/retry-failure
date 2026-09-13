@@ -141,9 +141,9 @@ Menyiapkan monorepo pnpm workspaces di `/home/z/my-project/retry-failure/` denga
        "typecheck": "tsc --noEmit",
        "test": "jest",
        "test:e2e": "jest --config ./test/jest-e2e.json",
-       "db:migrate": "typeorm migration:run -- -d src/data-source.ts",
-       "db:migrate:revert": "typeorm migration:revert -- -d src/data-source.ts",
-       "db:migration:generate": "typeorm migration:generate -- -d src/data-source.ts"
+       "db:migrate": "typeorm migration:run -d src/data-source.ts",
+       "db:migrate:revert": "typeorm migration:revert -d src/data-source.ts",
+       "db:migration:generate": "typeorm migration:generate -d src/data-source.ts"
      },
      "dependencies": {
        "@nestjs/axios": "^3.1.0",
