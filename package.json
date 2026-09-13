@@ -1,0 +1,30 @@
+{
+  "name": "retry-failure",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cockatiel-based payment retry/failure scenario demo — NestJS + TypeORM + PostgreSQL monorepo",
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@9.12.0",
+  "scripts": {
+    "dev": "pnpm -r --parallel run start:dev",
+    "build": "pnpm -r run build",
+    "test": "pnpm -r run test",
+    "test:e2e": "pnpm -r run test:e2e",
+    "lint": "pnpm -r run lint",
+    "typecheck": "pnpm -r run typecheck",
+    "db:migrate": "pnpm --filter payment-api db:migrate",
+    "db:migrate:revert": "pnpm --filter payment-api db:migrate:revert",
+    "db:migration:generate": "pnpm --filter payment-api db:migration:generate",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "frontend:vue:dev": "pnpm --filter frontend-vue dev",
+    "frontend:vue:build": "pnpm --filter frontend-vue build"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "prettier": "^3.3.0"
+  }
+}

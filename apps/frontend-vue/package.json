@@ -1,0 +1,34 @@
+{
+  "name": "frontend-vue",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Vue 3 + PrimeVue dashboard (full version) — official dashboard per plan section 17.2",
+  "scripts": {
+    "dev": "vite --port 5173 --host",
+    "build": "vue-tsc -b && vite build",
+    "preview": "vite preview",
+    "lint": "eslint src --ext .vue,.ts",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@primevue/themes": "^4.2.0",
+    "axios": "^1.7.0",
+    "chart.js": "^4.4.0",
+    "pinia": "^2.2.0",
+    "primeicons": "^7.0.0",
+    "primevue": "^4.2.0",
+    "vue": "^3.5.0",
+    "vue-router": "^4.4.0"
+  },
+  "devDependencies": {
+    "@typescript-eslint/parser": "^8.70.0",
+    "@vitejs/plugin-vue": "^5.1.0",
+    "eslint": "^9.0.0",
+    "eslint-plugin-vue": "^9.28.0",
+    "typescript": "^5.6.0",
+    "vite": "^5.4.0",
+    "vue-eslint-parser": "^10.4.1",
+    "vue-tsc": "^2.1.0"
+  }
+}
