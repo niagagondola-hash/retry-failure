@@ -5,6 +5,7 @@ import { PaymentRepository } from '../../database/repositories/payment.repositor
 import { GatewayModule } from '../gateway';
 import { AuditModule } from '../audit';
 import { PaymentsService } from './payments.service';
+import { PaymentsController } from './payments.controller';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { PaymentsService } from './payments.service';
     GatewayModule,
     AuditModule,
   ],
+  controllers: [PaymentsController],
   providers: [
     PaymentRepository,
     PaymentsService,
