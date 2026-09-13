@@ -1,8 +1,8 @@
 /**
  * Barrel export for @retry-failure/resilience.
  *
- * Placeholder — TASK-04 (error classification) and TASK-05 (Cockatiel policies)
- * will populate this package.
+ * Errors subpackage (TASK-04): classifyError, parseRetryAfter, types.
+ * Policies subpackage (TASK-05): executeWithResilience, breaker store, etc — TODO.
  */
-export const PACKAGE_NAME = '@retry-failure/resilience';
-export const PACKAGE_VERSION = '0.1.0';
+
+export * from './errors';
