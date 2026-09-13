@@ -72,11 +72,9 @@ describe('executeWithResilience — happy path', () => {
 
 describe('executeWithResilience — retry exhaustion', () => {
   it('returns exhausted=true after maxAttempts failed', async () => {
-    let calls = 0;
     const outcome = await executeWithResilience<string>({
       dependencyName: 'test-exhaust',
       fn: async () => {
-        calls++;
         throw makeHttpError(500);
       },
       config: FAST_CONFIG,
@@ -222,11 +220,9 @@ describe('executeWithResilience — onAttempt callback', () => {
 
 describe('executeWithResilience — timeout handling', () => {
   it('treats timeout as retryable failure', async () => {
-    let calls = 0;
     const outcome = await executeWithResilience({
       dependencyName: 'test-timeout',
       fn: async () => {
-        calls++;
         // Simulate timeout by sleeping longer than gatewayTimeoutMs
         await new Promise((r) => setTimeout(r, 200));
         return 'should not reach here';
