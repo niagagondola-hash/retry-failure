@@ -39,12 +39,12 @@ export interface PaymentDetail {
 }
 
 export async function createPayment(body: { orderId: string; amount: number; currency: string }): Promise<PaymentView> {
-  const { data } = await paymentClient.post<{ payment: PaymentView }>('/api/payments', body);
+  const { data } = await paymentClient.post<{ payment: PaymentView }>('/payments', body);
   return data.payment;
 }
 
 export async function getPayment(id: string): Promise<PaymentDetail> {
-  const { data } = await paymentClient.get<PaymentDetail>(`/api/payments/${id}`);
+  const { data } = await paymentClient.get<PaymentDetail>(`/payments/${id}`);
   return data;
 }
 

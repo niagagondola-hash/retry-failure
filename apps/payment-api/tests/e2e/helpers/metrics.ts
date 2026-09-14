@@ -1,7 +1,7 @@
 import { paymentClient } from './setup';
 
 export async function getMetricsText(): Promise<string> {
-  const { data } = await paymentClient.get<string>('/api/metrics', {
+  const { data } = await paymentClient.get<string>('/metrics', {
     headers: { Accept: 'text/plain' },
     transformResponse: [(d: string) => d],
   });
