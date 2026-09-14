@@ -1,4 +1,4 @@
-# TASK-11 — Observability: nestjs-pino + prom-client + OpenTelemetry
+# TASK-11 — Observability: nestjs-pino + prom-client + Trace Context (IS_OTEL toggle)
 
 > **Task ID**: 8
 > **Depends on**: 3 (TASK-05 Cockatiel resilience — `executeWithResilience` + `onFailure` / `onBreak` / `onReset` hooks), 5 (TASK-07 payments service — `PaymentsService.executePayment` lifecycle + `crypto.randomUUID()` traceId placeholder)
@@ -13,11 +13,20 @@ Mengimplementasikan tiga pilar observability yang dibutuhkan plan section 13 + 2
 
 1. **Structured JSON logging** via `nestjs-pino` + `pino` (dan `pino-pretty` untuk dev) — log event payment lifecycle (start/finish, attempt, retry scheduled, breaker state change, scheduler poll, idempotency replay, gateway failure mode) selalu membawa field `traceId`.
 2. **Prometheus metrics** via `prom-client` (default `Registry` singleton) — 7 metric persis sesuai plan section 13.2 (Counter / Gauge / Histogram) dengan label **low-cardinality only** (TIDAK ada `payment_id`, `order_id`, `trace_id`, atau raw `error_message` sebagai label).
-3. **Trace context via `AsyncLocalStorage`** — `withTrace()` / `getTraceId()` / `getTraceContext()` membawa satu `traceId` lintas async boundary (Cockatiel internal `await`, axios, TypeORM query, scheduler callback). `traceId` di-persist ke `payment_attempts.trace_id` (kolom sudah dibuat di TASK-02, sudah diisi oleh `AuditService` di TASK-08 via `input.traceId`) — di task ini sumber `traceId` dialihkan dari `crypto.randomUUID()` ad-hoc menjadi trace context dari `AsyncLocalStorage`, sehingga `PaymentsService`, `AuditService`, controller log, dan gateway log semua berbagi `traceId` yang sama dalam satu execution cycle.
+3. **Trace context via `AsyncLocalStorage`** dengan dukungan **`IS_OTEL` env toggle** — `withTrace()` / `getTraceId()` / `getTraceContext()` membawa satu `traceId` lintas async boundary (Cockatiel internal `await`, axios, TypeORM query, scheduler callback). `traceId` di-persist ke `payment_attempts.trace_id` (kolom sudah dibuat di TASK-02, sudah diisi oleh `AuditService` di TASK-08 via `input.traceId`) — di task ini sumber `traceId` dialihkan dari `crypto.randomUUID()` ad-hoc menjadi trace context dari `AsyncLocalStorage`, sehingga `PaymentsService`, `AuditService`, controller log, dan gateway log semua berbagi `traceId` yang sama dalam satu execution cycle.
+
+### `IS_OTEL` env toggle — FEATURE FLAG untuk TASK-11b
+
+TASK-11 mengimplementasi `trace-context.ts` dengan **dua mode** yang di-toggle via env `IS_OTEL`:
+
+| `IS_OTEL` | Trace ID source | OTel SDK | Jaeger export | Span tree | Butuh Docker |
+|---|---|---|---|---|---|
+| `false` (default) | `crypto.randomUUID()` via `AsyncLocalStorage` | ❌ tidak di-load | ❌ tidak ada | ❌ tidak ada | ❌ tidak |
+| `true` | OTel active span (bila SDK aktif) → fallback ALS | ✅ bila TASK-11b dieksekusi | ✅ bila TASK-11b + Docker | ✅ bila TASK-11b dieksekusi | ✅ Jaeger |
+
+**Penting**: TASK-11 hanya mengimplementasi mode `IS_OTEL=false` (simplified). Tapi `trace-context.ts` sudah disiapkan untuk menerima `IS_OTEL=true` — bila TASK-11b dieksekusi, cukup set `IS_OTEL=true` di `.env` dan otomatis beralih ke OTel trace ID. Tidak perlu modify `trace-context.ts` lagi (TASK-11b hanya tambah `otel.ts` + dependencies + custom span).
 
 Wire pilar-pilar tersebut ke **semua layer** yang sudah ada: gateway HTTP adapter, ResilientPaymentGateway (retry + breaker hooks), `PaymentsService` (lifecycle logs + `payments_current_status` gauge delta), `AuditService` (fallback read `traceId` dari context bila caller tidak supply), controllers (`api_request` log line), scheduler mini-service (structured stdout JSON). Endpoint `/metrics` (stub dari TASK-09) diganti dengan registry penuh.
-
-> **Simplified OTel** — plan section 13.3 menyebut full OpenTelemetry SDK + Jaeger export. Untuk demo ini, trace ID di-generate custom (`crypto.randomUUID()`) + di-propagate via `AsyncLocalStorage` saja — cukup untuk korelasi log + `payment_attempts.trace_id`. Full OTel SDK (`@opentelemetry/sdk-node` + OTLP exporter ke Jaeger) disebut sebagai **optional extension** di section Notes.
 
 ## Scope
 
@@ -172,11 +181,31 @@ export interface TraceContext {
 const als = new AsyncLocalStorage<TraceContext>();
 
 /**
+ * IS_OTEL feature flag (plan section 13.3 — TASK-11b extension toggle).
+ *
+ * - false (default): trace ID dari crypto.randomUUID() via AsyncLocalStorage.
+ * - true: trace ID dari OTel active span (bila SDK aktif via TASK-11b),
+ *         fallback ke AsyncLocalStorage bila OTel SDK tidak di-load.
+ *
+ * Bila IS_OTEL=true TAPI TASK-11b belum dieksekusi (tidak ada otel.ts,
+ * @opentelemetry/api tidak ter-install), getTraceId() tetap fallback ke ALS —
+ * tidak crash. Safe toggle.
+ *
+ * TASK-11b hanya perlu: install @opentelemetry deps + buat otel.ts + import
+ * di main.ts. trace-context.ts TIDAK perlu di-modify.
+ */
+const IS_OTEL = process.env.IS_OTEL === 'true';
+
+/**
  * Run `fn` inside a new trace context. Bila traceId tidak di-supply via opts,
  * generate UUID v4 baru.
  *
  * Bila context sudah ada di AsyncLocalStorage (e.g. request sudah di-wrap
- * middleware), gunakan context yang ada — jangan overwrite.
+ * oleh middleware), gunakan context yang ada — jangan overwrite.
+ *
+ * Bila IS_OTEL=true dan OTel SDK aktif (TASK-11b), trace ID sudah di-set
+ * oleh OTel auto-instrumentation (HTTP server span). withTrace() hanya
+ * set AsyncLocalStorage untuk fallback compatibility.
  */
 export function withTrace<T>(
   fn: () => Promise<T> | T,
@@ -195,7 +224,47 @@ export function withTrace<T>(
   return als.run(ctx, fn);
 }
 
-export function getTraceId(): string | undefined {
+/**
+ * Get traceId — respects IS_OTEL toggle.
+ *
+ * Bila IS_OTEL=true:
+ *   1. Coba baca dari OTel active span (bila @opentelemetry/api ter-install
+ *      dan SDK aktif). Lazy import — tidak load package bila IS_OTEL=false.
+ *   2. Fallback ke AsyncLocalStorage.
+ *
+ * Bila IS_OTEL=false (default):
+ *   Langsung return AsyncLocalStorage.traceId.
+ *
+ * Safe bila IS_OTEL=true TAPI TASK-11b belum dieksekusi:
+ *   Lazy import gagal (package tidak ada) → catch → fallback ALS.
+ *   Tidak crash.
+ */
+export async function getTraceId(): Promise<string | undefined> {
+  if (IS_OTEL) {
+    try {
+      // Lazy import — tidak load @opentelemetry/api bila IS_OTEL=false
+      const { trace, context } = await import('@opentelemetry/api');
+      const span = trace.getSpan(context.active());
+      if (span) {
+        const traceId = span.spanContext().traceId;
+        if (traceId) return traceId;
+      }
+    } catch {
+      // @opentelemetry/api tidak ter-install (TASK-11b belum dieksekusi)
+      // Fallback ke AsyncLocalStorage
+    }
+  }
+  return als.getStore()?.traceId;
+}
+
+/**
+ * Synchronous version — tidak support OTel (OTel API butuh async import).
+ * Pakai untuk code path yang tidak bisa await (e.g. pino mixin).
+ *
+ * Bila IS_OTEL=true dan butuh OTel trace ID secara sync, gunakan
+ * getTraceId() (async) di awal request, lalu pass traceId explicitly.
+ */
+export function getTraceIdSync(): string | undefined {
   return als.getStore()?.traceId;
 }
 
@@ -212,6 +281,12 @@ export function setTracePaymentId(paymentId: string): void {
 }
 ```
 
+> **Catatan IS_OTEL toggle**:
+> - `getTraceId()` adalah `async` karena lazy import `@opentelemetry/api` butuh `await import()`.
+> - `getTraceIdSync()` disediakan untuk code path yang tidak bisa await (pino mixin, sync logger).
+> - Bila IS_OTEL=false, `getTraceId()` sama saja dengan `getTraceIdSync()` — async wrapper saja.
+> - Bila IS_OTEL=true TAPI TASK-11b belum dieksekusi (tidak ada `@opentelemetry/api`), `await import('@opentelemetry/api')` gagal → catch → fallback ALS. **Tidak crash.**
+>
 > AsyncLocalStorage bekerja lintas async boundary (Cockatiel internal `await`, axios, TypeORM query, scheduler callback). Tidak perlu manual propagation.
 
 ### 3. `observability/logger.module.ts`
@@ -827,38 +902,19 @@ async function bootstrap() {
 bootstrap();
 ```
 
-### 16. (Optional extension) Full OTel SDK + Jaeger export
+### 16. (Extension) Full OTel SDK + Jaeger export → lihat TASK-11b-otel-sdk.md
 
-Bila di masa depan user ingin full OpenTelemetry SDK + Jaeger UI:
+TASK-11 sudah menyediakan `IS_OTEL` env toggle di `trace-context.ts`. Untuk mengaktifkan full OTel SDK + Jaeger export, eksekusi **TASK-11b** (`docs/tasks/TASK-11b-otel-sdk.md`):
 
-```bash
-pnpm --filter payment-api add @opentelemetry/sdk-node \
-  @opentelemetry/auto-instrumentations-node \
-  @opentelemetry/exporter-trace-otlp-http
-```
+1. Install OTel dependencies (`@opentelemetry/sdk-node`, `auto-instrumentations-node`, `exporter-trace-otlp-http`).
+2. Buat `apps/payment-api/src/otel.ts` (SDK init — load sebelum NestJS bootstrap).
+3. Import `./otel` di `main.ts` baris pertama.
+4. Set `IS_OTEL=true` di `.env`.
+5. Start Jaeger: `docker compose up -d jaeger`.
 
-Buat `apps/payment-api/src/otel.ts` (load sebelum NestJS bootstrap):
+**trace-context.ts TIDAK perlu di-modify** — `getTraceId()` sudah punya lazy import + fallback ALS. Saat `IS_OTEL=true` dan `@opentelemetry/api` ter-install, `getTraceId()` otomatis baca dari OTel active span.
 
-```ts
-import { NodeSDK } from '@opentelemetry/sdk-node';
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
-import { getResource } from '@opentelemetry/resources';
-import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
-import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
-
-const sdk = new NodeSDK({
-  resource: new Resource({
-    [SemanticResourceAttributes.SERVICE_NAME]: 'payment-api',
-  }),
-  traceExporter: new OTLPTraceExporter({ url: 'http://localhost:4318/v1/traces' }),
-  instrumentations: [getNodeAutoInstrumentations()],
-});
-sdk.start();
-```
-
-Lalu `node --import otel.js dist/main.js`. Trace context di-propagate via HTTP headers `traceparent` otomatis oleh auto-instrumentations. `getTraceId()` di `trace-context.ts` diganti dengan `trace.getSpan(context.active())?.spanContext().traceId`. Jaeger UI di `http://localhost:16686`.
-
-> **Decision untuk task ini**: TIDAK implement full OTel SDK. Cukup `AsyncLocalStorage` + `crypto.randomUUID()`. OTel disebut sebagai optional future evolution — document di TASK-15 production caveats.
+> **Decision untuk task ini**: TASK-11 implementasi mode `IS_OTEL=false` (simplified). TASK-11b adalah extension yang tinggal: install deps + buat `otel.ts` + flip env. Document di TASK-15 production caveats.
 
 ---
 

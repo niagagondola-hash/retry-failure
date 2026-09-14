@@ -10,21 +10,23 @@
 
 ## Goal
 
-Meng-upgrade trace context dari **simplified** (`AsyncLocalStorage` + `crypto.randomUUID()`) ke **full OpenTelemetry SDK** dengan:
+Mengaktifkan full OpenTelemetry SDK + Jaeger export dengan **flip env `IS_OTEL=true`**. TASK-11 sudah menyediakan `IS_OTEL` toggle di `trace-context.ts` — TASK-11b hanya perlu:
 
-1. **OTel SDK initialization** — `@opentelemetry/sdk-node` + `@opentelemetry/auto-instrumentations-node` yang auto-instrument HTTP server (NestJS), HTTP client (axios), dan PostgreSQL driver (pg).
-2. **OTLP HTTP exporter** — export traces ke Jaeger collector di `http://localhost:4318/v1/traces` (Jaeger all-in-one dengan `COLLECTOR_OTLP_ENABLED=true`, sudah ada di `docker-compose.yml`).
-3. **W3C `traceparent` header propagation** — axios auto-instrumentation akan inject `traceparent` header ke setiap HTTP call ke gateway mock. Gateway mock akan terima header → create child span (bila di-instrument) atau ignore (bila tidak).
-4. **Span tree di Jaeger UI** — satu trace menggambarkan payment journey:
-   ```text
-   payment-api (root span: POST /payments)
-     ├── payment processing (custom span: PaymentsService.executePayment)
-     │     ├── gateway attempt #1 (auto span: axios POST /v1/charges)
-     │     ├── gateway attempt #2 (auto span: axios POST /v1/charges)
-     │     └── gateway attempt #3 (auto span: axios POST /v1/charges)
-     └── DB query (auto span: pg INSERT payment_attempts)
-   ```
-5. **Trace ID migration** — `getTraceId()` di `trace-context.ts` diubah dari `AsyncLocalStorage` ke `trace.getSpan(context.active())?.spanContext().traceId`. `AsyncLocalStorage` tetap dipertahankan sebagai fallback bila OTel context tidak ada (mis. di unit test tanpa SDK).
+1. **Install OTel dependencies** — `@opentelemetry/sdk-node` + `@opentelemetry/auto-instrumentations-node` + `@opentelemetry/exporter-trace-otlp-http` + `@opentelemetry/api` + `@opentelemetry/resources` + `@opentelemetry/semantic-conventions`.
+2. **Buat `apps/payment-api/src/otel.ts`** — OTel SDK initialization (load sebelum NestJS bootstrap). File ini cek `process.env.IS_OTEL === 'true'` → start SDK + OTLP exporter ke Jaeger.
+3. **Import `./otel` di `main.ts`** — baris pertama, sebelum `NestFactory.create()`.
+4. **(Opsional) Custom span di `payments.service.ts`** — create span `payment.processing` via OTel API untuk span tree visualization.
+5. **(Opsional) Gateway mock instrument** — receive `traceparent` header + create child span.
+6. **Set `IS_OTEL=true` di `.env`** — flip toggle. `getTraceId()` di `trace-context.ts` otomatis baca dari OTel active span.
+
+**trace-context.ts TIDAK perlu di-modify** — TASK-11 sudah implementasi `IS_OTEL` toggle dengan lazy import + fallback ALS.
+
+### Yang TIDAK Dilakukan TASK-11b
+
+- Tidak modify `trace-context.ts` (sudah ada `IS_OTEL` toggle dari TASK-11).
+- Tidak modify pino logger (tetap dari TASK-11).
+- Tidak modify prom-client metrics (tetap dari TASK-11).
+- Tidak modify `/metrics` endpoint (tetap dari TASK-11).
 
 Setelah task ini selesai, plan section 13.3 + DoD item "Trace payment dapat ditemukan di Jaeger" tercapai penuh.
 
@@ -33,14 +35,19 @@ Setelah task ini selesai, plan section 13.3 + DoD item "Trace payment dapat dite
 ## Scope
 
 **In scope**:
-- `apps/payment-api/src/otel.ts` — OTel SDK initialization (load sebelum NestJS bootstrap).
-- `apps/payment-api/src/modules/observability/trace-context.ts` — modify `getTraceId()` untuk baca dari OTel active span context, fallback ke AsyncLocalStorage.
-- `apps/payment-api/src/modules/payments/payments.service.ts` — modify `executePayment()` untuk create custom span `payment.processing` via OTel API (`trace.getTracer(...).startSpan(...)`).
-- `apps/payment-gateway-mock/src/main.ts` — (opsional) instrument gateway mock untuk receive `traceparent` header + create child span.
+- `apps/payment-api/src/otel.ts` — OTel SDK initialization (load sebelum NestJS bootstrap). Cek `IS_OTEL=true` → start SDK.
+- `apps/payment-api/src/main.ts` — tambah `import './otel'` di baris pertama.
 - `apps/payment-api/package.json` — tambah OTel dependencies.
-- `apps/payment-api/src/main.ts` — modify bootstrap untuk import `otel.ts` sebelum `NestFactory.create()`.
+- `apps/payment-api/src/modules/payments/payments.service.ts` — (opsional) create custom span `payment.processing` via OTel API.
+- `apps/payment-gateway-mock/src/otel.ts` + `main.ts` — (opsional) instrument gateway mock.
+- `.env.example` + `.env.sandbox.example` — tambah `IS_OTEL=false` default.
 - `docker-compose.yml` — verify Jaeger service sudah ada (sudah, dari TASK-01).
-- Jest tests tidak di-modify (OTel SDK tidak aktif di test environment — `NODE_ENV=test` skip SDK init).
+
+**TIDAK perlu modify** (sudah disiapkan oleh TASK-11):
+- ~~`trace-context.ts`~~ — sudah punya `IS_OTEL` toggle + lazy import + fallback ALS dari TASK-11.
+- ~~pino logger~~ — tetap dari TASK-11.
+- ~~prom-client metrics~~ — tetap dari TASK-11.
+- ~~Jest tests~~ — `IS_OTEL=false` di test env, OTel SDK tidak di-load.
 
 **Out of scope**:
 - Metrics via OTel (metrics sudah via prom-client dari TASK-11 — tidak double-instrument).
@@ -148,11 +155,14 @@ docker compose up -d jaeger
 
 ### Modify
 
-- `apps/payment-api/src/main.ts` — import `./otel` sebelum `NestFactory.create()`.
-- `apps/payment-api/src/modules/observability/trace-context.ts` — `getTraceId()` baca dari OTel active span, fallback AsyncLocalStorage.
-- `apps/payment-api/src/modules/payments/payments.service.ts` — create custom span `payment.processing` di `executePayment()`.
+- `apps/payment-api/src/main.ts` — tambah `import './otel'` di baris pertama.
 - `apps/payment-api/package.json` — tambah OTel dependencies.
-- `apps/payment-gateway-mock/src/main.ts` — (opsional) import `./otel` + receive `traceparent` header.
+- `.env.example` + `.env.sandbox.example` — tambah `IS_OTEL=false` default.
+- `apps/payment-api/src/modules/payments/payments.service.ts` — (opsional) create custom span `payment.processing`.
+
+### TIDAK perlu modify (sudah disiapkan oleh TASK-11)
+
+- ~~`apps/payment-api/src/modules/observability/trace-context.ts`~~ — sudah punya `IS_OTEL` toggle + lazy import `@opentelemetry/api` + fallback ALS dari TASK-11. Saat `IS_OTEL=true` dan package ter-install, `getTraceId()` otomatis baca dari OTel active span.
 
 ---
 
@@ -239,69 +249,26 @@ import { NestFactory } from '@nestjs/core';
 // ... rest of existing main.ts (tidak diubah)
 ```
 
-### 4. Modify `trace-context.ts` — read traceId dari OTel active span
+### 4. trace-context.ts — TIDAK perlu modify
 
-```ts
-import { trace, context } from '@opentelemetry/api';
-import { AsyncLocalStorage } from 'node:async_hooks';
+TASK-11 sudah mengimplementasi `IS_OTEL` toggle di `trace-context.ts` dengan:
 
-// AsyncLocalStorage tetap dipertahankan sebagai fallback
-interface TraceContext {
-  traceId: string;
-  paymentId?: string;
-}
-const als = new AsyncLocalStorage<TraceContext>();
+- `const IS_OTEL = process.env.IS_OTEL === 'true'`
+- `getTraceId()` async: bila `IS_OTEL=true`, lazy `await import('@opentelemetry/api')` → baca active span → fallback ALS
+- `getTraceIdSync()`: sync version untuk pino mixin (tidak support OTel, ALS only)
+- `withTrace()`: set ALS context untuk fallback compatibility
 
-/**
- * Get traceId — prefer OTel active span, fallback ke AsyncLocalStorage.
- *
- * Bila OTel SDK aktif (NODE_ENV !== 'test'), traceId dari OTel context
- * adalah trace ID yang di-generate oleh auto-instrumentation (HTTP server span).
- * Trace ID ini sama dengan yang di-export ke Jaeger.
- *
- * Bila OTel SDK tidak aktif (test env, atau SDK belum start), fallback
- * ke AsyncLocalStorage (TASK-11 simplified behavior).
- */
-export function getTraceId(): string | undefined {
-  // Try OTel first
-  const span = trace.getSpan(context.active());
-  if (span) {
-    const traceId = span.spanContext().traceId;
-    if (traceId) return traceId;
-  }
+Saat TASK-11b dieksekusi:
+1. `@opentelemetry/api` ter-install → `await import('@opentelemetry/api')` sukses
+2. `IS_OTEL=true` di `.env` → `getTraceId()` coba OTel span dulu
+3. OTel SDK aktif (via `otel.ts`) → `trace.getSpan(context.active())` return active span
+4. Trace ID = OTel trace ID (sama dengan yang di-export ke Jaeger)
 
-  // Fallback to AsyncLocalStorage
-  return als.getStore()?.traceId;
-}
+Bila `IS_OTEL=true` TAPI TASK-11b belum dieksekusi (package belum install):
+- `await import('@opentelemetry/api')` → catch (module not found)
+- Fallback ALS → tetap berfungsi (TASK-11 simplified behavior)
 
-export function getTraceContext(): TraceContext | undefined {
-  const span = trace.getSpan(context.active());
-  if (span) {
-    const traceId = span.spanContext().traceId;
-    if (traceId) return { traceId, paymentId: als.getStore()?.paymentId };
-  }
-  return als.getStore();
-}
-
-/**
- * Wrap fn dengan trace context.
- * Bila OTel SDK aktif, context sudah di-set oleh auto-instrumentation —
- * withTrace hanya set AsyncLocalStorage fallback.
- * Bila OTel SDK tidak aktif, withTrace generate randomUUID sebagai traceId.
- */
-export function withTrace<T>(fn: () => Promise<T>, opts?: { paymentId?: string }): Promise<T> {
-  // Bila OTel active span sudah ada, context sudah propagate otomatis
-  const otelSpan = trace.getSpan(context.active());
-  if (otelSpan) {
-    // OTel context aktif — set AsyncLocalStorage untuk fallback compatibility
-    return als.run({ traceId: otelSpan.spanContext().traceId, ...opts }, fn);
-  }
-
-  // Fallback: generate custom traceId (TASK-11 behavior)
-  const traceId = crypto.randomUUID();
-  return als.run({ traceId, ...opts }, fn);
-}
-```
+**Tidak ada yang perlu diubah di `trace-context.ts`.**
 
 ### 5. Modify `payments.service.ts` — create custom span di executePayment
 
