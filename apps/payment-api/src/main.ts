@@ -2,18 +2,17 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
+import { Logger as PinoLogger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
-    bufferLogs: false,
-    logger: ['log', 'error', 'warn', 'debug'],
-  });
+  const app = await NestFactory.create(AppModule, { bufferLogs: false });
+  app.useLogger(app.get(PinoLogger));
+
   const config = app.get(ConfigService);
   const port = Number(process.env.PORT ?? config.get<number>('PORT') ?? 3001);
   const logger = new Logger('bootstrap');
 
-  // Global validation pipe (class-validator)
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -22,10 +21,8 @@ async function bootstrap() {
     }),
   );
 
-  // CORS: allow Next.js + Vue frontends
   app.enableCors({
     origin: (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) => {
-      // Allow same-origin, no-origin (curl), and known frontends
       const allowed: Array<string | undefined> = [
         undefined,
         null as unknown as string,
@@ -35,13 +32,12 @@ async function bootstrap() {
       if (allowed.includes(origin)) {
         cb(null, true);
       } else {
-        cb(null, true); // permissive for demo
+        cb(null, true);
       }
     },
     credentials: true,
   });
 
-  // Swagger
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Payment API')
     .setDescription('Cockatiel-based payment retry/failure scenario')

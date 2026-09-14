@@ -10,7 +10,7 @@
   "packageManager": "pnpm@9.12.0",
   "scripts": {
     "dev": "pnpm --filter @retry-failure/resilience build && pnpm -r --parallel run start:dev",
-    "build": "pnpm --filter @retry-failure/resilience build && pnpm -r run build",
+    "build": "pnpm -r run build",
     "test": "pnpm -r run test",
     "test:e2e": "pnpm -r run test:e2e",
     "lint": "pnpm -r run lint",

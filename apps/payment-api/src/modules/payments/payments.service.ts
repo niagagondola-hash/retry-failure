@@ -1,6 +1,7 @@
-import { Injectable, Inject, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Inject, Logger, Optional, NotFoundException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
+import { performance } from 'node:perf_hooks';
 import { PaymentRepository } from '../../database/repositories/payment.repository';
 import { Payment, PaymentStatus } from '../../database/entities';
 import { AttemptOutcome } from '../../database/entities/enums';
@@ -15,6 +16,8 @@ import { deriveIdempotencyKey } from '../gateway/idempotency-key';
 import { AUDIT_PORT, type AuditPort, type RecordAttemptInput, type AttemptView } from './audit/audit-port';
 import { assertCanTransition } from './state-machine';
 import type { CreatePaymentDto } from './dto/create-payment.dto';
+import { withTrace, getTraceId, setTracePaymentId } from '../observability/trace-context';
+import { MetricsService } from '../observability/metrics.service';
 
 export interface ExecuteOptions {
   source: 'api' | 'scheduler' | 'manual';
@@ -50,6 +53,7 @@ export class PaymentsService {
     @Inject(PAYMENT_GATEWAY_PORT) private readonly gateway: PaymentGatewayPort,
     @Inject(AUDIT_PORT) private readonly audit: AuditPort,
     config: ConfigService,
+    @Optional() private readonly metrics?: MetricsService,
   ) {
     this.maxTotalRetries = config.get<number>('MAX_TOTAL_RETRIES') ?? 5;
     this.schedulerBaseDelayMs = config.get<number>('SCHEDULER_BASE_DELAY_MS') ?? 30_000;
@@ -68,52 +72,68 @@ export class PaymentsService {
       nextRetryAt: null,
       failureReason: null,
     });
-    this.logger.log({ paymentId: payment.id, orderId: payment.orderId }, 'payment created');
+    this.logger.log({ paymentId: payment.id, orderId: payment.orderId, traceId: getTraceId() }, 'payment created');
+    this.metrics?.incPaymentStatus('processing');
 
+    const start = performance.now();
     const updated = await this.executePayment(payment.id, { source: 'api' });
+    const durationMs = performance.now() - start;
+    this.metrics?.observeProcessingDuration(durationMs);
+    this.logger.log({
+      paymentId: payment.id,
+      finalStatus: updated.status,
+      attemptCount: updated.attemptCount,
+      totalRetryCount: updated.totalRetryCount,
+      durationMs,
+      traceId: getTraceId(),
+    }, 'payment finished');
+
     return this.toView(updated);
   }
 
   async executePayment(paymentId: string, options: ExecuteOptions): Promise<Payment> {
-    const payment = await this.payments.findById(paymentId);
-    if (!payment) throw new NotFoundException(`Payment ${paymentId} not found`);
+    return withTrace(async () => {
+      const payment = await this.payments.findById(paymentId);
+      if (!payment) throw new NotFoundException(`Payment ${paymentId} not found`);
 
-    const previousStatus = payment.status;
-    assertCanTransition(previousStatus, PaymentStatus.PROCESSING);
+      const previousStatus = payment.status;
+      assertCanTransition(previousStatus, PaymentStatus.PROCESSING);
 
-    const switched = await this.payments.atomicUpdateStatus(paymentId, previousStatus, {
-      status: PaymentStatus.PROCESSING,
-      attemptCount: 0,
-      failureReason: null,
-    });
-    if (!switched) {
-      throw new BadRequestException(`Payment ${paymentId} status changed concurrently`);
-    }
-
-    const traceId = randomUUID();
-    const idempotencyKey = deriveIdempotencyKey(paymentId);
-
-    this.attachAuditCallback(traceId, idempotencyKey);
-
-    let result: ChargeResult;
-    try {
-      result = await this.gateway.charge({
-        paymentId,
-        orderId: payment.orderId,
-        amount: payment.amount,
-        currency: payment.currency,
+      const switched = await this.payments.atomicUpdateStatus(paymentId, previousStatus, {
+        status: PaymentStatus.PROCESSING,
+        attemptCount: 0,
+        failureReason: null,
       });
-    } catch (err) {
-      this.logger.error({ paymentId, err }, 'gateway.charge threw unexpectedly');
-      result = {
-        status: 'failed',
-        replayed: false,
-        errorCode: 'unexpected_exception',
-        errorMessage: err instanceof Error ? err.message : String(err),
-      };
-    }
+      if (!switched) {
+        throw new BadRequestException(`Payment ${paymentId} status changed concurrently`);
+      }
 
-    return this.applyOutcome(paymentId, result, { traceId, idempotencyKey, source: options.source });
+      setTracePaymentId(paymentId);
+      const traceId = getTraceId() ?? randomUUID();
+      const idempotencyKey = deriveIdempotencyKey(paymentId);
+
+      this.attachAuditCallback(traceId, idempotencyKey);
+
+      let result: ChargeResult;
+      try {
+        result = await this.gateway.charge({
+          paymentId,
+          orderId: payment.orderId,
+          amount: payment.amount,
+          currency: payment.currency,
+        });
+      } catch (err) {
+        this.logger.error({ paymentId, traceId, err }, 'gateway.charge threw unexpectedly');
+        result = {
+          status: 'failed',
+          replayed: false,
+          errorCode: 'unexpected_exception',
+          errorMessage: err instanceof Error ? err.message : String(err),
+        };
+      }
+
+      return this.applyOutcome(paymentId, result, { traceId, idempotencyKey, source: options.source });
+    }, { paymentId, source: options.source });
   }
 
   private async applyOutcome(
@@ -125,7 +145,9 @@ export class PaymentsService {
       await this.atomicTransition(paymentId, PaymentStatus.FAILED, {
         failureReason: result.errorMessage ?? result.errorCode ?? 'permanent_failure',
       });
-      this.logger.warn({ paymentId, errorCode: result.errorCode }, 'payment permanent failure → failed');
+      this.metrics?.decPaymentStatus('processing');
+      this.metrics?.incPaymentStatus('failed');
+      this.logger.warn({ paymentId, traceId: ctx.traceId, errorCode: result.errorCode, event: 'permanent_failure' }, 'payment permanent failure → failed');
       return (await this.payments.findById(paymentId))!;
     }
 
@@ -133,7 +155,9 @@ export class PaymentsService {
       await this.atomicTransition(paymentId, PaymentStatus.SUCCEEDED, {
         gatewayReference: result.gatewayReference ?? null,
       });
-      this.logger.log({ paymentId, gatewayReference: result.gatewayReference }, 'payment succeeded');
+      this.metrics?.decPaymentStatus('processing');
+      this.metrics?.incPaymentStatus('succeeded');
+      this.logger.log({ paymentId, traceId: ctx.traceId, gatewayReference: result.gatewayReference, event: 'payment_succeeded' }, 'payment succeeded');
       return (await this.payments.findById(paymentId))!;
     }
 
@@ -144,7 +168,9 @@ export class PaymentsService {
         await this.atomicTransition(paymentId, PaymentStatus.FAILED, {
           failureReason: 'max_total_retries_exceeded',
         });
-        this.logger.warn({ paymentId, totalRetryCount: current.totalRetryCount }, 'max_total_retries_exceeded → failed');
+        this.metrics?.decPaymentStatus('processing');
+        this.metrics?.incPaymentStatus('failed');
+        this.logger.warn({ paymentId, traceId: ctx.traceId, totalRetryCount: current.totalRetryCount, event: 'permanent_failure' }, 'max_total_retries_exceeded → failed');
         return (await this.payments.findById(paymentId))!;
       }
       const delayMs = result.retryAfterMs ?? this.schedulerBaseDelayMs;
@@ -154,8 +180,10 @@ export class PaymentsService {
         nextRetryAt,
         failureReason: result.errorMessage ?? result.errorCode ?? 'retry_exhausted',
       });
+      this.metrics?.decPaymentStatus('processing');
+      this.metrics?.incPaymentStatus('scheduled_for_retry');
       this.logger.log(
-        { paymentId, nextRetryAt, totalRetryCount: nextTotal, source: ctx.source },
+        { paymentId, traceId: ctx.traceId, nextRetryAt, totalRetryCount: nextTotal, source: ctx.source, event: 'retry_scheduled' },
         'payment scheduled for retry',
       );
       return (await this.payments.findById(paymentId))!;
@@ -164,7 +192,9 @@ export class PaymentsService {
     await this.atomicTransition(paymentId, PaymentStatus.FAILED, {
       failureReason: result.errorMessage ?? 'unknown_charge_result',
     });
-    this.logger.error({ paymentId, result }, 'unknown charge result mapping — fallback to failed');
+    this.metrics?.decPaymentStatus('processing');
+    this.metrics?.incPaymentStatus('failed');
+    this.logger.error({ paymentId, traceId: ctx.traceId, result }, 'unknown charge result mapping — fallback to failed');
     return (await this.payments.findById(paymentId))!;
   }
 
@@ -174,6 +204,8 @@ export class PaymentsService {
     if (payment.status !== PaymentStatus.FAILED && payment.status !== PaymentStatus.SCHEDULED_FOR_RETRY) {
       throw new BadRequestException(`Cannot manualRetry from status=${payment.status}`);
     }
+    this.metrics?.decPaymentStatus(payment.status);
+    this.metrics?.incPaymentStatus('processing');
     const updated = await this.executePayment(paymentId, { source: 'manual' });
     return this.toView(updated);
   }

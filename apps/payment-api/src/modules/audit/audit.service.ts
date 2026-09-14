@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { PaymentAttempt } from '../../database/entities/payment-attempt.entity';
 import { Payment } from '../../database/entities/payment.entity';
 import { PaymentRepository } from '../../database/repositories/payment.repository';
+import { getTraceId } from '../observability/trace-context';
 import {
   type AuditPort,
   type AttemptView,
@@ -32,7 +33,7 @@ export class AuditService implements AuditPort {
         delayBeforeNextMs: input.delayBeforeNextMs ?? null,
         breakerState: input.breakerState,
         durationMs: input.durationMs,
-        traceId: input.traceId ?? null,
+        traceId: input.traceId ?? getTraceId() ?? null,
         idempotencyKey: input.idempotencyKey,
         gatewayReference: input.gatewayReference ?? null,
         replayed: input.replayed,

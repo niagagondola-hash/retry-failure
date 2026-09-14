@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigAppModule } from './config/config.module';
 import { DatabaseModule } from './database/database.module';
+import { AppLoggerModule } from './modules/observability/logger.module';
+import { ObservabilityModule } from './modules/observability/observability.module';
 import { GatewayModule } from './modules/gateway/gateway.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { HealthModule } from './modules/health/health.module';
@@ -11,6 +13,8 @@ import { RetrySchedulerModule } from './modules/retry-scheduler/retry-scheduler.
 @Module({
   imports: [
     ConfigAppModule,
+    AppLoggerModule,
+    ObservabilityModule,
     DatabaseModule,
     GatewayModule,
     PaymentsModule,

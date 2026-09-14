@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import type { AxiosError, AxiosResponse } from 'axios';
 import { parseRetryAfter } from '@retry-failure/resilience';
+import { MetricsService } from '../observability/metrics.service';
 import type { PaymentGatewayPort } from './port';
 import type { ChargeRequest, ChargeResult } from './types';
 import { deriveIdempotencyKey } from './idempotency-key';
@@ -15,6 +16,7 @@ export class HttpPaymentGateway implements PaymentGatewayPort {
   constructor(
     private readonly http: HttpService,
     configService: ConfigService,
+    @Optional() private readonly metrics?: MetricsService,
   ) {
     this.baseUrl = configService.get<string>('GATEWAY_URL') ?? 'http://localhost:3002';
   }
@@ -22,6 +24,7 @@ export class HttpPaymentGateway implements PaymentGatewayPort {
   async charge(req: ChargeRequest): Promise<ChargeResult> {
     const idempotencyKey = deriveIdempotencyKey(req.paymentId);
     const url = `${this.baseUrl}/v1/charges`;
+    const start = performance.now();
 
     try {
       const response: AxiosResponse = await firstValueFrom(
@@ -41,9 +44,23 @@ export class HttpPaymentGateway implements PaymentGatewayPort {
         ),
       );
 
-      return this.mapSuccess(response);
+      const duration = performance.now() - start;
+      this.metrics?.observeGatewayDuration(duration);
+
+      const result = this.mapSuccess(response);
+      this.metrics?.incGatewayRequest('success', result.httpStatus ?? 200);
+      if (result.replayed) {
+        this.metrics?.incReplay();
+      }
+      return result;
     } catch (err) {
-      return this.mapError(err as AxiosError);
+      const duration = performance.now() - start;
+      this.metrics?.observeGatewayDuration(duration);
+
+      const result = this.mapError(err as AxiosError);
+      const httpStatus = result.httpStatus ?? (result.errorCode === 'ETIMEDOUT' ? 'timeout' : 'network_error');
+      this.metrics?.incGatewayRequest('failure', httpStatus);
+      return result;
     }
   }
 

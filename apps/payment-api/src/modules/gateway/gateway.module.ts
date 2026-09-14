@@ -11,15 +11,17 @@ import {
   DEFAULT_RESILIENCE_CONFIG,
   type ResilienceConfig,
 } from '@retry-failure/resilience';
+import { ObservabilityModule } from '../observability/observability.module';
+import { MetricsService } from '../observability/metrics.service';
 
 @Module({
-  imports: [HttpModule],
+  imports: [HttpModule, ObservabilityModule],
   providers: [
     {
       provide: HttpPaymentGateway,
-      inject: [HttpService, ConfigService],
-      useFactory: (http: HttpService, config: ConfigService) =>
-        new HttpPaymentGateway(http, config),
+      inject: [HttpService, ConfigService, MetricsService],
+      useFactory: (http: HttpService, config: ConfigService, metrics: MetricsService) =>
+        new HttpPaymentGateway(http, config, metrics),
     },
     {
       provide: ResilientPaymentGateway,
