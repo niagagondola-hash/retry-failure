@@ -6,6 +6,7 @@ import { GatewayModule } from './modules/gateway/gateway.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { HealthModule } from './modules/health/health.module';
 import { MetricsModule } from './modules/metrics/metrics.module';
+import { RetrySchedulerModule } from './modules/retry-scheduler/retry-scheduler.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { MetricsModule } from './modules/metrics/metrics.module';
     PaymentsModule,
     HealthModule,
     MetricsModule,
+    RetrySchedulerModule,
     ScheduleModule.forRoot(),
   ],
 })

@@ -67,3 +67,20 @@ pnpm dev
 - **Validation**: class-validator + class-transformer
 - **Container**: Docker multi-stage + docker-compose
 - **Frontend**: Next.js (sandbox preview) + Vue 3 + PrimeVue (full dashboard)
+
+## Useful command
+```bash
+#type check
+pnpm typecheck
+
+#lint check
+pnpm lint
+
+#Run development mode single
+cd apps/payment-api && pnpm start:dev
+cd apps/payment-gateway-mock && pnpm start:dev
+cd apps/frontend-vue && pnpm dev
+
+#run test single file
+pnpm --filter payment-api test tests\modules\retry-scheduler\retry-scheduler.service.spec.ts
+```
