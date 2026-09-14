@@ -35,55 +35,25 @@ async function submit() {
 </script>
 
 <template>
-  <Button
-    label="Create Payment"
-    icon="pi pi-plus"
-    @click="visible = true"
-  />
-  <Dialog
-    v-model:visible="visible"
-    header="Create Payment"
-    modal
-    class="w-96"
-  >
+  <Button label="Create Payment" icon="pi pi-plus" @click="visible = true" />
+  <Dialog v-model:visible="visible" header="Create Payment" modal class="w-96">
     <div class="flex flex-col gap-3 p-3">
       <div class="flex flex-col gap-1">
         <label>Order ID</label>
-        <InputText
-          v-model="orderId"
-          placeholder="ORD-001"
-        />
+        <InputText v-model="orderId" placeholder="ORD-001" />
       </div>
       <div class="flex flex-col gap-1">
         <label>Amount</label>
-        <InputNumber
-          v-model="amount"
-          :min="1"
-          :max="1000000"
-          mode="decimal"
-          :min-fraction-digits="2"
-        />
+        <InputNumber v-model="amount" :min="1" :max="1000000" mode="decimal" :minFractionDigits="2" />
       </div>
       <div class="flex flex-col gap-1">
         <label>Currency</label>
-        <Select
-          v-model="currency"
-          :options="['IDR', 'USD', 'SGD', 'EUR']"
-        />
+        <Select v-model="currency" :options="['IDR', 'USD', 'SGD', 'EUR']" />
       </div>
     </div>
     <template #footer>
-      <Button
-        label="Cancel"
-        severity="secondary"
-        @click="visible = false"
-      />
-      <Button
-        label="Create"
-        icon="pi pi-check"
-        :loading="paymentsStore.loading"
-        @click="submit"
-      />
+      <Button label="Cancel" severity="secondary" @click="visible = false" />
+      <Button label="Create" icon="pi pi-check" @click="submit" :loading="paymentsStore.loading" />
     </template>
   </Dialog>
 </template>

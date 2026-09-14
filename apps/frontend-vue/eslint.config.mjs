@@ -1,3 +1,14 @@
+/**
+ * ESLint flat config for frontend-vue.
+ *
+ * tsconfigRootDir di-set eksplisit ke __dirname (folder package ini).
+ * Wajib untuk monorepo: typescript-eslint butuh tahu tsconfig.json mana
+ * yang dipakai untuk resolve types. Tanpa ini, parser complain
+ * "multiple candidate TSConfigRootDirs are present".
+ *
+ * eslint.config.mjs di-ignore dari type-checking karena file config ini
+ * sendiri tidak masuk di tsconfig.json include (file .mjs di root).
+ */
 import tseslint from 'typescript-eslint';
 import pluginVue from 'eslint-plugin-vue';
 import vueParser from 'vue-eslint-parser';
@@ -9,7 +20,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default tseslint.config(
   {
-    // 1. Target Ignore Global
     ignores: [
       'dist/**',
       'node_modules/**',
@@ -17,17 +27,14 @@ export default tseslint.config(
       '**/*.config.{mjs,js,ts}',
     ],
   },
-  // 2. Load Rekomendasi Rules
   ...tseslint.configs.recommended,
   ...pluginVue.configs['flat/recommended'],
-  
-  // 3. Konfigurasi Khusus File TS dan VUE (Agar type-checking monorepo berjalan)
   {
-    files: ['**/*.ts', '**/*.tsx', '**/*.vue'],
+    files: ['**/*.vue'],
     languageOptions: {
-      parser: vueParser, // Wajib vue-eslint-parser di tingkat atas untuk file .vue
+      parser: vueParser,
       parserOptions: {
-        parser: tsParser, // Gunakan tsParser untuk blok <script lang="ts"> dan file .ts
+        parser: tsParser,
         sourceType: 'module',
         tsconfigRootDir: __dirname,
         project: ['./tsconfig.json'],
@@ -35,15 +42,16 @@ export default tseslint.config(
       },
     },
   },
-  
-  // 4. Kustomisasi Rules Anda
   {
-    files: ['**/*.ts', '**/*.tsx', '**/*.vue'],
+    languageOptions: {
+      parserOptions: {
+        tsconfigRootDir: __dirname,
+        project: ['./tsconfig.json'],
+      },
+    },
     rules: {
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'warn',
-      // Anda bisa menambahkan rules auto-fix vue di sini jika diperlukan, contoh:
-      'vue/html-indent': ['error', 2], 
     },
   },
 );

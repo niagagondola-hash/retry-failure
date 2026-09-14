@@ -20,26 +20,18 @@ const replayCount = computed(() => metricsStore.parsed?.gatewayIdempotentReplays
 
 <template>
   <Card>
-    <template #title>
-      Circuit Breaker
-    </template>
+    <template #title>Circuit Breaker</template>
     <template #content>
       <div class="flex flex-col gap-2">
         <div class="flex items-center justify-between">
           <span>State:</span>
-          <Tag
-            :severity="breakerState.severity"
-            :value="breakerState.label"
-          />
+          <Tag :severity="breakerState.severity" :value="breakerState.label" />
         </div>
         <div class="flex items-center justify-between">
           <span>Replays:</span>
           <span class="font-bold">{{ replayCount }}</span>
         </div>
-        <div
-          v-if="metricsStore.lastUpdated"
-          class="text-xs text-gray-500"
-        >
+        <div v-if="metricsStore.lastUpdated" class="text-xs text-gray-500">
           Updated: {{ metricsStore.lastUpdated.toLocaleTimeString() }}
         </div>
       </div>

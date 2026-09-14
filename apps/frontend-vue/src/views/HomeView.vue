@@ -30,33 +30,21 @@ const scheduledCount = computed(() => paymentsStore.list.filter(p => p.status ==
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
     <!-- Stats Cards -->
     <Card>
-      <template #title>
-        Total Payments
-      </template>
+      <template #title>Total Payments</template>
       <template #content>
-        <div class="text-3xl font-bold">
-          {{ paymentsStore.list.length }}
-        </div>
+        <div class="text-3xl font-bold">{{ paymentsStore.list.length }}</div>
       </template>
     </Card>
     <Card>
-      <template #title>
-        Succeeded
-      </template>
+      <template #title>Succeeded</template>
       <template #content>
-        <div class="text-3xl font-bold text-green-600">
-          {{ succeededCount }}
-        </div>
+        <div class="text-3xl font-bold text-green-600">{{ succeededCount }}</div>
       </template>
     </Card>
     <Card>
-      <template #title>
-        Failed
-      </template>
+      <template #title>Failed</template>
       <template #content>
-        <div class="text-3xl font-bold text-red-600">
-          {{ failedCount }}
-        </div>
+        <div class="text-3xl font-bold text-red-600">{{ failedCount }}</div>
       </template>
     </Card>
 
@@ -65,13 +53,9 @@ const scheduledCount = computed(() => paymentsStore.list.filter(p => p.status ==
     <div class="flex flex-col gap-4">
       <CreatePaymentDialog @created="paymentsStore.fetchList()" />
       <Card>
-        <template #title>
-          Scheduled for Retry
-        </template>
+        <template #title>Scheduled for Retry</template>
         <template #content>
-          <div class="text-3xl font-bold text-yellow-600">
-            {{ scheduledCount }}
-          </div>
+          <div class="text-3xl font-bold text-yellow-600">{{ scheduledCount }}</div>
         </template>
       </Card>
     </div>
@@ -85,40 +69,19 @@ const scheduledCount = computed(() => paymentsStore.list.filter(p => p.status ==
     <!-- Recent Payments -->
     <div class="col-span-full">
       <Card>
-        <template #title>
-          Recent Payments
-        </template>
+        <template #title>Recent Payments</template>
         <template #content>
-          <DataTable
-            :value="paymentsStore.list.slice(0, 5)"
-            :loading="paymentsStore.loading"
-            class="p-datatable-sm"
-          >
-            <Column
-              field="orderId"
-              header="Order ID"
-            />
-            <Column
-              field="amount"
-              header="Amount"
-            />
-            <Column
-              field="currency"
-              header="Currency"
-            />
+          <DataTable :value="paymentsStore.list.slice(0, 5)" :loading="paymentsStore.loading" class="p-datatable-sm">
+            <Column field="orderId" header="Order ID" />
+            <Column field="amount" header="Amount" />
+            <Column field="currency" header="Currency" />
             <Column header="Status">
               <template #body="slotProps">
                 <StatusTag :status="slotProps.data.status" />
               </template>
             </Column>
-            <Column
-              field="attemptCount"
-              header="Attempts"
-            />
-            <Column
-              field="totalRetryCount"
-              header="Retries"
-            />
+            <Column field="attemptCount" header="Attempts" />
+            <Column field="totalRetryCount" header="Retries" />
           </DataTable>
         </template>
       </Card>

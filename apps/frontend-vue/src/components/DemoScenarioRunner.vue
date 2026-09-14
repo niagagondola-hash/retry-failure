@@ -104,21 +104,12 @@ const severityMap: Record<string, string> = {
 
 <template>
   <Card>
-    <template #title>
-      Demo Scenario Runner
-    </template>
+    <template #title>Demo Scenario Runner</template>
     <template #content>
       <div class="flex flex-col gap-2">
-        <div
-          v-for="(result, i) in results"
-          :key="i"
-          class="flex items-center justify-between gap-2"
-        >
+        <div v-for="(result, i) in results" :key="i" class="flex items-center justify-between gap-2">
           <div class="flex items-center gap-2">
-            <Tag
-              :severity="severityMap[result.status]"
-              :value="result.status.toUpperCase()"
-            />
+            <Tag :severity="severityMap[result.status]" :value="result.status.toUpperCase()" />
             <span>{{ result.name }}</span>
           </div>
           <Button
@@ -129,14 +120,8 @@ const severityMap: Record<string, string> = {
             @click="[runDemoA, runDemoB, runDemoC, runDemoD, runDemoE][i]()"
           />
         </div>
-        <div
-          v-for="(result, i) in results"
-          :key="'msg-' + i"
-        >
-          <div
-            v-if="result.message"
-            class="text-xs text-red-500 mt-1"
-          >
+        <div v-for="(result, i) in results" :key="'msg-' + i">
+          <div v-if="result.message" class="text-xs text-red-500 mt-1">
             {{ result.name }}: {{ result.message }}
           </div>
         </div>
