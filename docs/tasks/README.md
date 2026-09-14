@@ -76,7 +76,8 @@ Adaptasi lingkungan spesifik (port conflict, pnpm availability, Docker availabil
 | 6-a | `TASK-08-audit-trail.md` | Attempt audit (TypeORM PaymentAttempt service) | 2-a | S |
 | 6-b | `TASK-09-api-routes.md` | NestJS controllers (payments/health/metrics) | 5, 6-a | M |
 | 7 | `TASK-10-retry-scheduler.md` | Durable retry scheduler (`@nestjs/schedule`) | 6-b | M |
-| 8 | `TASK-11-observability.md` | nestjs-pino + prom-client + OTel | 3, 5 | M |
+| 8 | `TASK-11-observability.md` | nestjs-pino + prom-client + OTel (simplified AsyncLocalStorage) | 3, 5 | M |
+| 8b | `TASK-11b-otel-sdk.md` | Full OTel SDK + Jaeger export (extension, butuh Docker) | 8 | M |
 | 9 | `TASK-12-nextjs-preview.md` | Next.js frontend (dashboard ringkas) | 6-b | M |
 | 10 | `TASK-13-vue-frontend.md` | Vue 3 + PrimeVue dashboard (`apps/frontend-vue`) | 6-b | L |
 | 11 | `TASK-14-e2e-scenarios.md` | E2E: Jest+supertest + Agent Browser | 7, 8, 9, 10 | M |
