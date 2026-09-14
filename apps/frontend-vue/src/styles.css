@@ -1,0 +1,24 @@
+/* Custom styles for Cockatiel Retry Dashboard */
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.container {
+  max-width: 1200px;
+}
+
+/* Dark mode overrides */
+.app-dark body {
+  background-color: #1a1a1a;
+  color: #e0e0e0;
+}
+
+.app-dark header {
+  background-color: #1a1a1a !important;
+}
+
+.app-dark footer {
+  background-color: #1a1a1a !important;
+}

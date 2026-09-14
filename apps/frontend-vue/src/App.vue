@@ -1,41 +1,52 @@
 <script setup lang="ts">
-// Placeholder — full dashboard built in TASK-13.
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
+const isDark = ref(false);
+
+function toggleDark() {
+  isDark.value = !isDark.value;
+  document.documentElement.classList.toggle('app-dark', isDark.value);
+}
 </script>
 
 <template>
-  <div class="placeholder">
-    <h1>Retry Failure — Vue Dashboard (PrimeVue)</h1>
-    <p>
-      This is a placeholder Vue app. Full dashboard will be built in
-      <strong>TASK-13</strong> (Vue 3 + PrimeVue + Pinia + Vue Router).
-    </p>
-    <p>
-      Backend API: <code>{{ backendApiUrl }}</code>
-    </p>
+  <div class="min-h-screen flex flex-col">
+    <!-- Sticky Header -->
+    <header class="border-b sticky top-0 z-50 bg-white dark:bg-gray-900">
+      <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-4">
+          <h1 class="text-lg font-bold cursor-pointer" @click="router.push('/')">
+            Cockatiel Retry Dashboard
+          </h1>
+          <nav class="flex gap-3">
+            <RouterLink to="/" class="text-sm hover:text-blue-500">Home</RouterLink>
+            <RouterLink to="/payments" class="text-sm hover:text-blue-500">Payments</RouterLink>
+            <RouterLink to="/metrics" class="text-sm hover:text-blue-500">Metrics</RouterLink>
+          </nav>
+        </div>
+        <Button
+          :icon="isDark ? 'pi pi-sun' : 'pi pi-moon'"
+          severity="secondary"
+          text
+          @click="toggleDark"
+        />
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1">
+      <RouterView />
+    </main>
+
+    <!-- Sticky Footer -->
+    <footer class="mt-auto border-t bg-gray-50 dark:bg-gray-900 py-3">
+      <div class="container mx-auto px-4 text-center text-xs text-gray-500">
+        Cockatiel Retry Failure Demo — Payment Processing with Resilience
+      </div>
+    </footer>
+
+    <Toast />
   </div>
 </template>
-
-<script lang="ts">
-export default {
-  data() {
-    return {
-      backendApiUrl: import.meta.env.VITE_PAYMENT_API_URL ?? 'http://localhost:3001',
-    };
-  },
-};
-</script>
-
-<style scoped>
-.placeholder {
-  font-family: system-ui, -apple-system, sans-serif;
-  padding: 2rem;
-  max-width: 720px;
-  margin: 0 auto;
-}
-.placeholder code {
-  background: #f3f4f6;
-  padding: 0.1rem 0.4rem;
-  border-radius: 4px;
-  font-family: ui-monospace, monospace;
-}
-</style>
