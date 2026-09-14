@@ -36,7 +36,7 @@ import type {
   AttemptDetail,
   OnAttemptCallback,
 } from './types';
-import { classifyError, type ClassifiableInput } from '../errors';
+import { classifyError, type ClassifiableInput } from '../errors/index';
 
 export interface ExecuteOptions<T> {
   /** Logical name of dependency (e.g. 'payment-gateway'). */
