@@ -31,20 +31,27 @@ async function retry() {
 </script>
 
 <template>
-  <div class="p-4" v-if="paymentsStore.current">
+  <div
+    v-if="paymentsStore.current"
+    class="p-4"
+  >
     <div class="flex items-center justify-between mb-4">
-      <h2 class="text-xl font-bold">Payment Detail</h2>
+      <h2 class="text-xl font-bold">
+        Payment Detail
+      </h2>
       <Button
         v-if="canRetry"
         label="Manual Retry"
         icon="pi pi-refresh"
-        @click="retry"
         :loading="paymentsStore.loading"
+        @click="retry"
       />
     </div>
 
     <Card class="mb-4">
-      <template #title>Payment Info</template>
+      <template #title>
+        Payment Info
+      </template>
       <template #content>
         <div class="grid grid-cols-2 gap-3">
           <div><strong>ID:</strong> {{ paymentsStore.current.payment.id }}</div>
@@ -67,18 +74,26 @@ async function retry() {
     </Card>
 
     <Card>
-      <template #title>Attempt History ({{ paymentsStore.current.attempts.length }})</template>
+      <template #title>
+        Attempt History ({{ paymentsStore.current.attempts.length }})
+      </template>
       <template #content>
         <AttemptTimeline :attempts="paymentsStore.current.attempts" />
       </template>
     </Card>
   </div>
 
-  <div v-else-if="paymentsStore.loading" class="p-4">
+  <div
+    v-else-if="paymentsStore.loading"
+    class="p-4"
+  >
     <ProgressSpinner />
   </div>
 
-  <div v-else class="p-4 text-center text-gray-500">
+  <div
+    v-else
+    class="p-4 text-center text-gray-500"
+  >
     Payment not found.
   </div>
 </template>

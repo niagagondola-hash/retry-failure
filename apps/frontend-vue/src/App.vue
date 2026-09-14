@@ -17,13 +17,31 @@ function toggleDark() {
     <header class="border-b sticky top-0 z-50 bg-white dark:bg-gray-900">
       <div class="container mx-auto px-4 py-3 flex items-center justify-between">
         <div class="flex items-center gap-4">
-          <h1 class="text-lg font-bold cursor-pointer" @click="router.push('/')">
+          <h1
+            class="text-lg font-bold cursor-pointer"
+            @click="router.push('/')"
+          >
             Cockatiel Retry Dashboard
           </h1>
           <nav class="flex gap-3">
-            <RouterLink to="/" class="text-sm hover:text-blue-500">Home</RouterLink>
-            <RouterLink to="/payments" class="text-sm hover:text-blue-500">Payments</RouterLink>
-            <RouterLink to="/metrics" class="text-sm hover:text-blue-500">Metrics</RouterLink>
+            <RouterLink
+              to="/"
+              class="text-sm hover:text-blue-500"
+            >
+              Home
+            </RouterLink>
+            <RouterLink
+              to="/payments"
+              class="text-sm hover:text-blue-500"
+            >
+              Payments
+            </RouterLink>
+            <RouterLink
+              to="/metrics"
+              class="text-sm hover:text-blue-500"
+            >
+              Metrics
+            </RouterLink>
           </nav>
         </div>
         <Button

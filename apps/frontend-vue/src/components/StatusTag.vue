@@ -15,5 +15,8 @@ const severity = computed(() => {
 </script>
 
 <template>
-  <Tag :severity="severity" :value="status" />
+  <Tag
+    :severity="severity"
+    :value="status"
+  />
 </template>
