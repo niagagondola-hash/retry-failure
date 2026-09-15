@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { PaymentsService } from '../payments/payments.service';
 import { PaymentRepository } from '../../database/repositories/payment.repository';
+import { PaymentStatus } from '../../database/entities/enums';
 import type { Payment } from '../../database/entities/payment.entity';
 
 const DEFAULT_INTERVAL_MS = 5000;
@@ -85,11 +86,41 @@ export class RetrySchedulerService implements OnApplicationBootstrap {
 
   private async processOne(payment: Payment): Promise<void> {
     const paymentId = payment.id;
-    const totalRetryCount = payment.totalRetryCount;
+    const currentTotal = payment.totalRetryCount;
+
+    // PLAN1 section 10.2: "increment durable retry count" happens in the scheduler.
+    // The scheduler increments totalRetryCount BEFORE calling executePayment,
+    // representing "scheduler is attempting this payment for the Nth time".
+    //
+    // MAX_TOTAL_RETRIES check: if already at max, mark as failed.
+    // This allows exactly MAX_TOTAL_RETRIES scheduler cycles (0→1→2→...→MAX).
+    if (currentTotal >= this.maxTotalRetries) {
+      this.logger.warn(
+        { paymentId, totalRetryCount: currentTotal, max: this.maxTotalRetries },
+        '[scheduler] max_total_retries_exceeded → failed',
+      );
+      await this.payments.atomicUpdateStatus(paymentId, PaymentStatus.SCHEDULED_FOR_RETRY, {
+        status: PaymentStatus.FAILED,
+        failureReason: 'max_total_retries_exceeded',
+        nextRetryAt: null,
+      });
+      return;
+    }
+
+    // Increment totalRetryCount — scheduler is attempting this payment.
+    const newTotal = currentTotal + 1;
+    const incremented = await this.payments.atomicUpdateStatus(paymentId, PaymentStatus.SCHEDULED_FOR_RETRY, {
+      totalRetryCount: newTotal,
+    });
+    if (!incremented) {
+      // Status changed concurrently (another scheduler instance or manual retry).
+      this.logger.warn({ paymentId }, '[scheduler] payment status changed concurrently — skip');
+      return;
+    }
 
     try {
       this.logger.log(
-        { paymentId, totalRetryCount, nextRetryAt: payment.nextRetryAt },
+        { paymentId, totalRetryCount: newTotal, nextRetryAt: payment.nextRetryAt },
         '[scheduler] picked paymentId',
       );
 

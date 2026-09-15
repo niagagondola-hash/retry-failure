@@ -162,28 +162,22 @@ export class PaymentsService {
     }
 
     if (result.errorCode === 'circuit_open' || result.attempts !== undefined) {
-      const current = (await this.payments.findById(paymentId))!;
-      const nextTotal = current.totalRetryCount + 1;
-      if (nextTotal > this.maxTotalRetries) {
-        await this.atomicTransition(paymentId, PaymentStatus.FAILED, {
-          failureReason: 'max_total_retries_exceeded',
-        });
-        this.metrics?.decPaymentStatus('processing');
-        this.metrics?.incPaymentStatus('failed');
-        this.logger.warn({ paymentId, traceId: ctx.traceId, totalRetryCount: current.totalRetryCount, event: 'permanent_failure' }, 'max_total_retries_exceeded → failed');
-        return (await this.payments.findById(paymentId))!;
-      }
+      // Per PLAN1 section 10.2: totalRetryCount is incremented by the
+      // RetryScheduler when it picks up the payment — NOT here in applyOutcome.
+      // This method is called for BOTH:
+      //   - Initial inline cycle (source='api'): totalRetryCount stays 0
+      //   - Scheduler cycle (source='scheduler'): scheduler already incremented
+      //     totalRetryCount BEFORE calling executePayment, so we don't touch it here.
       const delayMs = result.retryAfterMs ?? this.schedulerBaseDelayMs;
       const nextRetryAt = new Date(Date.now() + delayMs);
       await this.atomicTransition(paymentId, PaymentStatus.SCHEDULED_FOR_RETRY, {
-        totalRetryCount: nextTotal,
         nextRetryAt,
         failureReason: result.errorMessage ?? result.errorCode ?? 'retry_exhausted',
       });
       this.metrics?.decPaymentStatus('processing');
       this.metrics?.incPaymentStatus('scheduled_for_retry');
       this.logger.log(
-        { paymentId, traceId: ctx.traceId, nextRetryAt, totalRetryCount: nextTotal, source: ctx.source, event: 'retry_scheduled' },
+        { paymentId, traceId: ctx.traceId, nextRetryAt, source: ctx.source, event: 'retry_scheduled' },
         'payment scheduled for retry',
       );
       return (await this.payments.findById(paymentId))!;
