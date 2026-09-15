@@ -1,3 +1,41 @@
+/**
+ * SCENARIO 1 — Transient Failure (fail-first-n=2)
+ * ===============================================
+ *
+ * Goal:
+ *   Verify that Cockatiel retry policy auto-recovers from transient 5xx errors.
+ *   Gateway mock returns 500 for first 2 calls, 200 on 3rd → payment succeeds
+ *   after exactly 3 attempts, with a consistent trace ID (single inline cycle,
+ *   scheduler NOT involved).
+ *
+ * Preconditions:
+ *   - PostgreSQL running + migrated
+ *   - payment-api :3001 listening
+ *   - gateway-mock :3002 listening
+ *   - DB clean (beforeAll calls cleanDb())
+ *   - Gateway mode set to 'fail-first-n' with n=2 in beforeAll
+ *
+ * Expected outcome:
+ *   - HTTP: 201 Created, payment.status='succeeded', attemptCount=3
+ *   - DB payment_attempts: 3 rows
+ *       [0] { outcome:'retryable_failure', httpStatus:500 }
+ *       [1] { outcome:'retryable_failure', httpStatus:500 }
+ *       [2] { outcome:'success',           httpStatus:200 }
+ *   - All 3 rows share SAME trace_id (inline cycle, no scheduler involvement)
+ *   - Metrics: retry_attempts_total{outcome='failure'} delta >= 2
+ *
+ * Flow diagram (rendered in MD):
+ *   See docs/tasks/TASK-14a-transient.md → section "3. Visualisasi Alur"
+ *
+ * Manual verification procedure (5 layers L1-L5):
+ *   See docs/tasks/TASK-14a-transient.md → section "5. Verifikasi Manual per Lapis"
+ *
+ * Run this file only:
+ *   pnpm test:e2e:transient
+ *   # or
+ *   pnpm exec jest --config ./tests/e2e/jest-e2e.json --runInBand \
+ *     tests/e2e/payments.transient.e2e-spec.ts
+ */
 import { setGatewayMode } from './helpers/gateway';
 import { createPayment, waitForTerminalStatus } from './helpers/payments';
 import { getMetric } from './helpers/metrics';
