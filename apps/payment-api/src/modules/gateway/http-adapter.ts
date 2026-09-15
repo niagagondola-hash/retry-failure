@@ -12,6 +12,20 @@ import { deriveIdempotencyKey } from './idempotency-key';
 @Injectable()
 export class HttpPaymentGateway implements PaymentGatewayPort {
   private readonly baseUrl: string;
+  /**
+   * Axios request timeout (ms).
+   *
+   * Set slightly below Cockatiel's GATEWAY_TIMEOUT_MS so axios fires FIRST,
+   * ensuring fn() body completes (and audit onAttempt is called) BEFORE
+   * Cockatiel's timeout policy moves on. Without this, axios waits for the
+   * full gateway response (e.g. 5s in always-timeout mode) while Cockatiel
+   * already advanced to the next retry — causing a race condition where late
+   * audit rows are written AFTER the payment is already scheduled_for_retry.
+   *
+   * Buffer of 200ms ensures axios fires before Cockatiel's Promise.race
+   * even with small clock/timer jitter.
+   */
+  private readonly timeoutMs: number;
 
   constructor(
     private readonly http: HttpService,
@@ -19,6 +33,8 @@ export class HttpPaymentGateway implements PaymentGatewayPort {
     @Optional() private readonly metrics?: MetricsService,
   ) {
     this.baseUrl = configService.get<string>('GATEWAY_URL') ?? 'http://localhost:3002';
+    const cockatielTimeout = configService.get<number>('GATEWAY_TIMEOUT_MS') ?? 2000;
+    this.timeoutMs = Math.max(100, cockatielTimeout - 200);
   }
 
   async charge(req: ChargeRequest): Promise<ChargeResult> {
@@ -40,6 +56,7 @@ export class HttpPaymentGateway implements PaymentGatewayPort {
               'Content-Type': 'application/json',
               'Idempotency-Key': idempotencyKey,
             },
+            timeout: this.timeoutMs,
           },
         ),
       );

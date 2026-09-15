@@ -71,7 +71,7 @@ describe('Scenario 3 - Circuit breaker (always-timeout, threshold=3)', () => {
       const payment = await createPayment({ orderId: `E2E-S3-${i}-${Date.now()}`, amount: 10000, currency: 'IDR' });
       const finalPayment = await waitForScheduledForRetry(payment.id, 30000);
       expect(finalPayment.status).toBe('scheduled_for_retry');
-      expect(finalPayment.attemptCount).toBe(3);
+      expect(finalPayment.attemptCount).toBe(4);
     }
 
     const breakerState = await getMetric('circuit_breaker_state', { service: 'payment-gateway' });
