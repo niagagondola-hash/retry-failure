@@ -8,11 +8,11 @@
  *   calling the gateway (fast-fail).
  *
  * Two sub-tests (run in order with --runInBand):
- *   1. "3 payments → all scheduled_for_retry + breaker OPEN"
- *      - Each payment: 3 inline attempts, all timeout → scheduled_for_retry
+ *   1. "3 payments -> all scheduled_for_retry + breaker OPEN"
+ *      - Each payment: 3 inline attempts, all timeout -> scheduled_for_retry
  *      - After 9 cumulative timeouts, breaker state=1 (OPEN)
- *   2. "4th payment → circuit_open in first attempt"
- *      - Breaker already OPEN → 1st attempt short-circuits
+ *   2. "4th payment -> circuit_open in first attempt"
+ *      - Breaker already OPEN -> 1st attempt short-circuits
  *      - attemptCount=1, outcome='circuit_open'
  *      - NO gateway call (verify via gateway /admin/stats: requestCount only +9, not +12)
  *
@@ -24,16 +24,16 @@
  *   - Gateway mode set to 'always-timeout' with timeoutMs=5000
  *
  * Expected outcome:
- *   - Sub-test 1: 3 payments × 3 attempts = 9 gateway timeouts, breaker→OPEN
+ *   - Sub-test 1: 3 payments × 3 attempts = 9 gateway timeouts, breaker->OPEN
  *   - Sub-test 2: payment 4 has attemptCount=1, outcome='circuit_open'
  *   - Metrics: circuit_breaker_state{service='payment-gateway'}=1 (OPEN)
  *   - Gateway stats: requestCount increased by 9 (NOT 12) for 4 payments
  *
  * Flow diagram (rendered in MD):
- *   See docs/tasks/TASK-14a-circuit-breaker.md → section "3. Visualisasi Alur"
+ *   See docs/tasks/TASK-14a-circuit-breaker.md -> section "3. Visualisasi Alur"
  *
  * Manual verification procedure (5 layers L1-L5):
- *   See docs/tasks/TASK-14a-circuit-breaker.md → section "5. Verifikasi Manual per Lapis"
+ *   See docs/tasks/TASK-14a-circuit-breaker.md -> section "5. Verifikasi Manual per Lapis"
  *
  * Run this file only:
  *   pnpm test:e2e:circuit-breaker
@@ -53,7 +53,7 @@ import { resetBreaker } from './helpers/breaker';
 import { queryAttempts } from './helpers/db';
 import { resetGatewayToHealthy, ensureDbConnected, closeDb } from './helpers/setup';
 
-describe('Scenario 3 — Circuit breaker (always-timeout, threshold=3)', () => {
+describe('Scenario 3 - Circuit breaker (always-timeout, threshold=3)', () => {
   beforeAll(async () => {
     await ensureDbConnected();
     await resetBreaker();
@@ -66,7 +66,7 @@ describe('Scenario 3 — Circuit breaker (always-timeout, threshold=3)', () => {
     await closeDb();
   });
 
-  it('3 payments → all scheduled_for_retry + breaker OPEN', async () => {
+  it('3 payments -> all scheduled_for_retry + breaker OPEN', async () => {
     for (let i = 1; i <= 3; i++) {
       const payment = await createPayment({ orderId: `E2E-S3-${i}-${Date.now()}`, amount: 10000, currency: 'IDR' });
       const finalPayment = await waitForScheduledForRetry(payment.id, 30000);
@@ -78,7 +78,7 @@ describe('Scenario 3 — Circuit breaker (always-timeout, threshold=3)', () => {
     expect(breakerState).toBe(1);
   }, 120000);
 
-  it('4th payment → circuit_open in first attempt', async () => {
+  it('4th payment -> circuit_open in first attempt', async () => {
     const payment = await createPayment({ orderId: `E2E-S3-4-${Date.now()}`, amount: 10000, currency: 'IDR' });
     const finalPayment = await waitForScheduledForRetry(payment.id, 30000);
     expect(finalPayment.status).toBe('scheduled_for_retry');

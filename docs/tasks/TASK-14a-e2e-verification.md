@@ -40,12 +40,12 @@ Untuk satu skenario yang dijalankan manual, idealnya simpan log dari **3 sumber*
 # Terminal 1 — payment-api + log
 cd apps/payment-api && PORT=3001 pnpm start:dev 2>&1 | tee ../../logs/e2e/payment-api-$(date +%s).log
 
-cd apps/payment-api; $env:PORT=3001; pnpm start:dev 2>&1 | Tee-Object -FilePath "..\logs\e2e\payment-api-$([DateTimeOffset]::Now.ToUnixTimeSeconds()).log"
+cd apps/payment-api; $env:PORT=3001; pnpm start:dev 2>&1 | Tee-Object -FilePath "..\logs\e2e\payment-api-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
 
 # Terminal 2 — gateway-mock + log
 cd apps/payment-gateway-mock && PORT=3002 pnpm start:dev 2>&1 | tee ../../logs/e2e/gateway-mock-$(date +%s).log
 
-cd apps/payment-gateway-mock; $env:PORT=3002; pnpm start:dev 2>&1 | Tee-Object -FilePath "..\logs\e2e\gateway-mock-$([DateTimeOffset]::Now.ToUnixTimeSeconds()).log"
+cd apps/payment-gateway-mock; $env:PORT=3002; pnpm start:dev 2>&1 | Tee-Object -FilePath "..\logs\e2e\gateway-mock-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
 
 # Terminal 3 — jest + log
 cd apps/payment-api && pnpm test:e2e:transient 2>&1 | tee ../logs/e2e/S1-transient-$(date +%s).log

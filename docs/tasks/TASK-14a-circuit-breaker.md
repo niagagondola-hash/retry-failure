@@ -28,7 +28,7 @@ mkdir -p ../logs/e2e
 
 pnpm test:e2e:circuit-breaker 2>&1 | tee ../logs/e2e/S3-circuit-breaker-$(date +%s).log
 
-pnpm test:e2e:circuit-breaker 2>&1 | Tee-Object -FilePath "..\logs\e2e\S3-circuit-breaker-$([DateTimeOffset]::Now.ToUnixTimeSeconds()).log"
+pnpm test:e2e:circuit-breaker 2>&1 | Tee-Object -FilePath "..\logs\e2e\S3-circuit-breaker-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
 ```
 
 **Atau tanpa named script**:

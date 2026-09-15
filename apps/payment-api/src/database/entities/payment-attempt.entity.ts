@@ -55,7 +55,7 @@ export class PaymentAttempt {
   @Column({ name: 'duration_ms', type: 'int' })
   durationMs!: number;
 
-  @Column({ name: 'trace_id', type: 'char', length: 32, nullable: true })
+  @Column({ name: 'trace_id', type: 'varchar', length: 64, nullable: true })
   traceId: string | null = null;
 
   @Column({ name: 'idempotency_key', type: 'varchar', length: 64 })
