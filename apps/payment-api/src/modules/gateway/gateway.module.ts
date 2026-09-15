@@ -25,10 +25,11 @@ import { MetricsService } from '../observability/metrics.service';
     },
     {
       provide: ResilientPaymentGateway,
-      inject: [HttpPaymentGateway, ConfigService],
+      inject: [HttpPaymentGateway, ConfigService, MetricsService],
       useFactory: (
         inner: HttpPaymentGateway,
         config: ConfigService,
+        metrics: MetricsService,
       ): ResilientPaymentGateway => {
         const resilienceConfig: ResilienceConfig = {
           ...DEFAULT_RESILIENCE_CONFIG,
@@ -44,6 +45,7 @@ import { MetricsService } from '../observability/metrics.service';
           inner,
           resilienceConfig,
           dependencyName: 'payment-gateway',
+          metrics,
         };
         return new ResilientPaymentGateway(opts);
       },

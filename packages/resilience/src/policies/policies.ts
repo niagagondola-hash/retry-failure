@@ -77,16 +77,16 @@ export function buildBreakerPolicy(
   });
 
   // Wire state change listeners (TASK-11 metrics)
-  // Cockatiel emits 'onBreak' (closed→open) and 'onHalfOpen' (open→half_open) events.
-  // 'onHalfOpen' dari cockatiel = breaker entered half-open trial.
-  // 'onBreak' = breaker opened.
-  // Untuk close event, tidak ada explicit listener — kita infer dari success di HALF_OPEN.
+  // Cockatiel v4 CircuitBreakerPolicy exposes:
+  //   - onBreak: fires when CLOSED → OPEN (failure threshold reached)
+  //   - onHalfOpen: fires when OPEN → HALF_OPEN (cooldown elapsed, trial call permitted)
+  //   - onReset: fires when HALF_OPEN → CLOSED (trial call succeeded)
+  // All three are wired so MetricsService.setBreakerState() receives every transition.
 
   if (onStateChange) {
     policy.onBreak(() => onStateChange('open'));
     policy.onHalfOpen(() => onStateChange('half_open'));
-    // Note: 'closed' transition tidak ada explicit event di Cockatiel 4.0.
-    // Untuk metrics, kita track via success setelah HALF_OPEN.
+    policy.onReset(() => onStateChange('closed'));
   }
 
   return policy;

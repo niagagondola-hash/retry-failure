@@ -35,6 +35,7 @@ import type {
   ResilienceOutcome,
   AttemptDetail,
   OnAttemptCallback,
+  OnBreakerStateChangeCallback,
 } from './types';
 import { classifyError, type ClassifiableInput } from '../errors/index';
 
@@ -47,6 +48,14 @@ export interface ExecuteOptions<T> {
   config: ResilienceConfig;
   /** Optional callback invoked on each attempt failure (for audit + metrics). */
   onAttempt?: OnAttemptCallback;
+  /**
+   * Optional callback invoked when circuit breaker state changes (CLOSED → OPEN, etc).
+   * Attached ONCE on first getBreaker() call (singleton). Subsequent calls with
+   * different callbacks are ignored (breaker already cached).
+   *
+   * Used by ResilientPaymentGateway (TASK-06) to wire MetricsService.setBreakerState().
+   */
+  onStateChange?: OnBreakerStateChangeCallback;
 }
 
 /**
@@ -55,10 +64,13 @@ export interface ExecuteOptions<T> {
  * Returns ResilienceOutcome yang berisi result/error + metadata untuk audit.
  */
 export async function executeWithResilience<T>(opts: ExecuteOptions<T>): Promise<ResilienceOutcome<T>> {
-  const { dependencyName, fn, config, onAttempt } = opts;
+  const { dependencyName, fn, config, onAttempt, onStateChange } = opts;
 
-  // Get singleton breaker
-  const breakerPolicy = getBreaker(dependencyName, config);
+  // Get singleton breaker — pass onStateChange so breaker state transitions
+  // (CLOSED → OPEN → HALF_OPEN → CLOSED) propagate to MetricsService.
+  // NOTE: onStateChange is captured in closure on FIRST creation only.
+  // Subsequent calls pass the same callback (adapter is singleton, so stable).
+  const breakerPolicy = getBreaker(dependencyName, config, onStateChange);
   const retryPolicy = buildRetryPolicy(config);
   const timeoutPolicy = buildTimeoutPolicy(config);
 
