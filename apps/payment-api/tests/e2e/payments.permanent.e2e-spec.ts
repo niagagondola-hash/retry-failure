@@ -62,7 +62,7 @@ describe('Scenario 2 — Permanent failure (client-error)', () => {
 
     expect(finalPayment.status).toBe('failed');
     expect(finalPayment.attemptCount).toBe(1);
-    expect(finalPayment.failureReason).toContain('invalid_card');
+    expect(finalPayment.failureReason).toContain('Card number invalid');
 
     expect(attempts).toHaveLength(1);
     expect(attempts[0].outcome).toBe('permanent_failure');
