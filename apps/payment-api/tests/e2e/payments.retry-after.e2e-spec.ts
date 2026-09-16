@@ -43,13 +43,14 @@ import { setGatewayMode } from './helpers/gateway';
 import { createPayment, waitForTerminalStatus } from './helpers/payments';
 import { queryAttempts } from './helpers/db';
 import { resetBreaker } from './helpers/breaker';
-import { resetGatewayToHealthy, ensureDbConnected, closeDb } from './helpers/setup';
+import { resetGatewayToHealthy, ensureDbConnected, cleanDb, closeDb } from './helpers/setup';
 
 describe('Scenario 5 — Retry-After (rate-limited, retryAfterSeconds=3)', () => {
   const orderId = `E2E-S5-${Date.now()}`;
 
   beforeAll(async () => {
     await ensureDbConnected();
+    await cleanDb();
     await resetBreaker();
     await setGatewayMode('rate-limited', { retryAfterSeconds: 3 });
   });
@@ -61,7 +62,7 @@ describe('Scenario 5 — Retry-After (rate-limited, retryAfterSeconds=3)', () =>
 
   it('should respect Retry-After header (delay >= 3000ms between attempts)', async () => {
     const payment = await createPayment({ orderId, amount: 25000, currency: 'IDR' });
-    const { payment: finalPayment, attempts } = await waitForTerminalStatus(payment.id, 60000);
+    const { attempts } = await waitForTerminalStatus(payment.id, 60000);
 
     // Verify attempts got 429
     const rateLimitedAttempts = attempts.filter((a) => a.httpStatus === 429);

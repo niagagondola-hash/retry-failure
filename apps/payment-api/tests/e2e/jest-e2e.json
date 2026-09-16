@@ -15,9 +15,9 @@
           "target": "ES2022",
           "esModuleInterop": true,
           "skipLibCheck": true,
-          "strict": false
-        },
-        "isolatedModules": true
+          "strict": false,
+          "isolatedModules": true
+        }
       }
     ]
   },

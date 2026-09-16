@@ -40,13 +40,14 @@
 import { setGatewayMode } from './helpers/gateway';
 import { createPayment, waitForTerminalStatus } from './helpers/payments';
 import { queryAttempts } from './helpers/db';
-import { resetGatewayToHealthy, ensureDbConnected, closeDb } from './helpers/setup';
+import { resetGatewayToHealthy, ensureDbConnected, cleanDb, closeDb } from './helpers/setup';
 
 describe('Scenario 2 — Permanent failure (client-error)', () => {
   const orderId = `E2E-S2-${Date.now()}`;
 
   beforeAll(async () => {
     await ensureDbConnected();
+    await cleanDb();
     await setGatewayMode('client-error');
   });
 

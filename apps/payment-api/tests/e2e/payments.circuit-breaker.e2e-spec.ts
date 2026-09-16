@@ -51,11 +51,12 @@ import { createPayment, waitForScheduledForRetry } from './helpers/payments';
 import { getMetric } from './helpers/metrics';
 import { resetBreaker } from './helpers/breaker';
 import { queryAttempts } from './helpers/db';
-import { resetGatewayToHealthy, ensureDbConnected, closeDb } from './helpers/setup';
+import { resetGatewayToHealthy, ensureDbConnected, cleanDb, closeDb } from './helpers/setup';
 
 describe('Scenario 3 - Circuit breaker (always-timeout, threshold=3)', () => {
   beforeAll(async () => {
     await ensureDbConnected();
+    await cleanDb();
     await resetBreaker();
     await setGatewayMode('always-timeout', { timeoutMs: 5000 });
   });
