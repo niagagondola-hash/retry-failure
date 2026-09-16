@@ -28,10 +28,10 @@
  *   - At least 1 attempt with delayBeforeNextMs >= 3000
  *
  * Flow diagram (rendered in MD):
- *   See docs/tasks/TASK-14a-retry-after.md → section "3. Visualisasi Alur"
+ *   See docs/tasks/TASK-14a-retry-after.md -> section "3. Visualisasi Alur"
  *
  * Manual verification procedure (5 layers L1-L5):
- *   See docs/tasks/TASK-14a-retry-after.md → section "5. Verifikasi Manual per Lapis"
+ *   See docs/tasks/TASK-14a-retry-after.md -> section "5. Verifikasi Manual per Lapis"
  *
  * Run this file only:
  *   pnpm test:e2e:retry-after

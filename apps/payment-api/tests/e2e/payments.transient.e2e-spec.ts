@@ -4,7 +4,7 @@
  *
  * Goal:
  *   Verify that Cockatiel retry policy auto-recovers from transient 5xx errors.
- *   Gateway mock returns 500 for first 2 calls, 200 on 3rd → payment succeeds
+ *   Gateway mock returns 500 for first 2 calls, 200 on 3rd -> payment succeeds
  *   after exactly 3 attempts, with a consistent trace ID (single inline cycle,
  *   scheduler NOT involved).
  *
@@ -25,10 +25,10 @@
  *   - Metrics: retry_attempts_total{outcome='failure'} delta >= 2
  *
  * Flow diagram (rendered in MD):
- *   See docs/tasks/TASK-14a-transient.md → section "3. Visualisasi Alur"
+ *   See docs/tasks/TASK-14a-transient.md -> section "3. Visualisasi Alur"
  *
  * Manual verification procedure (5 layers L1-L5):
- *   See docs/tasks/TASK-14a-transient.md → section "5. Verifikasi Manual per Lapis"
+ *   See docs/tasks/TASK-14a-transient.md -> section "5. Verifikasi Manual per Lapis"
  *
  * Run this file only:
  *   pnpm test:e2e:transient

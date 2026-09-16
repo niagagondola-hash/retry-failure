@@ -6,7 +6,7 @@
  *   fallback ke AsyncLocalStorage bila OTel SDK tidak di-load.
  *
  * Safe toggle: bila IS_OTEL=true TAPI TASK-11b belum dieksekusi (tidak ada
- * @opentelemetry/api), require() gagal → catch → fallback ALS. Tidak crash.
+ * @opentelemetry/api), require() gagal -> catch -> fallback ALS. Tidak crash.
  */
 
 import { AsyncLocalStorage } from 'node:async_hooks';

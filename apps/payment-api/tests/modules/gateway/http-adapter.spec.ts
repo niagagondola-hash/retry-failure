@@ -70,7 +70,7 @@ describe('HttpPaymentGateway — HTTP error (axios error with response)', () => 
     expect(result.errorCode).toBe('invalid_card');
   });
 
-  it('maps 429 rate-limited with Retry-After header → retryAfterMs', async () => {
+  it('maps 429 rate-limited with Retry-After header -> retryAfterMs', async () => {
     const http = mockHttpService();
     const gw = new HttpPaymentGateway(http as never, mockConfigService() as never);
     const axiosErr = {

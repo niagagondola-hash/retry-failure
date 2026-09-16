@@ -14,37 +14,37 @@ Membangun **dashboard user-facing resmi** dengan **Vue 3 + PrimeVue + Vite + Pin
 Tujuan utama:
 
 1. **Gateway mode selector** — form lengkap untuk PUT `/admin/config` ke gateway mock (port 3002). Select mode (`healthy` | `client-error` | `fail-first-n` | `always-timeout` | `rate-limited` | `response-disappear`) + dynamic InputNumber untuk parameter sesuai mode (`n`, `probability`, `retryAfterSeconds`, `timeoutMs`).
-2. **Create payment dialog** — Dialog dengan form `orderId` / `amount` / `currency` + validation. Submit → `POST /api/payments` ke port 3001. Setelah submit, store otomatis refetch list.
-3. **Payments list dengan filter + sort + pagination** — `GET /api/payments` di-render via PrimeVue `DataTable` dengan filter by status, sort by `createdAt` (dan kolom lain), paginator 20 rows/page. Klik row → navigasi ke route `/payments/:id`.
+2. **Create payment dialog** — Dialog dengan form `orderId` / `amount` / `currency` + validation. Submit -> `POST /api/payments` ke port 3001. Setelah submit, store otomatis refetch list.
+3. **Payments list dengan filter + sort + pagination** — `GET /api/payments` di-render via PrimeVue `DataTable` dengan filter by status, sort by `createdAt` (dan kolom lain), paginator 20 rows/page. Klik row -> navigasi ke route `/payments/:id`.
 4. **Payment detail dengan attempt history timeline** — `GET /api/payments/:id` mengembalikan `{ payment, attempts }`. Attempts di-render via PrimeVue `Timeline` menampilkan `attemptNumber` + `outcome` + `durationMs` + `breakerState` + `traceId`.
-5. **Manual retry** — tombol `POST /api/payments/:id/retry` hanya visible bila status ∈ {`failed`, `scheduled_for_retry`}. Bila `succeeded` → disabled dengan tooltip "Payment already succeeded".
+5. **Manual retry** — tombol `POST /api/payments/:id/retry` hanya visible bila status ∈ {`failed`, `scheduled_for_retry`}. Bila `succeeded` -> disabled dengan tooltip "Payment already succeeded".
 6. **Circuit breaker card** — polling metrics setiap 5 detik, menampilkan state breaker (`closed` | `half_open` | `open`) + reject count + last tripped time.
 7. **Metrics charts** — 3 PrimeVue `Chart` (wrapper Chart.js): Pie untuk status distribution, Line untuk request duration histogram, Bar untuk retry attempts.
-8. **Demo scenario runner A–E** — 5 tombol yang menjalankan end-to-end scenario: reset gateway mode → PUT target mode → POST new payment dengan unique `orderId` prefix → poll status sampai terminal (timeout 60s) → show Toast success/failure dengan assertion → tampilkan Dialog berisi result table semua demo run.
+8. **Demo scenario runner A–E** — 5 tombol yang menjalankan end-to-end scenario: reset gateway mode -> PUT target mode -> POST new payment dengan unique `orderId` prefix -> poll status sampai terminal (timeout 60s) -> show Toast success/failure dengan assertion -> tampilkan Dialog berisi result table semua demo run.
 
 ## Scope
 
 **In scope**:
 
 - `apps/frontend-vue/` — complete Vue 3 + Vite app setup (package.json, vite.config.ts, tsconfig, index.html, main.ts, App.vue).
-- `src/api/client.ts` — axios instance dengan `baseURL = http://localhost:3001` + response interceptor (error → toast).
+- `src/api/client.ts` — axios instance dengan `baseURL = http://localhost:3001` + response interceptor (error -> toast).
 - `src/api/payments.ts` — CRUD functions (`list`, `getById`, `create`, `retry`).
 - `src/api/gateway.ts` — admin config GET/PUT + stats GET.
-- `src/api/metrics.ts` — parser untuk Prometheus text format → structured object.
+- `src/api/metrics.ts` — parser untuk Prometheus text format -> structured object.
 - `src/stores/payments.ts` — Pinia store: `list`, `current`, `filters`, `loading`, `error`, actions `fetchList`, `fetchOne`, `create`, `retry`, `resetFilter`.
 - `src/stores/gateway.ts` — Pinia store: `config`, `stats`.
 - `src/stores/metrics.ts` — Pinia store: parsed metrics object + lastUpdated.
 - `src/router/index.ts` — routes `/`, `/payments`, `/payments/:id`, `/metrics`.
 - `src/composables/usePolling.ts` — generic polling helper (`usePolling(fn, intervalMs)` returns `{ start, stop, isPolling }`).
 - `src/views/HomeView.vue` — overview dashboard (cards: total payments, succeeded count, failed count, breaker state, mini chart).
-- `src/views/PaymentsView.vue` — PrimeVue `DataTable` dengan filter + sort + paginator + click row → navigate detail.
+- `src/views/PaymentsView.vue` — PrimeVue `DataTable` dengan filter + sort + paginator + click row -> navigate detail.
 - `src/views/PaymentDetailView.vue` — detail card + `AttemptTimeline` + manual retry button.
 - `src/views/MetricsView.vue` — 3 `Chart` components (Pie, Line, Bar) + raw metrics textarea (collapsible).
 - `src/components/GatewayModeSelector.vue` — Card berisi `Select` + 4 `InputNumber` (conditionally rendered based on mode).
 - `src/components/CreatePaymentDialog.vue` — `Dialog` dengan form + validation rules.
 - `src/components/DemoScenarioRunner.vue` — Card dengan 5 `Button` (A–E) + Badge status indicator + result Dialog.
 - `src/components/CircuitBreakerCard.vue` — `Card` + `Tag` state + auto-refresh via `usePolling`.
-- `src/components/StatusTag.vue` — `Tag` dengan severity mapping (`succeeded`→success, `failed`→danger, `processing`→info, `scheduled_for_retry`→warn, `circuit_open`→danger).
+- `src/components/StatusTag.vue` — `Tag` dengan severity mapping (`succeeded`->success, `failed`->danger, `processing`->info, `scheduled_for_retry`->warn, `circuit_open`->danger).
 - `src/components/AttemptTimeline.vue` — PrimeVue `Timeline` menampilkan `attemptNumber`, `outcome`, `durationMs`, `breakerState`, `traceId`.
 - `src/styles.css` — import PrimeVue theme (Aura preset) + primeicons + custom CSS variables untuk light/dark mode.
 - PrimeVue theming via `@primevue/themes/aura` (PrimeVue 4.x new theming API).
@@ -52,15 +52,15 @@ Tujuan utama:
 **Out of scope**:
 
 - **Backend changes** — TASK-13 murni frontend. Backend (controllers, gateway mock, metrics) sudah disediakan oleh TASK-09 + TASK-11 + TASK-03. Bila endpoint berubah, update api/*.ts modules (thin wrapper).
-- **Authentication / RBAC** → tidak dipakai di plan rev 2. Semua endpoint terbuka. Production caveat di TASK-15.
-- **Real-time push** (WebSocket / SSE) → tidak dipakai. Pakai polling (3s payments / 5s metrics / 10s breaker). Real-time push → future work, tidak di plan rev 2.
-- **SSR / SSG** → SPA only. Vite dev server + build static assets (dist/). Tidak pakai Nuxt atau SSR plugin.
-- **Custom design system** → pakai PrimeVue Aura preset as-is. Hanya override minor di `styles.css` (sticky footer, max-width container). Tidak ada custom CSS framework (no Tailwind, no Bootstrap).
-- **Internationalization (i18n)** → hardcoded English/Indonesian mix di labels. Tidak ada `vue-i18n` setup. Production caveat di TASK-15.
-- **Charts advanced** (zoom, pan, annotation) → tidak perlu. PrimeVue `Chart` wrapper Chart.js dengan default options cukup. Custom chart legend via PrimeVue styling.
-- **Demo scenario assertion logic yang exhaustive** → 5 tombol A–E menjalankan flow + simple assertion (status terminal sesuai expected + verify attempt count). Full E2E assertions → TASK-14 (Jest + supertest backend + Agent Browser frontend).
-- **Mobile gesture support** (swipe to refresh, pull-to-load-more) → tidak perlu. Mobile responsive via PrimeVue responsive grid + viewport meta. Touch interactions default browser.
-- **Offline mode / PWA** → tidak dipakai. Dashboard mengasumsikan online + backend reachable.
+- **Authentication / RBAC** -> tidak dipakai di plan rev 2. Semua endpoint terbuka. Production caveat di TASK-15.
+- **Real-time push** (WebSocket / SSE) -> tidak dipakai. Pakai polling (3s payments / 5s metrics / 10s breaker). Real-time push -> future work, tidak di plan rev 2.
+- **SSR / SSG** -> SPA only. Vite dev server + build static assets (dist/). Tidak pakai Nuxt atau SSR plugin.
+- **Custom design system** -> pakai PrimeVue Aura preset as-is. Hanya override minor di `styles.css` (sticky footer, max-width container). Tidak ada custom CSS framework (no Tailwind, no Bootstrap).
+- **Internationalization (i18n)** -> hardcoded English/Indonesian mix di labels. Tidak ada `vue-i18n` setup. Production caveat di TASK-15.
+- **Charts advanced** (zoom, pan, annotation) -> tidak perlu. PrimeVue `Chart` wrapper Chart.js dengan default options cukup. Custom chart legend via PrimeVue styling.
+- **Demo scenario assertion logic yang exhaustive** -> 5 tombol A–E menjalankan flow + simple assertion (status terminal sesuai expected + verify attempt count). Full E2E assertions -> TASK-14 (Jest + supertest backend + Agent Browser frontend).
+- **Mobile gesture support** (swipe to refresh, pull-to-load-more) -> tidak perlu. Mobile responsive via PrimeVue responsive grid + viewport meta. Touch interactions default browser.
+- **Offline mode / PWA** -> tidak dipakai. Dashboard mengasumsikan online + backend reachable.
 
 ## Plan section 17.2 strategy
 
@@ -105,7 +105,7 @@ Semua path relatif ke `/home/z/my-project/retry-failure/apps/frontend-vue/`:
 ### Root config
 
 - `package.json` — Vite + Vue 3 + PrimeVue + Pinia + Vue Router + axios + Chart.js + dev deps (vue-tsc, eslint, @vitejs/plugin-vue, typescript).
-- `vite.config.ts` — port 5173, `host: true` untuk preview cloud, alias `@` → `src/`.
+- `vite.config.ts` — port 5173, `host: true` untuk preview cloud, alias `@` -> `src/`.
 - `tsconfig.json` — Vue 3 + Vite client types.
 - `tsconfig.node.json` — untuk `vite.config.ts` context.
 - `index.html` — root HTML dengan `<div id="app">` + viewport meta untuk mobile.
@@ -116,7 +116,7 @@ Semua path relatif ke `/home/z/my-project/retry-failure/apps/frontend-vue/`:
 
 - `src/main.ts` — Vue app bootstrap: `createApp(App)` + `app.use(createPinia())` + `app.use(router)` + `app.use(PrimeVue, { theme: { preset: Aura } })` + `app.use(ToastService)` + `app.use(ConfirmationService)` + `app.mount('#app')`.
 - `src/App.vue` — root layout: sticky header (logo + nav links + dark mode toggle) + `<main>` dengan `<router-view>` + sticky footer (mt-auto).
-- `src/router/index.ts` — routes: `/` → HomeView, `/payments` → PaymentsView, `/payments/:id` → PaymentDetailView, `/metrics` → MetricsView. History mode.
+- `src/router/index.ts` — routes: `/` -> HomeView, `/payments` -> PaymentsView, `/payments/:id` -> PaymentDetailView, `/metrics` -> MetricsView. History mode.
 - `src/api/client.ts` — axios instance `baseURL = import.meta.env.VITE_PAYMENT_API_URL ?? 'http://localhost:3001'` + response interceptor for errors (toast via Pinia event bus atau global handler).
 - `src/api/payments.ts` — `list(params)`, `getById(id)`, `create(input)`, `retry(id)`.
 - `src/api/gateway.ts` — `getConfig()`, `updateConfig(payload)`, `getStats()`.
@@ -127,7 +127,7 @@ Semua path relatif ke `/home/z/my-project/retry-failure/apps/frontend-vue/`:
 - `src/composables/usePolling.ts` — generic `usePolling(fn, intervalMs, options?)` returns `{ start, stop, isPolling }`. Auto-cleanup on `onUnmounted`.
 - `src/composables/useToast.ts` — wrapper untuk PrimeVue `useToast()` composable (consistency).
 - `src/views/HomeView.vue` — overview: 4 metric Cards + mini Chart + gateway mode summary + last 5 payments table.
-- `src/views/PaymentsView.vue` — `DataTable` dengan lazy + filter + sort + paginator + row click → `router.push('/payments/:id')`.
+- `src/views/PaymentsView.vue` — `DataTable` dengan lazy + filter + sort + paginator + row click -> `router.push('/payments/:id')`.
 - `src/views/PaymentDetailView.vue` — Card dengan payment detail + AttemptTimeline + manual retry Button (conditional).
 - `src/views/MetricsView.vue` — 3 Chart components (Pie/Line/Bar) + collapsible raw metrics textarea.
 - `src/components/GatewayModeSelector.vue` — Card + Select mode + 4 InputNumber (conditional by mode) + Save Button.
@@ -184,7 +184,7 @@ Semua path relatif ke `/home/z/my-project/retry-failure/apps/frontend-vue/`:
 
 > **Versi pinning**: semua major version dikunci (`^3.5`, `^4.4`, `^4.2`, `^5.4`) untuk reproducibility. PrimeVue 4.x required karena memakai new theming API (`@primevue/themes/aura`). PrimeVue 3.x pakai old CSS primeflex pattern — tidak dipakai.
 
-### 2. `vite.config.ts` — port 5173, host for preview, alias @ → src
+### 2. `vite.config.ts` — port 5173, host for preview, alias @ -> src
 
 ```ts
 import { defineConfig } from 'vite';
@@ -1283,27 +1283,27 @@ const DEMOS: DemoDef[] = [
   {
     key: 'A', label: 'Demo A — transient retry', mode: 'fail-first-n',
     partial: { n: 2 }, expectedStatus: 'succeeded',
-    description: 'fail-first-n=2 → 2 failed → 3rd succeeds → status=succeeded',
+    description: 'fail-first-n=2 -> 2 failed -> 3rd succeeds -> status=succeeded',
   },
   {
     key: 'B', label: 'Demo B — permanent failure', mode: 'client-error',
     partial: {}, expectedStatus: 'failed',
-    description: 'client-error → 400 → not retried → status=failed',
+    description: 'client-error -> 400 -> not retried -> status=failed',
   },
   {
     key: 'C', label: 'Demo C — circuit breaker', mode: 'always-timeout',
     partial: { timeoutMs: 2000 }, expectedStatus: 'scheduled_for_retry',
-    description: 'always-timeout → 3 timeouts → breaker OPEN → new payment = circuit_open → scheduled_for_retry',
+    description: 'always-timeout -> 3 timeouts -> breaker OPEN -> new payment = circuit_open -> scheduled_for_retry',
   },
   {
     key: 'D', label: 'Demo D — idempotency hero', mode: 'response-disappear',
     partial: {}, expectedStatus: 'succeeded',
-    description: 'charge succeed + response lost → API retry → replay → actualCharges=1 (calls>=2)',
+    description: 'charge succeed + response lost -> API retry -> replay -> actualCharges=1 (calls>=2)',
   },
   {
     key: 'E', label: 'Demo E — Retry-After', mode: 'rate-limited',
     partial: { retryAfterSeconds: 5 }, expectedStatus: 'scheduled_for_retry',
-    description: '429 + Retry-After=5 → backoff honor → scheduled_for_retry with nextRetryAt ~now+5s',
+    description: '429 + Retry-After=5 -> backoff honor -> scheduled_for_retry with nextRetryAt ~now+5s',
   },
 ];
 
@@ -2273,20 +2273,20 @@ nav a.router-link-active {
 
 - [ ] `cd apps/frontend-vue && pnpm dev` starts Vite dev server on `http://localhost:5173` tanpa error (check console output: "VITE v5.4.x ready in ~300ms").
 - [ ] `/` route renders `HomeView` dengan sticky header (logo + nav + dark mode toggle) + sticky footer (text + API base URL).
-- [ ] `GatewayModeSelector`: pilih mode (misal `fail-first-n`) + isi `n=2` + Save → toast success muncul + verify via `curl http://localhost:3002/admin/config` bahwa config benar-benar ter-update.
-- [ ] `CreatePaymentDialog`: click "Create Payment" → Dialog muncul → isi orderId + amount + currency → submit → toast success muncul + verify via `curl http://localhost:3001/api/payments` bahwa payment baru ada di list.
+- [ ] `GatewayModeSelector`: pilih mode (misal `fail-first-n`) + isi `n=2` + Save -> toast success muncul + verify via `curl http://localhost:3002/admin/config` bahwa config benar-benar ter-update.
+- [ ] `CreatePaymentDialog`: click "Create Payment" -> Dialog muncul -> isi orderId + amount + currency -> submit -> toast success muncul + verify via `curl http://localhost:3001/api/payments` bahwa payment baru ada di list.
 - [ ] `PaymentsView`: DataTable menampilkan payments dengan kolom id (truncated), orderId, amount, currency, status (StatusTag), attemptCount, totalRetryCount, createdAt. Filter by status berfungsi. Sort by kolom berfungsi. Paginator 20 rows berfungsi. Search box filter berfungsi.
-- [ ] Klik row di DataTable → navigate ke `/payments/:id` → `PaymentDetailView` muncul dengan payment detail + `AttemptTimeline`.
+- [ ] Klik row di DataTable -> navigate ke `/payments/:id` -> `PaymentDetailView` muncul dengan payment detail + `AttemptTimeline`.
 - [ ] `AttemptTimeline`: menampilkan setiap attempt dengan attemptNumber, outcome (Tag), breakerState (Tag), durationMs, httpStatus, traceId, createdAt.
-- [ ] Manual retry button: visible hanya bila status ∈ {`failed`, `scheduled_for_retry`}. Hidden bila `succeeded` (dengan helper text "Retry disabled — payment status is succeeded"). Click → trigger `POST /api/payments/:id/retry` → toast + refetch.
+- [ ] Manual retry button: visible hanya bila status ∈ {`failed`, `scheduled_for_retry`}. Hidden bila `succeeded` (dengan helper text "Retry disabled — payment status is succeeded"). Click -> trigger `POST /api/payments/:id/retry` -> toast + refetch.
 - [ ] `MetricsView`: 3 Chart components (Pie status distribution, Line duration histogram, Bar retry attempts) menampilkan data dari `/api/metrics`. Charts auto-refresh tiap 5 detik. Raw metrics textarea collapsible.
-- [ ] `DemoScenarioRunner`: 5 tombol A–E visible. Click satu → toast "Running…" → gateway mode ter-reset → payment dibuat → poll sampai terminal → toast PASSED/FAILED dengan assertion. Click "Run All + Show Results" → 5 demo run sequential → Dialog result table muncul dengan kolom Demo, Order ID, Final Status, Expected, Attempts, Duration, Result Badge.
+- [ ] `DemoScenarioRunner`: 5 tombol A–E visible. Click satu -> toast "Running…" -> gateway mode ter-reset -> payment dibuat -> poll sampai terminal -> toast PASSED/FAILED dengan assertion. Click "Run All + Show Results" -> 5 demo run sequential -> Dialog result table muncul dengan kolom Demo, Order ID, Final Status, Expected, Attempts, Duration, Result Badge.
 - [ ] `CircuitBreakerCard`: menampilkan state breaker (closed/half_open/open) + rejected count + tripped count. Auto-refresh tiap 5 detik.
-- [ ] Mobile responsive: viewport `375x812` (iPhone) → layout grid collapse ke 1 kolom, header nav masih readable, DataTable horizontal scroll, semua cards stack vertikal.
-- [ ] Dark mode toggle: click button sun/moon di header → tema berubah (Aura preset dark). Re-check all components readable di dark mode.
+- [ ] Mobile responsive: viewport `375x812` (iPhone) -> layout grid collapse ke 1 kolom, header nav masih readable, DataTable horizontal scroll, semua cards stack vertikal.
+- [ ] Dark mode toggle: click button sun/moon di header -> tema berubah (Aura preset dark). Re-check all components readable di dark mode.
 - [ ] `pnpm typecheck` lulus (vue-tsc --noEmit, no errors). `pnpm lint` lulus (eslint --max-warnings 0).
 - [ ] `pnpm build` menghasilkan `dist/` folder dengan `index.html` + `assets/*.js` + `assets/*.css`. `pnpm preview` serve di port 4173 tanpa error.
-- [ ] Agent Browser verification (akan diformalkan di TASK-14): minimal 1 screenshot dashboard + 1 screenshot setelah Demo A run + 1 screenshot PaymentDetailView dengan AttemptTimeline. Full E2E matrix → TASK-14.
+- [ ] Agent Browser verification (akan diformalkan di TASK-14): minimal 1 screenshot dashboard + 1 screenshot setelah Demo A run + 1 screenshot PaymentDetailView dengan AttemptTimeline. Full E2E matrix -> TASK-14.
 
 ## Useful commands (run after completing this task)
 
@@ -2295,10 +2295,10 @@ nav a.router-link-active {
 > **WAJIB BACA**: sebelum menjalankan command di bawah, cek kondisi lingkungan Anda via [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 1 (Pre-flight Check).
 >
 > Ringkasan keyword:
-> - `pnpm --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
-> - `docker --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → butuh external PostgreSQL atau skip DB-dependent commands.
-> - `curl -s http://localhost:3000` sibuk → KONDISI SANDBOX → payment-api pakai PORT=3001, gateway-mock pakai PORT=3002. Bebas → KONDISI LOCAL → payment-api pakai PORT=3000, gateway-mock pakai PORT=3001.
-> - Vue dashboard port 5173 tidak konflik dengan Next.js preview 3000 → `pnpm dev` tetap di port 5173 di kedua kondisi.
+> - `pnpm --version` ada -> KONDISI LOCAL. Tidak ada -> KONDISI SANDBOX -> jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
+> - `docker --version` ada -> KONDISI LOCAL. Tidak ada -> KONDISI SANDBOX -> butuh external PostgreSQL atau skip DB-dependent commands.
+> - `curl -s http://localhost:3000` sibuk -> KONDISI SANDBOX -> payment-api pakai PORT=3001, gateway-mock pakai PORT=3002. Bebas -> KONDISI LOCAL -> payment-api pakai PORT=3000, gateway-mock pakai PORT=3001.
+> - Vue dashboard port 5173 tidak konflik dengan Next.js preview 3000 -> `pnpm dev` tetap di port 5173 di kedua kondisi.
 
 Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih salah satu sesuai kondisi.
 
@@ -2370,9 +2370,9 @@ cd /home/z/my-project/retry-failure/apps/frontend-vue && pnpm preview
 # 8. Open browser
 # KONDISI LOCAL: buka http://localhost:5173 di browser (NEW TAB — bukan preview sandbox 3000)
 #   - Dashboard harus render tanpa console error (cek DevTools Console).
-#   - Click "Create Payment" → Dialog muncul → submit → payment muncul di Recent Payments.
-#   - Click row → navigate ke /payments/:id → AttemptTimeline muncul.
-#   - Click "Run All + Show Results" di Demo Scenario Runner → 5 demo run → Dialog result.
+#   - Click "Create Payment" -> Dialog muncul -> submit -> payment muncul di Recent Payments.
+#   - Click row -> navigate ke /payments/:id -> AttemptTimeline muncul.
+#   - Click "Run All + Show Results" di Demo Scenario Runner -> 5 demo run -> Dialog result.
 # KONDISI SANDBOX: klik "Open in New Tab" di preview panel (port 5173 di-expose via Caddy)
 #   - Preview panel otomatis expose port 5173; gunakan tombol "Open in New Tab"
 #     untuk full-screen view di browser tab terpisah.
@@ -2451,7 +2451,7 @@ curl -i -X OPTIONS "http://localhost:${API_PORT}/api/payments" \
 #       (2) Setelah Demo A run — toast PASSED muncul
 #       (3) PaymentDetailView dengan AttemptTimeline
 #     - Full E2E matrix (Demo A-E, manual retry, gateway mode switch, mobile viewport)
-#       → TASK-14 akan automate via Agent Browser + assertions.
+#       -> TASK-14 akan automate via Agent Browser + assertions.
 #     - Agent Browser adalah tool sandbox; di KONDISI LOCAL bisa buka browser manual.
 
 # 11. Cleanup bila perlu — port kondisional via GW_PORT
@@ -2469,8 +2469,8 @@ tail -n 200 /tmp/vite-vue.log 2>/dev/null || true
 
 ### Vue app runs on port 5173 (NOT 3000) — direct fetch to payment-api:3001 allowed
 
-- Next.js sandbox (TASK-12) berjalan di port 3000 (parent root), terkunci Caddy single-port → harus pakai `?XTransformPort=NNNN` di query string.
-- Vue dashboard (TASK-13) berjalan di port 5173 (Vite dev server di `apps/frontend-vue/`), **bukan via Caddy** → **direct fetch ke `http://localhost:3001` di-allow** oleh browser.
+- Next.js sandbox (TASK-12) berjalan di port 3000 (parent root), terkunci Caddy single-port -> harus pakai `?XTransformPort=NNNN` di query string.
+- Vue dashboard (TASK-13) berjalan di port 5173 (Vite dev server di `apps/frontend-vue/`), **bukan via Caddy** -> **direct fetch ke `http://localhost:3001` di-allow** oleh browser.
 - CORS di TASK-09 controller meng-enable origin `http://localhost:5173` + `http://localhost:3000`. Verifikasi via OPTIONS request (lihat command 9.j di atas).
 - Build production (`pnpm build`) menghasilkan `dist/` folder — bisa di-serve via nginx / any static server. Untuk production, set `VITE_PAYMENT_API_URL` ke URL production API sebelum build.
 
@@ -2533,5 +2533,5 @@ tail -n 200 /tmp/vite-vue.log 2>/dev/null || true
 
 - TASK-14 (E2E scenarios) bisa verify **both** Next.js sandbox (TASK-12, port 3000) **dan** Vue dashboard (TASK-13, port 5173).
 - TASK-15 (documentation) akan mereferensikan `http://localhost:5173` sebagai official demo URL (bukan port 3000).
-- Production deploy: `pnpm build` → copy `dist/` ke nginx / CDN. Set env `VITE_PAYMENT_API_URL` ke URL production API sebelum build.
+- Production deploy: `pnpm build` -> copy `dist/` ke nginx / CDN. Set env `VITE_PAYMENT_API_URL` ke URL production API sebelum build.
 - Bila ingin dashboard lebih kaya (real-time push, more charts, user auth), buat TASK-16+ (future work, tidak di plan rev 2).

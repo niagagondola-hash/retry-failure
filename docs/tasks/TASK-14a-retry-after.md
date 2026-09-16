@@ -36,7 +36,7 @@ pnpm exec jest --config ./tests/e2e/jest-e2e.json --runInBand \
 
 ---
 
-## 3. Visualisasi Alur (Input → Database)
+## 3. Visualisasi Alur (Input -> Database)
 
 ```mermaid
 sequenceDiagram
@@ -76,7 +76,7 @@ sequenceDiagram
 
     Note over RB: Loop sampai MAX_TOTAL_RETRIES habis<br/>(atau inline retry limit)
 
-    Note over RB: Exhausted → payment marked failed/scheduled
+    Note over RB: Exhausted -> payment marked failed/scheduled
     API->>DB: UPDATE payment SET status=failed (atau scheduled_for_retry)
     API-->>T: 201 Created
 
@@ -151,10 +151,10 @@ curl -s http://localhost:3002/admin/stats
 ### L5: Log Cockatiel
 Cari di `logs/e2e/payment-api-*.log`:
 ```
-[retry] attempt 1 → 429 Too Many Requests
-[retry] Retry-After header: 3s → overriding backoff
+[retry] attempt 1 -> 429 Too Many Requests
+[retry] Retry-After header: 3s -> overriding backoff
 [retry] sleeping 3000ms before next attempt
-[retry] attempt 2 → 429 Too Many Requests
+[retry] attempt 2 -> 429 Too Many Requests
 ```
 
 Tidak boleh ada `[retry] sleeping 1000ms` (default backoff) — kalau ada, berarti Retry-After header tidak diparse.
@@ -180,7 +180,7 @@ Tidak boleh ada `[retry] sleeping 1000ms` (default backoff) — kalau ada, berar
 |---|---|---|
 | `delta < 2500ms` (~1000ms) | Retry-After header tidak diparse, Cockatiel pakai default backoff | Cek `parseRetryAfter()` di `packages/resilience/src/errors/` — harus baca header dari error object |
 | `delay_before_next_ms = null` | Audit tidak record field ini | Cek `AuditService.recordAttempt()` — harus simpan `delayBeforeNextMs` dari `onAttempt` callback |
-| Tidak ada 429 attempts (semua 200/500) | Mode gateway tidak ter-set ke `rate-limited` | Cek `beforeAll` → `setGatewayMode('rate-limited', {retryAfterSeconds:3})`. Verifikasi via `GET /admin/config` |
+| Tidak ada 429 attempts (semua 200/500) | Mode gateway tidak ter-set ke `rate-limited` | Cek `beforeAll` -> `setGatewayMode('rate-limited', {retryAfterSeconds:3})`. Verifikasi via `GET /admin/config` |
 | `httpStatus = null` padahal expect 429 | Network error (timeout) bukan HTTP 429 | Cek gateway mock `mode-handler.ts` mode rate-limited — harus balas 429 dengan body, bukan disconnect |
 | Breaker OPEN sebelum delay sempat diukur | Skenario 3 belum direset | `resetBreaker()` di `beforeAll` wajib |
 | Test timeout 90s | Cockatiel tidak menghormati Retry-After, jadi tidak retry, akhirnya timeout di `waitForTerminalStatus` | Sebenarnya bug di atas. Fix parser Retry-After |

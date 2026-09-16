@@ -7,7 +7,7 @@
 > **Purpose**: Mendemonstrasikan failure handling pada proses payment secara production-like dengan memanfaatkan library resilience **Cockatiel**, sehingga fokus utama tetap pada business flow, failure scenario, idempotency, durable retry, dan observability.
 >
 > **Changelog rev 2**:
-> - Section 3: Database MySQL 8 → PostgreSQL 16. ORM TypeORM 0.3.x dengan driver `pg`.
+> - Section 3: Database MySQL 8 -> PostgreSQL 16. ORM TypeORM 0.3.x dengan driver `pg`.
 > - Section 4: Struktur monorepo ditambah `apps/frontend-vue/` (Vue 3 + PrimeVue).
 > - Section 11: Tipe data persistence disesuaikan ke native PostgreSQL (`uuid`, `numeric`, `timestamp(3)`, native `ENUM`).
 > - Section 15: Konfigurasi DB diubah ke PostgreSQL (port 5432, schema `public`).
@@ -30,7 +30,7 @@ Fokus pembelajaran dan demonstrasi:
 
 1. Retry dengan exponential backoff + jitter dan max attempts.
 2. Klasifikasi error retryable vs permanent.
-3. Circuit breaker (`CLOSED → OPEN → HALF_OPEN → CLOSED`).
+3. Circuit breaker (`CLOSED -> OPEN -> HALF_OPEN -> CLOSED`).
 4. Durable/business retry melalui database + scheduler.
 5. Idempotency untuk mencegah double-charge.
 6. Menghormati `Retry-After` dari gateway.
@@ -406,12 +406,12 @@ Keduanya tidak boleh dicampur.
 | Mode | Behaviour | Expected application handling |
 |---|---|---|
 | `always-success` | always 200 | success |
-| `fail-first-n` | 500 N kali, lalu success | retryable → eventual success |
+| `fail-first-n` | 500 N kali, lalu success | retryable -> eventual success |
 | `server-error` | selalu 500 | retry + circuit breaker |
-| `always-timeout` | melebihi timeout client | timeout → retry/circuit |
-| `client-error` | 400 `invalid_card` | permanent → no retry |
+| `always-timeout` | melebihi timeout client | timeout -> retry/circuit |
+| `client-error` | 400 `invalid_card` | permanent -> no retry |
 | `random` | probabilistic failure | retryable |
-| `succeed-but-drop-response` | charge tercatat, response hilang | timeout → retry → replay |
+| `succeed-but-drop-response` | charge tercatat, response hilang | timeout -> retry -> replay |
 | `rate-limited` | 429 + `Retry-After` | respect server delay |
 
 ### 8.3 Runtime configuration
@@ -561,7 +561,7 @@ Index: `idx_payments_status` (status), `idx_payments_next_retry_at` (next_retry_
 | Column | Type | Notes |
 |---|---|---|
 | `id` | uuid PK | default `gen_random_uuid()` |
-| `payment_id` | uuid FK | index → `payments.id` ON DELETE CASCADE |
+| `payment_id` | uuid FK | index -> `payments.id` ON DELETE CASCADE |
 | `attempt_number` | int | |
 | `outcome` | enum | native PG enum `attempt_outcome_enum`: success/retryable_failure/permanent_failure/timeout/circuit_open |
 | `http_status` | int | nullable |

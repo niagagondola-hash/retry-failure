@@ -23,7 +23,7 @@ scheduled_for_retry  ──►  (next_retry_at <= NOW())  ──►  RetrySchedu
                                               new Cockatiel execution cycle (attempt_count reset to 0)
                                                                        │
                                                                        ▼
-                                              processing → succeeded | failed | scheduled_for_retry
+                                              processing -> succeeded | failed | scheduled_for_retry
 ```
 
 Setelah task ini selesai, **durable retry loop end-to-end** berfungsi tanpa intervensi manual — payment yang gagal transient akan dipulihkan oleh scheduler, dan `MAX_TOTAL_RETRIES` mengakhiri payment menjadi `failed` setelah cycle terlampaui (plan scenario 6 + 7).
@@ -58,9 +58,9 @@ Dari plan section 12 + 15:
 | Env var | Default | Type | Deskripsi | Di-read oleh |
 |---|---|---|---|---|
 | `SCHEDULER_INTERVAL_MS` | `5000` | int (ms) | Berapa sering scheduler poll DB. Default 5 detik. | `RetrySchedulerService` |
-| `MAX_TOTAL_RETRIES` | `5` | int | Limit atas `total_retry_count`. Setelah terlampaui → `failed`. **Guard logic 100% di `PaymentsService` (TASK-07), bukan scheduler.** | `PaymentsService` (TASK-07 — primary); `RetrySchedulerService` (hanya untuk log "approaching limit") |
+| `MAX_TOTAL_RETRIES` | `5` | int | Limit atas `total_retry_count`. Setelah terlampaui -> `failed`. **Guard logic 100% di `PaymentsService` (TASK-07), bukan scheduler.** | `PaymentsService` (TASK-07 — primary); `RetrySchedulerService` (hanya untuk log "approaching limit") |
 | `SCHEDULER_BATCH_SIZE` | `50` | int | Maksimum payment yang di-pick per poll cycle. Default sama dengan `LIMIT 50` di poller query. | `RetrySchedulerService` |
-| `SCHEDULER_BASE_DELAY_MS` | `10000` | int (ms) | Base delay untuk `next_retry_at` saat transisi `processing → scheduled_for_retry`. Default 2× `SCHEDULER_INTERVAL_MS` (= 10s) untuk demo. | `PaymentsService` (TASK-07) |
+| `SCHEDULER_BASE_DELAY_MS` | `10000` | int (ms) | Base delay untuk `next_retry_at` saat transisi `processing -> scheduled_for_retry`. Default 2× `SCHEDULER_INTERVAL_MS` (= 10s) untuk demo. | `PaymentsService` (TASK-07) |
 
 Semua dibaca via `ConfigService.get<number>('SCHEDULER_INTERVAL_MS', 5000)` di constructor `RetrySchedulerService`. `MAX_TOTAL_RETRIES` + `SCHEDULER_BASE_DELAY_MS` sudah di-wire di `PaymentsService` (TASK-07) — tidak ada duplikasi logic.
 
@@ -104,7 +104,7 @@ Index `idx_payments_status` + `idx_payments_next_retry_at` (TASK-02) menjadikan 
 
 > **Scheduler versi ini ditujukan untuk single-instance `payment-api`.**
 
-1. **No distributed lock** — bila ada 2+ instance `payment-api` berjalan (mis. Kubernetes multi-replica), kemungkinan dua instance mem-pick payment yang sama di poll cycle yang sama. `PaymentsService.atomicUpdateStatus(paymentId, previousStatus, patch)` (TASK-07) menggunakan `WHERE status = expectedFrom` clause yang atomic di PostgreSQL row-level, sehingga hanya satu instance yang berhasil transit `scheduled_for_retry → processing`. Instance kedua mendapat `switched = false` → melempar `BadRequestException('Payment X status changed concurrently')`. Scheduler menangkap error ini di try/catch per-payment dan melanjutkan ke payment berikutnya — tidak crash.
+1. **No distributed lock** — bila ada 2+ instance `payment-api` berjalan (mis. Kubernetes multi-replica), kemungkinan dua instance mem-pick payment yang sama di poll cycle yang sama. `PaymentsService.atomicUpdateStatus(paymentId, previousStatus, patch)` (TASK-07) menggunakan `WHERE status = expectedFrom` clause yang atomic di PostgreSQL row-level, sehingga hanya satu instance yang berhasil transit `scheduled_for_retry -> processing`. Instance kedua mendapat `switched = false` -> melempar `BadRequestException('Payment X status changed concurrently')`. Scheduler menangkap error ini di try/catch per-payment dan melanjutkan ke payment berikutnya — tidak crash.
 
 2. **Future production evolution** (document di TASK-15):
    - **PostgreSQL `FOR UPDATE SKIP LOCKED`** — query builder `.setLock('pessimistic_write', undefined, { skipLocked: true })` agar setiap instance mem-pick row yang belum di-lock instance lain. Native PostgreSQL feature.
@@ -193,7 +193,7 @@ export class RetrySchedulerService implements OnApplicationBootstrap {
    * dan tidak bisa baca dari ConfigService. Document pilihan di task file.
    *
    * Mengapa onApplicationBootstrap (bukan onModuleInit):
-   *   - Semua module (PaymentsModule, DatabaseModule, dst.) sudah ter-init →
+   *   - Semua module (PaymentsModule, DatabaseModule, dst.) sudah ter-init ->
    *     dependencies siap dipanggil.
    *   - ScheduleModule.forRoot() dari @nestjs/schedule juga sudah register
    *     SchedulerRegistry ke container.
@@ -232,7 +232,7 @@ export class RetrySchedulerService implements OnApplicationBootstrap {
    *   - Tidak crash bila satu payment error — lanjut ke payment berikutnya.
    *   - Idempotent — bila poll ter-trigger 2x cepat (race), atomicUpdateStatus di
    *     PaymentsService menangani concurrency (poll kedua dapat status changed error
-   *     → di-catch + log + continue).
+   *     -> di-catch + log + continue).
    */
   async poll(): Promise<void> {
     // Re-entrancy guard: bila poll sebelumnya masih jalan (interval lebih cepat dari
@@ -396,8 +396,8 @@ import { RetrySchedulerService } from './retry-scheduler.service';
  * GET /scheduler-health — operasional stats scheduler.
  *
  * Dipisah dari /health (TASK-09) untuk separation of concerns:
- *   - /health       → dependency health (DB + gateway) untuk readiness probe.
- *   - /scheduler-health → scheduler runtime stats untuk ops dashboard.
+ *   - /health       -> dependency health (DB + gateway) untuk readiness probe.
+ *   - /scheduler-health -> scheduler runtime stats untuk ops dashboard.
  */
 @ApiTags('scheduler')
 @Controller('scheduler-health')
@@ -478,10 +478,10 @@ export class AppModule {}
 ```ts
 describe('RetrySchedulerService', () => {
   // Setup: mock PaymentsService, PaymentRepository, ConfigService, SchedulerRegistry
-  //   - paymentsService.executePayment → resolves to fake Payment object
-  //   - payments.findDueRetries → returns array (configurable per-test)
-  //   - config.get → returns 5000 (interval), 50 (batchSize), 5 (maxTotalRetries)
-  //   - schedulerRegistry.addInterval / deleteInterval → jest.fn()
+  //   - paymentsService.executePayment -> resolves to fake Payment object
+  //   - payments.findDueRetries -> returns array (configurable per-test)
+  //   - config.get -> returns 5000 (interval), 50 (batchSize), 5 (maxTotalRetries)
+  //   - schedulerRegistry.addInterval / deleteInterval -> jest.fn()
 
   // Test cases:
   // 1. onApplicationBootstrap:
@@ -532,7 +532,7 @@ Dua counter TIDAK boleh dicampur:
 | Counter | Lingkup | Di-reset kapan | Di-increment kapan | Owner |
 |---|---|---|---|---|
 | `attempt_count` | Satu execution cycle (Cockatiel) | Start tiap `executePayment()` call | Setiap Cockatiel attempt via `onAttempt` callback | `PaymentsService` (TASK-07) + `AuditService` (TASK-08) |
-| `total_retry_count` | Lintas scheduler cycles | **Tidak pernah** (kecuali `manualRetry` juga tidak reset) | Saat transisi `processing → scheduled_for_retry` | `PaymentsService.applyOutcome()` (TASK-07) |
+| `total_retry_count` | Lintas scheduler cycles | **Tidak pernah** (kecuali `manualRetry` juga tidak reset) | Saat transisi `processing -> scheduled_for_retry` | `PaymentsService.applyOutcome()` (TASK-07) |
 
 Scheduler **tidak** meng-increment counter apapun. Scheduler hanya:
 
@@ -540,10 +540,10 @@ Scheduler **tidak** meng-increment counter apapun. Scheduler hanya:
 2. **Trigger** `executePayment(paymentId, { source: 'scheduler' })` — ini memulai cycle baru, yang di dalamnya:
    - `assertCanTransition('scheduled_for_retry', 'processing')` ✓
    - `atomicUpdateStatus(... { status: PROCESSING, attemptCount: 0 })` — reset attempt counter.
-   - Run Cockatiel policy → attempts 1..3.
-   - Bila gagal → `applyOutcome` mengecek `totalRetryCount + 1 > MAX_TOTAL_RETRIES`:
-     - Bila ya → transisi `processing → failed` + `failureReason='max_total_retries_exceeded'`.
-     - Bila tidak → transisi `processing → scheduled_for_retry` + `totalRetryCount += 1` + `nextRetryAt = now + delay`.
+   - Run Cockatiel policy -> attempts 1..3.
+   - Bila gagal -> `applyOutcome` mengecek `totalRetryCount + 1 > MAX_TOTAL_RETRIES`:
+     - Bila ya -> transisi `processing -> failed` + `failureReason='max_total_retries_exceeded'`.
+     - Bila tidak -> transisi `processing -> scheduled_for_retry` + `totalRetryCount += 1` + `nextRetryAt = now + delay`.
 
 > **Scheduler TIDAK mengecek MAX_TOTAL_RETRIES** — guard logic 100% di `PaymentsService`. Scheduler hanya trigger. Bila payment sudah `failed` (karena MAX exceeded), poller query `WHERE status='scheduled_for_retry'` tidak akan men-pick-nya lagi — tidak perlu special handling di scheduler.
 
@@ -566,7 +566,7 @@ const nextRetryAt = new Date(Date.now() + delayMs);
 **Alasan pilih constant**:
 
 - Dengan `SCHEDULER_INTERVAL_MS=5000` + `SCHEDULER_BASE_DELAY_MS=10000`, scheduler mem-pick payment setiap ~10-15s (delay 10s + poll interval ≤5s). Dalam 1 menit, ada ~5-6 retry cycles. Dengan `MAX_TOTAL_RETRIES=5`, payment akan menjadi `failed` dalam ~60-75s — observable untuk demo interactive (plan scenario 7 verifiable tanpa `sleep 600`).
-- Exponential (`10s, 20s, 40s, 80s, 160s`) → total 5 cycles = 510s = 8.5 menit — terlalu lama untuk demo interactive.
+- Exponential (`10s, 20s, 40s, 80s, 160s`) -> total 5 cycles = 510s = 8.5 menit — terlalu lama untuk demo interactive.
 - Production dengan real traffic harus exponential + cap — document di TASK-15 production caveats.
 
 **Server-directed override**: bila gateway mengirim `Retry-After` header (HTTP 429/503), `result.retryAfterMs` akan di-set oleh classifier (TASK-04) dan **meng-override constant value**. Ini sesuai plan section 9 + scenario 5 (rate-limited). Override ini di-handle di `PaymentsService.applyOutcome()` (TASK-07), bukan di scheduler.
@@ -594,20 +594,20 @@ const nextRetryAt = new Date(Date.now() + delayMs);
 - [ ] Saat `payment-api` start, log berikut muncul: `Scheduler started: intervalMs=5000, batchSize=50, maxTotalRetries=5`.
 - [ ] Scheduler terdaftar di `SchedulerRegistry.getIntervals()` — `'retry-scheduler-poll'` ada di list.
 - [ ] `poll()` terpanggil setiap `SCHEDULER_INTERVAL_MS` (default 5000ms). Verifiable via `processedCount` increment di `getStats()` atau log `[scheduler] picked N payment(s)`.
-- [ ] `poll()` dengan tidak ada due payment → log debug `No due payments — idle`, tidak throw.
-- [ ] `poll()` dengan 1+ due payment → `paymentsService.executePayment(id, {source:'scheduler'})` terpanggil per payment. Log: `[scheduler] picked paymentId` + `[scheduler] processed, result: status=...`.
-- [ ] Bila satu payment error (mis. status berubah concurrent oleh manual retry) → di-log warn + lanjut ke payment berikutnya. Scheduler tidak crash.
-- [ ] Bila `findDueRetries` throw (DB down) → di-log error, `errorCount` increment, `lastError` set. Cycle berikutnya tetap berjalan (running di-reset di `finally`).
-- [ ] Payment ber-status `scheduled_for_retry` dengan `next_retry_at <= now` → di-pick dalam ≤ `SCHEDULER_INTERVAL_MS` + toleransi eksekusi.
-- [ ] Payment ber-status `scheduled_for_retry` dengan `next_retry_at > now` → TIDAK di-pick (filter query).
-- [ ] Payment ber-status `failed` (setelah MAX_TOTAL_RETRIES exceeded) → TIDAK di-pick (filter query — status != 'scheduled_for_retry').
-- [ ] Payment ber-status `processing` / `succeeded` → TIDAK di-pick (filter query).
+- [ ] `poll()` dengan tidak ada due payment -> log debug `No due payments — idle`, tidak throw.
+- [ ] `poll()` dengan 1+ due payment -> `paymentsService.executePayment(id, {source:'scheduler'})` terpanggil per payment. Log: `[scheduler] picked paymentId` + `[scheduler] processed, result: status=...`.
+- [ ] Bila satu payment error (mis. status berubah concurrent oleh manual retry) -> di-log warn + lanjut ke payment berikutnya. Scheduler tidak crash.
+- [ ] Bila `findDueRetries` throw (DB down) -> di-log error, `errorCount` increment, `lastError` set. Cycle berikutnya tetap berjalan (running di-reset di `finally`).
+- [ ] Payment ber-status `scheduled_for_retry` dengan `next_retry_at <= now` -> di-pick dalam ≤ `SCHEDULER_INTERVAL_MS` + toleransi eksekusi.
+- [ ] Payment ber-status `scheduled_for_retry` dengan `next_retry_at > now` -> TIDAK di-pick (filter query).
+- [ ] Payment ber-status `failed` (setelah MAX_TOTAL_RETRIES exceeded) -> TIDAK di-pick (filter query — status != 'scheduled_for_retry').
+- [ ] Payment ber-status `processing` / `succeeded` -> TIDAK di-pick (filter query).
 - [ ] Total retry counter (`payments.total_retry_count`) increment tiap kali scheduler trigger `executePayment` yang berakhir `scheduled_for_retry` lagi. Verifiable via psql.
-- [ ] Bila `total_retry_count + 1 > MAX_TOTAL_RETRIES` (default 5) → `PaymentsService` set `status=failed` + `failureReason='max_total_retries_exceeded'`. Scheduler berhenti mem-pick payment tersebut di cycle berikutnya.
+- [ ] Bila `total_retry_count + 1 > MAX_TOTAL_RETRIES` (default 5) -> `PaymentsService` set `status=failed` + `failureReason='max_total_retries_exceeded'`. Scheduler berhenti mem-pick payment tersebut di cycle berikutnya.
 - [ ] Endpoint `GET /scheduler-health` mengembalikan `{ status, lastPollAt, processedCount, errorCount, lastError, intervalMs, batchSize, maxTotalRetries }`.
-- [ ] Bila `SCHEDULER_INTERVAL_MS=10000` di env → setInterval terpakai dengan 10000ms (config-driven terbukti).
-- [ ] `pnpm --filter payment-api typecheck` → **lulus tanpa error**.
-- [ ] `pnpm --filter payment-api lint` → **lulus tanpa error**.
+- [ ] Bila `SCHEDULER_INTERVAL_MS=10000` di env -> setInterval terpakai dengan 10000ms (config-driven terbukti).
+- [ ] `pnpm --filter payment-api typecheck` -> **lulus tanpa error**.
+- [ ] `pnpm --filter payment-api lint` -> **lulus tanpa error**.
 - [ ] Jest unit test `retry-scheduler.service.spec.ts` lulus semua test cases (happy path, no-due, single-payment-error, db-error, re-entrancy, stats, config-driven interval, approaching-limit log).
 
 ## Useful commands (run after completing this task)
@@ -617,9 +617,9 @@ const nextRetryAt = new Date(Date.now() + delayMs);
 > **WAJIB BACA**: sebelum menjalankan command di bawah, cek kondisi lingkungan Anda via [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 1 (Pre-flight Check).
 >
 > Ringkasan keyword:
-> - `pnpm --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
-> - `docker --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → butuh external PostgreSQL atau skip DB-dependent commands.
-> - `curl -s http://localhost:3000` sibuk → KONDISI SANDBOX → payment-api pakai PORT=3001, gateway-mock pakai PORT=3002. Bebas → KONDISI LOCAL → payment-api pakai PORT=3000, gateway-mock pakai PORT=3001.
+> - `pnpm --version` ada -> KONDISI LOCAL. Tidak ada -> KONDISI SANDBOX -> jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
+> - `docker --version` ada -> KONDISI LOCAL. Tidak ada -> KONDISI SANDBOX -> butuh external PostgreSQL atau skip DB-dependent commands.
+> - `curl -s http://localhost:3000` sibuk -> KONDISI SANDBOX -> payment-api pakai PORT=3001, gateway-mock pakai PORT=3002. Bebas -> KONDISI LOCAL -> payment-api pakai PORT=3000, gateway-mock pakai PORT=3001.
 
 Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih salah satu sesuai kondisi.
 
@@ -649,7 +649,7 @@ cd /home/z/my-project/retry-failure/apps/payment-api && PORT=3000 pnpm start:dev
 #   [Nest] LOG [RetrySchedulerService] Scheduler started: intervalMs=5000, batchSize=50, maxTotalRetries=5
 #   [Nest] LOG [NestApplication] Nest application successfully started
 
-# KONDISI SANDBOX (port 3000 dipakai Next.js preview → payment-api geser ke 3001):
+# KONDISI SANDBOX (port 3000 dipakai Next.js preview -> payment-api geser ke 3001):
 cd /home/z/my-project/retry-failure/apps/payment-api && PORT=3001 pnpm start:dev
 # Expected early log: same as above + "listening on :3001"
 
@@ -675,7 +675,7 @@ curl -sS "http://localhost:${API_PORT}/scheduler-health" | jq .
 # Scenario 6 — durable scheduler retry (plan section 14.2 scenario 6)
 # ============================================================
 
-# 6a. Set gateway mock mode = server-error → create payment →
+# 6a. Set gateway mock mode = server-error -> create payment ->
 #     expected: payment jadi scheduled_for_retry setelah Cockatiel exhausted (3 attempts).
 curl -sS -X PUT "http://localhost:${GW_PORT}/admin/config" \
   -H 'Content-Type: application/json' \
@@ -686,7 +686,7 @@ curl -sS -X POST "http://localhost:${API_PORT}/payments" \
   -d '{"orderId":"SCHED-SCENARIO6-001","amount":10000,"currency":"IDR"}' | jq .
 # Expected: { "payment": { "status": "scheduled_for_retry", "totalRetryCount": 1, "nextRetryAt": "<10s from now>" } }
 
-# 6b. Switch gateway ke always-success → scheduler akan pick payment tsb
+# 6b. Switch gateway ke always-success -> scheduler akan pick payment tsb
 #     dalam ~10s (SCHEDULER_BASE_DELAY_MS) + 5s (SCHEDULER_INTERVAL_MS poll).
 curl -sS -X PUT "http://localhost:${GW_PORT}/admin/config" \
   -H 'Content-Type: application/json' \
@@ -721,12 +721,12 @@ curl -sS -X POST "http://localhost:${API_PORT}/payments" \
 
 # 7b. Tunggu ~60-80 detik (6 scheduler cycles × ~10s backoff per cycle).
 #     Setiap cycle:
-#       cycle 1: totalRetryCount 0 → 1 (processing → scheduled_for_retry)
-#       cycle 2: totalRetryCount 1 → 2
-#       cycle 3: 2 → 3
-#       cycle 4: 3 → 4
-#       cycle 5: 4 → 5
-#       cycle 6: 5 + 1 > 5 (MAX) → status=failed, failureReason='max_total_retries_exceeded'
+#       cycle 1: totalRetryCount 0 -> 1 (processing -> scheduled_for_retry)
+#       cycle 2: totalRetryCount 1 -> 2
+#       cycle 3: 2 -> 3
+#       cycle 4: 3 -> 4
+#       cycle 5: 4 -> 5
+#       cycle 6: 5 + 1 > 5 (MAX) -> status=failed, failureReason='max_total_retries_exceeded'
 sleep 70
 
 # 7c. Cek final state.
@@ -811,7 +811,7 @@ curl -sS -X PUT "http://localhost:${GW_PORT}/admin/config" \
 
 Scheduler versi ini **TIDAK** menyediakan distributed lock guarantee. Bila ada 2+ instance `payment-api` berjalan simultan (mis. Kubernetes Deployment `replicas: 2`), kedua instance akan poll DB yang sama di interval yang serupa. Akibatnya:
 
-- **Race condition**: dua instance mem-pick payment yang sama. `PaymentsService.atomicUpdateStatus()` (TASK-07) menangani ini via `WHERE status = expectedFrom` atomic update — hanya satu yang sukses transit `scheduled_for_retry → processing`. Instance kedua akan dapat `switched = false` → throw `BadRequestException('Payment X status changed concurrently')` → scheduler catch + log warn + continue.
+- **Race condition**: dua instance mem-pick payment yang sama. `PaymentsService.atomicUpdateStatus()` (TASK-07) menangani ini via `WHERE status = expectedFrom` atomic update — hanya satu yang sukses transit `scheduled_for_retry -> processing`. Instance kedua akan dapat `switched = false` -> throw `BadRequestException('Payment X status changed concurrently')` -> scheduler catch + log warn + continue.
 - **Tidak crash, tapi waste work**: instance kedua melakukan query + try-execute yang gagal. Untuk throughput rendah demo, acceptable. Production butuh `FOR UPDATE SKIP LOCKED` atau external queue.
 
 Document di TASK-15 production caveats: future evolution — `PostgreSQL SKIP LOCKED`, external queue (Kafka), atau dedicated distributed scheduler (BullMQ / Temporal).
@@ -822,7 +822,7 @@ Mengapa TIDAK via HTTP call ke `POST /payments/:id/retry` (TASK-09 endpoint)?
 
 1. **Cockatiel breaker singleton konsisten** — `breakerStore` (TASK-05) adalah in-memory Map per process. Bila scheduler dan `PaymentsService` berada di process yang sama, state breaker shared. Saat scheduler trigger `executePayment`, breaker policy dan retry counter konsisten dengan call dari `POST /payments` API. Bila scheduler di process terpisah + HTTP call, breaker di scheduler process berbeda state-nya — bisa jadi scheduler selalu open breaker di process-nya padahal API process sudah recovered, atau sebaliknya.
 2. **Latency + resource** — HTTP call tambah ~5-50ms latency + 1 TCP connection + JSON serialization. Direct method call ~0.01ms. Untuk scheduler yang mem-pick batch 50 payment per cycle, total overhead 250ms-2.5s — significant.
-3. **Error semantics** — HTTP call akan wrap error ke NestJS exception filter → 500 / 409 response. Scheduler perlu parse response body untuk membedakan `max_total_retries_exceeded` dari `concurrent_change`. Direct call langsung dapat instance `Error` / `BadRequestException` — type-safe.
+3. **Error semantics** — HTTP call akan wrap error ke NestJS exception filter -> 500 / 409 response. Scheduler perlu parse response body untuk membedakan `max_total_retries_exceeded` dari `concurrent_change`. Direct call langsung dapat instance `Error` / `BadRequestException` — type-safe.
 4. **Trade-off** — coupling scheduler ke `PaymentsService`. Bila `PaymentsService` berubah signature, scheduler ikut berubah. Acceptable untuk monorepo dengan single deployment unit.
 
 > Plan section 10 implicit: scheduler adalah component internal `payment-api`, bukan service terpisah. HTTP call hanya dipakai bila scheduler benar-benar out-of-process (opsi alternatif yang DITOLAK di plan rev 2).
@@ -838,12 +838,12 @@ if (nextTotal > this.maxTotalRetries) {
   await this.atomicTransition(paymentId, PaymentStatus.FAILED, {
     failureReason: 'max_total_retries_exceeded',
   });
-  this.logger.warn({ paymentId, totalRetryCount: current.totalRetryCount }, 'max_total_retries_exceeded → failed');
+  this.logger.warn({ paymentId, totalRetryCount: current.totalRetryCount }, 'max_total_retries_exceeded -> failed');
   return (await this.payments.findById(paymentId))!;
 }
 ```
 
-Setelah transisi `processing → failed`, payment tidak lagi match poller query (`WHERE status='scheduled_for_retry'`) — scheduler otomatis berhenti mem-pick payment tersebut di cycle berikutnya. Tidak ada flag `is_exhausted` atau special handling di scheduler.
+Setelah transisi `processing -> failed`, payment tidak lagi match poller query (`WHERE status='scheduled_for_retry'`) — scheduler otomatis berhenti mem-pick payment tersebut di cycle berikutnya. Tidak ada flag `is_exhausted` atau special handling di scheduler.
 
 > `MAX_TOTAL_RETRIES` di-inject ke `RetrySchedulerService` constructor **HANYA** untuk logging purpose — log "approaching limit" bila `total_retry_count >= MAX - 1` (warning operational). **TIDAK ada if-check di scheduler** yang menghentikan pemanggilan `executePayment` — guard tetap di service.
 
@@ -851,8 +851,8 @@ Setelah transisi `processing → failed`, payment tidak lagi match poller query 
 
 Lihat section "Backoff strategy untuk `next_retry_at`" di atas. Singkatnya:
 
-- **Constant** (`SCHEDULER_BASE_DELAY_MS` = 10s default) → demo observable dalam 1 menit.
-- **Exponential** (future evolution, `SCHEDULER_BACKOFF_STRATEGY=exponential`) → production.
+- **Constant** (`SCHEDULER_BASE_DELAY_MS` = 10s default) -> demo observable dalam 1 menit.
+- **Exponential** (future evolution, `SCHEDULER_BACKOFF_STRATEGY=exponential`) -> production.
 
 Server-directed `Retry-After` (HTTP 429/503) meng-override constant/exponential value di `PaymentsService.applyOutcome()` — ini bukan tanggung jawab scheduler, sudah di-wire TASK-07.
 
@@ -869,7 +869,7 @@ Dengan ini, scheduler **selalu alive** selama process tidak crash. Stats `errorC
 
 ### `next_retry_at` di-set oleh PaymentsService (bukan scheduler)
 
-Penting: scheduler **tidak** meng-update kolom `next_retry_at`. Update terjadi di `PaymentsService.applyOutcome()` (TASK-07) saat transisi `processing → scheduled_for_retry`:
+Penting: scheduler **tidak** meng-update kolom `next_retry_at`. Update terjadi di `PaymentsService.applyOutcome()` (TASK-07) saat transisi `processing -> scheduled_for_retry`:
 
 ```ts
 const delayMs = result.retryAfterMs ?? this.schedulerBaseDelayMs;
@@ -893,8 +893,8 @@ TASK-11 akan mengganti `crypto.randomUUID()` dengan OTel span context yang di-pr
 
 Setelah TASK-10 selesai, **durable retry loop end-to-end** berfungsi:
 
-- **Scenario 6 (durable scheduler retry)** — payment `scheduled_for_retry` → due → scheduler picks → Cockatiel executes → success. Verifiable via `useful commands` step 6 di atas.
-- **Scenario 7 (total retry exhaustion)** — persistent failure → scheduler cycles → `MAX_TOTAL_RETRIES` exceeded → `failed`. Verifiable via step 7 di atas.
+- **Scenario 6 (durable scheduler retry)** — payment `scheduled_for_retry` -> due -> scheduler picks -> Cockatiel executes -> success. Verifiable via `useful commands` step 6 di atas.
+- **Scenario 7 (total retry exhaustion)** — persistent failure -> scheduler cycles -> `MAX_TOTAL_RETRIES` exceeded -> `failed`. Verifiable via step 7 di atas.
 
 TASK-14 (E2E scenarios) dapat menambah Jest + supertest test cases yang otomatis menjalankan kedua scenario di atas dengan `jest.useFakeTimers()` untuk kontrol waktu (tidak perlu `sleep 70` manual).
 

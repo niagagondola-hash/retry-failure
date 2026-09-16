@@ -15,7 +15,7 @@ import { Payment } from './payment.entity';
  *
  * Native PG types:
  *   - id: uuid
- *   - payment_id: uuid FK → payments.id ON DELETE CASCADE
+ *   - payment_id: uuid FK -> payments.id ON DELETE CASCADE
  *   - outcome: native PG enum attempt_outcome_enum
  *   - created_at: timestamp(3) (ms precision)
  *

@@ -85,7 +85,7 @@ export function classifyError(input: ClassifiableInput): ErrorClassification {
 function classifyHttp(input: Extract<ClassifiableInput, { kind: 'http' }>): ErrorClassification {
   const { status, body, headers } = input;
 
-  // 5xx → server error, retryable
+  // 5xx -> server error, retryable
   if (status >= 500 && status < 600) {
     return {
       retryable: true,
@@ -95,7 +95,7 @@ function classifyHttp(input: Extract<ClassifiableInput, { kind: 'http' }>): Erro
     };
   }
 
-  // 429 → rate limited, retryable + respect Retry-After
+  // 429 -> rate limited, retryable + respect Retry-After
   if (status === 429) {
     const retryAfterHeader = getHeader(headers, 'retry-after');
     const retryAfterMs = parseRetryAfter(retryAfterHeader);
@@ -111,7 +111,7 @@ function classifyHttp(input: Extract<ClassifiableInput, { kind: 'http' }>): Erro
     return result;
   }
 
-  // 4xx selain 429 → permanent client error
+  // 4xx selain 429 -> permanent client error
   if (status >= 400 && status < 500) {
     return {
       retryable: false,
@@ -121,7 +121,7 @@ function classifyHttp(input: Extract<ClassifiableInput, { kind: 'http' }>): Erro
     };
   }
 
-  // 2xx/3xx → success (caller should ignore — but return non-retryable)
+  // 2xx/3xx -> success (caller should ignore — but return non-retryable)
   if (status >= 200 && status < 400) {
     return {
       retryable: false,
@@ -148,7 +148,7 @@ function classifyNetwork(input: Extract<ClassifiableInput, { kind: 'network' }>)
       errorMessage: input.message,
     };
   }
-  // Unknown network error → safe default: permanent
+  // Unknown network error -> safe default: permanent
   return {
     retryable: false,
     reason: 'unknown',

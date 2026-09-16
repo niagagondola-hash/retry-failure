@@ -13,7 +13,7 @@
 Mengaktifkan full OpenTelemetry SDK + Jaeger export dengan **flip env `IS_OTEL=true`**. TASK-11 sudah menyediakan `IS_OTEL` toggle di `trace-context.ts` — TASK-11b hanya perlu:
 
 1. **Install OTel dependencies** — `@opentelemetry/sdk-node` + `@opentelemetry/auto-instrumentations-node` + `@opentelemetry/exporter-trace-otlp-http` + `@opentelemetry/api` + `@opentelemetry/resources` + `@opentelemetry/semantic-conventions`.
-2. **Buat `apps/payment-api/src/otel.ts`** — OTel SDK initialization (load sebelum NestJS bootstrap). File ini cek `process.env.IS_OTEL === 'true'` → start SDK + OTLP exporter ke Jaeger.
+2. **Buat `apps/payment-api/src/otel.ts`** — OTel SDK initialization (load sebelum NestJS bootstrap). File ini cek `process.env.IS_OTEL === 'true'` -> start SDK + OTLP exporter ke Jaeger.
 3. **Import `./otel` di `main.ts`** — baris pertama, sebelum `NestFactory.create()`.
 4. **(Opsional) Custom span di `payments.service.ts`** — create span `payment.processing` via OTel API untuk span tree visualization.
 5. **(Opsional) Gateway mock instrument** — receive `traceparent` header + create child span.
@@ -35,7 +35,7 @@ Setelah task ini selesai, plan section 13.3 + DoD item "Trace payment dapat dite
 ## Scope
 
 **In scope**:
-- `apps/payment-api/src/otel.ts` — OTel SDK initialization (load sebelum NestJS bootstrap). Cek `IS_OTEL=true` → start SDK.
+- `apps/payment-api/src/otel.ts` — OTel SDK initialization (load sebelum NestJS bootstrap). Cek `IS_OTEL=true` -> start SDK.
 - `apps/payment-api/src/main.ts` — tambah `import './otel'` di baris pertama.
 - `apps/payment-api/package.json` — tambah OTel dependencies.
 - `apps/payment-api/src/modules/payments/payments.service.ts` — (opsional) create custom span `payment.processing` via OTel API.
@@ -83,9 +83,9 @@ PaymentsService.executePayment()
   ├── traceId = crypto.randomUUID()        ← custom, tidak terhubung ke HTTP request
   ├── AsyncLocalStorage.set(traceId)       ← context local saja
   ├── gateway.charge() via Cockatiel
-  │     ├── attempt #1 → audit.recordAttempt({ traceId })
-  │     ├── attempt #2 → audit.recordAttempt({ traceId })
-  │     └── attempt #3 → audit.recordAttempt({ traceId })
+  │     ├── attempt #1 -> audit.recordAttempt({ traceId })
+  │     ├── attempt #2 -> audit.recordAttempt({ traceId })
+  │     └── attempt #3 -> audit.recordAttempt({ traceId })
   └── traceId persisted di payment_attempts.trace_id
 
 Jaeger UI: (kosong — tidak ada OTel export)
@@ -96,21 +96,21 @@ Jaeger UI: (kosong — tidak ada OTel export)
 ```text
 POST /payments
   ↓
-OTel auto-instrumentation (HTTP server) → root span "POST /payments"
+OTel auto-instrumentation (HTTP server) -> root span "POST /payments"
   ↓
 PaymentsService.executePayment()
   ├── custom span "payment.processing" (active span)
   │     traceId = trace.getSpan(context.active()).spanContext().traceId  ← OTel context
   ├── gateway.charge() via Cockatiel
-  │     ├── attempt #1 → axios POST → auto span "HTTP POST /v1/charges"
+  │     ├── attempt #1 -> axios POST -> auto span "HTTP POST /v1/charges"
   │     │     └── traceparent header di-inject otomatis
-  │     ├── attempt #2 → axios POST → auto span
-  │     └── attempt #3 → axios POST → auto span
-  ├── audit.recordAttempt({ traceId }) → pg INSERT → auto span "pg.query"
-  └── traceId = OTel traceId → persisted di payment_attempts.trace_id
+  │     ├── attempt #2 -> axios POST -> auto span
+  │     └── attempt #3 -> axios POST -> auto span
+  ├── audit.recordAttempt({ traceId }) -> pg INSERT -> auto span "pg.query"
+  └── traceId = OTel traceId -> persisted di payment_attempts.trace_id
 
 Jaeger UI: http://localhost:16686
-  → cari traceId → lihat span tree:
+  -> cari traceId -> lihat span tree:
     POST /payments (root)
       └── payment.processing
             ├── HTTP POST /v1/charges (attempt #1, error: 500)
@@ -141,7 +141,7 @@ jaeger:
 ```bash
 cd retry-failure
 docker compose up -d jaeger
-# Verify: buka http://localhost:16686 → Jaeger UI
+# Verify: buka http://localhost:16686 -> Jaeger UI
 ```
 
 ---
@@ -199,7 +199,7 @@ pnpm --filter payment-gateway-mock add \
  * sebelum module system load.
  *
  * Production: export ke OTLP collector (Jaeger all-in-one port 4318).
- * Test: skip init (NODE_ENV=test → return early, tidak start SDK).
+ * Test: skip init (NODE_ENV=test -> return early, tidak start SDK).
  */
 
 import { NodeSDK } from '@opentelemetry/sdk-node';
@@ -254,19 +254,19 @@ import { NestFactory } from '@nestjs/core';
 TASK-11 sudah mengimplementasi `IS_OTEL` toggle di `trace-context.ts` dengan:
 
 - `const IS_OTEL = process.env.IS_OTEL === 'true'`
-- `getTraceId()` async: bila `IS_OTEL=true`, lazy `await import('@opentelemetry/api')` → baca active span → fallback ALS
+- `getTraceId()` async: bila `IS_OTEL=true`, lazy `await import('@opentelemetry/api')` -> baca active span -> fallback ALS
 - `getTraceIdSync()`: sync version untuk pino mixin (tidak support OTel, ALS only)
 - `withTrace()`: set ALS context untuk fallback compatibility
 
 Saat TASK-11b dieksekusi:
-1. `@opentelemetry/api` ter-install → `await import('@opentelemetry/api')` sukses
-2. `IS_OTEL=true` di `.env` → `getTraceId()` coba OTel span dulu
-3. OTel SDK aktif (via `otel.ts`) → `trace.getSpan(context.active())` return active span
+1. `@opentelemetry/api` ter-install -> `await import('@opentelemetry/api')` sukses
+2. `IS_OTEL=true` di `.env` -> `getTraceId()` coba OTel span dulu
+3. OTel SDK aktif (via `otel.ts`) -> `trace.getSpan(context.active())` return active span
 4. Trace ID = OTel trace ID (sama dengan yang di-export ke Jaeger)
 
 Bila `IS_OTEL=true` TAPI TASK-11b belum dieksekusi (package belum install):
-- `await import('@opentelemetry/api')` → catch (module not found)
-- Fallback ALS → tetap berfungsi (TASK-11 simplified behavior)
+- `await import('@opentelemetry/api')` -> catch (module not found)
+- Fallback ALS -> tetap berfungsi (TASK-11 simplified behavior)
 
 **Tidak ada yang perlu diubah di `trace-context.ts`.**
 
@@ -334,7 +334,7 @@ import { NestFactory } from '@nestjs/core';
 // ... rest
 ```
 
-Dengan ini, trace context otomatis propagate dari payment-api → gateway mock via W3C `traceparent` header (di-inject oleh axios auto-instrumentation, di-receive oleh HTTP server auto-instrumentation di gateway mock). Jaeger UI akan menampilkan cross-service span tree.
+Dengan ini, trace context otomatis propagate dari payment-api -> gateway mock via W3C `traceparent` header (di-inject oleh axios auto-instrumentation, di-receive oleh HTTP server auto-instrumentation di gateway mock). Jaeger UI akan menampilkan cross-service span tree.
 
 ### 7. Verify docker-compose.yml — Jaeger sudah ada (tidak perlu diubah)
 
@@ -355,9 +355,9 @@ jaeger:
 
 - [ ] `docker compose up -d jaeger` start Jaeger all-in-one di port 16686 + 4318.
 - [ ] `pnpm --filter payment-api start:dev` start payment-api dengan OTel SDK aktif (log: "SDK started" atau tidak ada error).
-- [ ] `POST /payments` dengan gateway mode `always-success` → payment succeeded.
-- [ ] Buka `http://localhost:16686` → Service dropdown ada `payment-api`.
-- [ ] Cari trace → lihat span tree:
+- [ ] `POST /payments` dengan gateway mode `always-success` -> payment succeeded.
+- [ ] Buka `http://localhost:16686` -> Service dropdown ada `payment-api`.
+- [ ] Cari trace -> lihat span tree:
   ```
   POST /payments (root span, auto by HTTP instrumentation)
     └── payment.processing (custom span)
@@ -365,7 +365,7 @@ jaeger:
           └── pg.query (INSERT payment_attempts, auto by pg instrumentation)
   ```
 - [ ] Trace ID di Jaeger = trace ID di `payment_attempts.trace_id` (korelasi terbukti).
-- [ ] Scenario `fail-first-n=2` → span tree menampilkan 3 attempt spans (2 error + 1 success):
+- [ ] Scenario `fail-first-n=2` -> span tree menampilkan 3 attempt spans (2 error + 1 success):
   ```
   POST /payments
     └── payment.processing
@@ -373,12 +373,12 @@ jaeger:
           ├── HTTP POST /v1/charges (attempt #2, status: ERROR, http_status=500)
           └── HTTP POST /v1/charges (attempt #3, status: OK, http_status=200)
   ```
-- [ ] Span error menampilkan exception message + stack trace di Jaeger UI (click span → "Logs" tab).
-- [ ] (Opsional) Gateway mock juga instrument → cross-service span tree:
+- [ ] Span error menampilkan exception message + stack trace di Jaeger UI (click span -> "Logs" tab).
+- [ ] (Opsional) Gateway mock juga instrument -> cross-service span tree:
   ```
   POST /payments (payment-api)
     └── payment.processing
-          └── HTTP POST /v1/charges (payment-api → gateway-mock)
+          └── HTTP POST /v1/charges (payment-api -> gateway-mock)
                 └── POST /v1/charges (gateway-mock, child span)
   ```
 - [ ] `pnpm typecheck` + `pnpm lint` lulus.
@@ -395,7 +395,7 @@ jaeger:
 > Pastikan Anda di **KONDISI LOCAL** dengan Docker tersedia:
 > ```bash
 > docker --version
-> # ada output version string → KONDISI LOCAL, lanjutkan
+> # ada output version string -> KONDISI LOCAL, lanjutkan
 > ```
 
 ---
@@ -405,7 +405,7 @@ jaeger:
 cd /home/z/my-project/retry-failure
 docker compose up -d jaeger
 sleep 3
-# Verify: curl http://localhost:16686 → Jaeger UI HTML
+# Verify: curl http://localhost:16686 -> Jaeger UI HTML
 
 # 2. Start PostgreSQL (butuh untuk payment-api)
 docker compose up -d postgres
@@ -441,12 +441,12 @@ docker compose exec postgres \
 
 # 9. Buka Jaeger UI
 echo "Buka browser: http://localhost:16686"
-echo "→ Service dropdown: pilih 'payment-api'"
-echo "→ Find Traces: klik 'Find Traces'"
-echo "→ Klik trace → lihat span tree"
-echo "→ Verify: trace ID di Jaeger = trace_id di payment_attempts"
+echo "-> Service dropdown: pilih 'payment-api'"
+echo "-> Find Traces: klik 'Find Traces'"
+echo "-> Klik trace -> lihat span tree"
+echo "-> Verify: trace ID di Jaeger = trace_id di payment_attempts"
 
-# 10. Test fail-first-n=2 (3 attempts → span tree dengan error spans)
+# 10. Test fail-first-n=2 (3 attempts -> span tree dengan error spans)
 curl -X PUT -H 'Content-Type: application/json' \
   http://localhost:3001/admin/config \
   -d '{"mode":"fail-first-n","n":2}'
@@ -455,7 +455,7 @@ curl -X POST -H 'Content-Type: application/json' \
   http://localhost:3000/payments \
   -d '{"orderId":"OTEL-2","amount":100,"currency":"IDR"}' | jq .
 
-# Buka Jaeger UI → cari trace baru → span tree:
+# Buka Jaeger UI -> cari trace baru -> span tree:
 #   POST /payments
 #     └── payment.processing
 #           ├── HTTP POST /v1/charges (ERROR 500)
@@ -471,7 +471,7 @@ docker compose down
 
 ## Notes
 
-- **OTel SDK harus di-import sebelum NestFactory.create()** — auto-instrumentations hook ke Node.js module system (require/import). Bila di-import setelah module system sudah load modules (mis. axios, pg), hook tidak tertangkap → span tidak dibuat. Pattern: `import './otel'` di baris pertama `main.ts`.
+- **OTel SDK harus di-import sebelum NestFactory.create()** — auto-instrumentations hook ke Node.js module system (require/import). Bila di-import setelah module system sudah load modules (mis. axios, pg), hook tidak tertangkap -> span tidak dibuat. Pattern: `import './otel'` di baris pertama `main.ts`.
 
 - **NODE_ENV=test skip SDK** — Jest tidak butuh OTel (test pakai mock). `otel.ts` cek `process.env.NODE_ENV !== 'test'` untuk skip init. Test tetap pakai `AsyncLocalStorage` fallback via `getTraceId()`.
 
@@ -481,9 +481,9 @@ docker compose down
 
 - **Sampling** — demo pakai always-on (100% sampling). Production butuh sampling strategy (head-based 10% atau tail-based dengan adaptive sampling). Document di TASK-15 caveats.
 
-- **Performance overhead** — OTel auto-instrumentation add ~5-10% overhead per HTTP call (span create + export). Untuk demo (ratusan RPS), acceptable. Production high-throughput (>10k RPS) → pertimbangkan sampling atau custom instrumentation (hanya span yang penting).
+- **Performance overhead** — OTel auto-instrumentation add ~5-10% overhead per HTTP call (span create + export). Untuk demo (ratusan RPS), acceptable. Production high-throughput (>10k RPS) -> pertimbangkan sampling atau custom instrumentation (hanya span yang penting).
 
-- **DoD update** — setelah task ini selesai, plan section 22 DoD item "Trace payment dapat ditemukan di Jaeger" → ✓.
+- **DoD update** — setelah task ini selesai, plan section 22 DoD item "Trace payment dapat ditemukan di Jaeger" -> ✓.
 
 - **TASK-11 tidak perlu di-rerun** — TASK-11b adalah add-on. Bila TASK-11b tidak dieksekusi, TASK-11 simplified tetap berfungsi (trace ID via AsyncLocalStorage, tidak ada Jaeger UI, tapi trace ID di `payment_attempts` + pino log tetap ada).
 

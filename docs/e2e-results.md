@@ -28,11 +28,11 @@ cd apps/payment-api && pnpm test:e2e
 |---|---|---|---|---|---|
 | 1 | Transient failure (fail-first-n=2) | payments.transient.e2e-spec.ts | PENDING | ~4s | 3 attempts (2×500 + 1×200), trace ID consistent |
 | 2 | Permanent failure (client-error) | payments.permanent.e2e-spec.ts | PENDING | ~1s | 1 attempt, no retry, invalid_card |
-| 3 | Circuit breaker (always-timeout) | payments.circuit-breaker.e2e-spec.ts | PENDING | ~45s | 3 payments → OPEN, 4th → circuit_open |
+| 3 | Circuit breaker (always-timeout) | payments.circuit-breaker.e2e-spec.ts | PENDING | ~45s | 3 payments -> OPEN, 4th -> circuit_open |
 | 4 | Anti double-charge HERO (succeed-but-drop-response) | payments.idempotency.e2e-spec.ts | PENDING | ~8s | calls>=2, actualCharges=1, replays>=1 |
 | 5 | Retry-After (rate-limited) | payments.retry-after.e2e-spec.ts | PENDING | ~12s | delay >= retryAfterSeconds × 1000 |
-| 6 | Durable scheduler retry | payments.durable-scheduler.e2e-spec.ts | PENDING | ~18s | scheduled_for_retry → scheduler → succeeded |
-| 7 | Total retry exhaustion | payments.exhaustion.e2e-spec.ts | PENDING | ~80s | MAX_TOTAL_RETRIES=5 → failed |
+| 6 | Durable scheduler retry | payments.durable-scheduler.e2e-spec.ts | PENDING | ~18s | scheduled_for_retry -> scheduler -> succeeded |
+| 7 | Total retry exhaustion | payments.exhaustion.e2e-spec.ts | PENDING | ~80s | MAX_TOTAL_RETRIES=5 -> failed |
 
 ## UI Demo (Agent Browser)
 
@@ -79,7 +79,7 @@ cd apps/payment-api && pnpm test:e2e
 - [x] Circuit breaker dapat dibuktikan melalui E2E (scenario 3)
 - [x] Permanent 4xx tidak di-retry (scenario 2)
 - [x] Retry-After dihormati (scenario 5)
-- [x] Exhausted execution cycle → scheduled_for_retry (scenario 1, 6)
+- [x] Exhausted execution cycle -> scheduled_for_retry (scenario 1, 6)
 - [x] Scheduler memproses due payment (scenario 6)
 - [x] MAX_TOTAL_RETRIES mengakhiri payment menjadi failed (scenario 7)
 - [x] Idempotency menjamin actualCharges <= 1 (scenario 4 — HERO)

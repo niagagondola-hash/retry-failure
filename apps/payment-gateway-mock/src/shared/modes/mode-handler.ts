@@ -1,5 +1,5 @@
 /**
- * Mode handler — pure function mapping (mode, ctx) → ModeResult.
+ * Mode handler — pure function mapping (mode, ctx) -> ModeResult.
  *
  * Stateful bookkeeping (fail-first-n counter) is delegated to MockState so
  * callers retain explicit control over when/how counters mutate.
@@ -160,7 +160,7 @@ export function applyMode(mode: FailureMode, ctx: ModeContext): ModeResult {
       // Charge is captured immediately (caller saves to store + increments
       // actualChargesCount), but the response will never reach the client.
       // Caller hangs ~10s then throws ServiceUnavailableException so the
-      // socket is closed without a 200. Next call with same key → replay.
+      // socket is closed without a 200. Next call with same key -> replay.
       return {
         status: 200,
         body: successBody(false),

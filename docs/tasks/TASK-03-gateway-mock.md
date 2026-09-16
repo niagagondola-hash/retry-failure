@@ -32,9 +32,9 @@ Membangun `payment-gateway-mock` sebagai NestJS app terpisah di `apps/payment-ga
 ## Adaptation notes
 
 - Plan section 8 mensyaratkan gateway di port terpisah. Kita pakai **3002** (karena 3000 dipakai Next.js sandbox, 3001 dipakai payment-api).
-- Akses dari Next.js sandbox (port 3000) → via Caddy: `/?XTransformPort=3002`.
-- Akses dari Vue frontend (port 5173) → CORS-enabled, langsung `http://localhost:3002/admin/config`.
-- Akses dari payment-api backend (port 3001) → langsung `http://localhost:3002` (server-to-server, tidak via Caddy).
+- Akses dari Next.js sandbox (port 3000) -> via Caddy: `/?XTransformPort=3002`.
+- Akses dari Vue frontend (port 5173) -> CORS-enabled, langsung `http://localhost:3002/admin/config`.
+- Akses dari payment-api backend (port 3001) -> langsung `http://localhost:3002` (server-to-server, tidak via Caddy).
 - Idempotency: plan section 9 menyebut `Idempotency-Key: <payment.id>`. Mock menyimpan by key.
 
 ## Files to create
@@ -67,19 +67,19 @@ Membangun `payment-gateway-mock` sebagai NestJS app terpisah di `apps/payment-ga
    - Export singleton instance (atau pakai NestJS provider `@Injectable()` dengan scope DEFAULT).
 2. `shared/idempotency/idempotency-store.ts`:
    - `Map<string, ChargeSuccess>` where `ChargeSuccess = { gatewayReference, capturedAt }`.
-   - `get(key)`, `set(key, result)`, `has(key)`, `stats()` → `actualChargesCount`.
-   - Setiap successful charge (yang benar-benar capture, bukan replay) → `actualChargesCount++`.
+   - `get(key)`, `set(key, result)`, `has(key)`, `stats()` -> `actualChargesCount`.
+   - Setiap successful charge (yang benar-benar capture, bukan replay) -> `actualChargesCount++`.
 3. `shared/modes/mode-handler.ts`:
    - `interface ModeResult { status: number; body?: unknown; headers?: Record<string,string>; shouldDropResponse?: boolean; delayMs?: number; }`
    - `applyMode(mode: Mode, ctx: { idempotencyKey: string; state: MockState }): ModeResult`.
    - Setiap mode:
      - `always-success`: return 200 + `{ gateway_reference, replayed: false }`.
-     - `fail-first-n`: counter per `Idempotency-Key`. Bila belum ada di idempotency store & counter < n → 500; bila >= n → 200 + save to store.
+     - `fail-first-n`: counter per `Idempotency-Key`. Bila belum ada di idempotency store & counter < n -> 500; bila >= n -> 200 + save to store.
      - `server-error`: selalu 500.
      - `always-timeout`: `await sleep(timeoutMs)` (default 5000ms) lalu return 503 — client akan timeout duluan karena `GATEWAY_TIMEOUT_MS=2000`.
      - `client-error`: 400 `{ error_code: 'invalid_card', message: 'Card number invalid' }`.
      - `random`: `Math.random() < probability` ? 200 : 500.
-     - `succeed-but-drop-response`: save to idempotency store (actual charge happens) → `shouldDropResponse: true` (don't send response, client will timeout). Next call with same key → replay.
+     - `succeed-but-drop-response`: save to idempotency store (actual charge happens) -> `shouldDropResponse: true` (don't send response, client will timeout). Next call with same key -> replay.
      - `rate-limited`: 429 + header `Retry-After: <retryAfterSeconds>`.
 4. `charges.controller.ts`:
    ```ts
@@ -123,13 +123,13 @@ Membangun `payment-gateway-mock` sebagai NestJS app terpisah di `apps/payment-ga
    ```
    Note: NestJS doesn't easily support setting HTTP status + headers from service. Better to return a structured result and let controller map to `@HttpCode()` or `res.status()`. Use `@Res()` injection for full control.
 6. `admin.controller.ts`:
-   - `@Get('config')` → return current state config.
-   - `@Put('config')` → merge body, return new state.
-   - `@Get('stats')` → return counts.
+   - `@Get('config')` -> return current state config.
+   - `@Put('config')` -> merge body, return new state.
+   - `@Get('stats')` -> return counts.
 7. `metrics.controller.ts`:
    - Pakai prom-client `Registry` instance.
    - Counters: `payment_gateway_mock_requests_total`, `payment_gateway_mock_replays_total`, `payment_gateway_mock_actual_charges_total`.
-   - `@Get('metrics')` → return `register.metrics()` with `Content-Type: register.contentType`.
+   - `@Get('metrics')` -> return `register.metrics()` with `Content-Type: register.contentType`.
 8. `main.ts`:
    ```ts
    async function bootstrap() {
@@ -144,7 +144,7 @@ Membangun `payment-gateway-mock` sebagai NestJS app terpisah di `apps/payment-ga
 
 ## Acceptance criteria
 
-> **PENTING — curl command wajib pakai `-H 'Content-Type: application/json'` untuk PUT/POST yang kirim JSON body.** Tanpa header ini, curl default pakai `application/x-www-form-urlencoded` → NestJS parse body sebagai form, bukan JSON → DTO kosong → silent failure (config tidak berubah, no error). Sudah diverifikasi di sandbox.
+> **PENTING — curl command wajib pakai `-H 'Content-Type: application/json'` untuk PUT/POST yang kirim JSON body.** Tanpa header ini, curl default pakai `application/x-www-form-urlencoded` -> NestJS parse body sebagai form, bukan JSON -> DTO kosong -> silent failure (config tidak berubah, no error). Sudah diverifikasi di sandbox.
 >
 > **PENTING — Mode TIDAK auto-reset antar test.** Setiap test mode-specific butuh PUT mode dulu. Bila ragu, jalankan pre-step reset di bawah sebelum test.
 >
@@ -157,10 +157,10 @@ Membangun `payment-gateway-mock` sebagai NestJS app terpisah di `apps/payment-ga
 - [ ] **#2** `curl http://localhost:3002/admin/config` returns current config.
 - [ ] **#3** `curl -X PUT -H 'Content-Type: application/json' http://localhost:3002/admin/config -d '{"mode":"fail-first-n","n":2}'` mengubah state.
 - [ ] **#4 [RESET mode=always-success]** `curl -X POST -H 'Idempotency-Key: test-1' -H 'Content-Type: application/json' http://localhost:3002/v1/charges -d '{"amount":100,"currency":"IDR"}'` returns 200 (mode always-success).
-- [ ] **#5 [SET mode=fail-first-n,n=2]** 2 call pertama return 500, call ke-3 return 200 + `replayed: false` (fresh charge). Same-key call ke-4 → 200 + `replayed: true`.
+- [ ] **#5 [SET mode=fail-first-n,n=2]** 2 call pertama return 500, call ke-3 return 200 + `replayed: false` (fresh charge). Same-key call ke-4 -> 200 + `replayed: true`.
 - [ ] **#6 [SET mode=rate-limited]** return 429 + header `Retry-After: <n>`.
 - [ ] **#7 [SET mode=client-error]** return 400 `{ error_code: 'invalid_card' }`.
-- [ ] **#8 [SET mode=succeed-but-drop-response]** call pertama hang → client timeout; call kedua dengan same key → return 200 + `replayed: true`.
+- [ ] **#8 [SET mode=succeed-but-drop-response]** call pertama hang -> client timeout; call kedua dengan same key -> return 200 + `replayed: true`.
 - [ ] **#9** `GET /admin/stats` returns `{ requestCount, successCount, failureCount, replayCount, actualChargesCount }`.
 - [ ] **#10** `GET /metrics` returns Prometheus text format.
 - [ ] `pnpm typecheck` & `pnpm lint` lulus.
@@ -172,8 +172,8 @@ Membangun `payment-gateway-mock` sebagai NestJS app terpisah di `apps/payment-ga
 > **WAJIB BACA**: sebelum menjalankan command di bawah, cek kondisi lingkungan Anda via [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 1 (Pre-flight Check).
 >
 > Ringkasan keyword:
-> - `pnpm --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
-> - `curl -s http://localhost:3000` sibuk → KONDISI SANDBOX → gateway-mock di PORT=3002 (payment-api di 3001). Bebas → KONDISI LOCAL → gateway-mock di PORT=3001 (payment-api di 3000).
+> - `pnpm --version` ada -> KONDISI LOCAL. Tidak ada -> KONDISI SANDBOX -> jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
+> - `curl -s http://localhost:3000` sibuk -> KONDISI SANDBOX -> gateway-mock di PORT=3002 (payment-api di 3001). Bebas -> KONDISI LOCAL -> gateway-mock di PORT=3001 (payment-api di 3000).
 >
 > Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih salah satu sesuai kondisi.
 
@@ -254,7 +254,7 @@ pkill -f "nest start" 2>/dev/null
 
 - **Idempotency-Key uniqueness**: plan section 9 menyebut key = `payment.id`. Mock hanya menyimpan successful charges; failures tidak disimpan.
 - **Counter untuk `fail-first-n`**: gunakan `Map<idempotencyKey, attemptCount>`. Replays tidak mengkonsumsi counter (karena replay langsung sukses tanpa apply mode).
-- **`succeed-but-drop-response`**: implementasinya — simpan charge ke idempotency store (sukses), tapi **jangan kirim response** (delay lalu abort/throw). Client akan timeout → retry → kena replay.
+- **`succeed-but-drop-response`**: implementasinya — simpan charge ke idempotency store (sukses), tapi **jangan kirim response** (delay lalu abort/throw). Client akan timeout -> retry -> kena replay.
 - **CORS**: enable `origin: '*'` agar Vue frontend (port 5173) bisa fetch langsung.
 - **No persistence**: state in-memory. Restart service = reset config + counters + idempotency store. Acceptable untuk demo; catat di TASK-15.
 - **NestJS HTTP status control**: bila perlu set custom status + headers (mis. 429 + Retry-After), inject `@Res() res: Response` di controller dan panggil `res.status(429).set('Retry-After', '10').json({...})`. Setelah `res.send()` dipanggil, NestJS tidak akan melakukan handling tambahan.

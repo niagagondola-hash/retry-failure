@@ -31,13 +31,13 @@ Setelah task ini selesai, TASK-07 cukup `inject PAYMENT_GATEWAY_PORT` dan memang
 - Jest unit tests di `apps/payment-api/test/modules/gateway/` (mock `HttpService`).
 
 **Out of scope**:
-- Payments service orchestration, state machine, idempotency invariant (`actualCharges <= 1` enforcement) → TASK-07.
-- Audit trail persistence (`payment_attempts` table write) → TASK-08.
-- Metrics emission (pino log + prom-client counter increment) → TASK-11. Adapter hanya menyediakan hook `onAttempt`; emit dilakukan consumer.
-- Durable retry scheduler → TASK-10.
-- Gateway mock itu sendiri → TASK-03 (sudah selesai, dependency).
-- Cockatiel policy composition → TASK-05 (sudah selesai, dependency).
-- Multi-tenant / multi-region gateway selection → out of scope (single endpoint only).
+- Payments service orchestration, state machine, idempotency invariant (`actualCharges <= 1` enforcement) -> TASK-07.
+- Audit trail persistence (`payment_attempts` table write) -> TASK-08.
+- Metrics emission (pino log + prom-client counter increment) -> TASK-11. Adapter hanya menyediakan hook `onAttempt`; emit dilakukan consumer.
+- Durable retry scheduler -> TASK-10.
+- Gateway mock itu sendiri -> TASK-03 (sudah selesai, dependency).
+- Cockatiel policy composition -> TASK-05 (sudah selesai, dependency).
+- Multi-tenant / multi-region gateway selection -> out of scope (single endpoint only).
 
 ## Dependency flow (plan section 2.2)
 
@@ -66,7 +66,7 @@ HttpPaymentGateway.charge(req)   ← inner: PaymentGatewayPort
       │   ├── Header: Idempotency-Key: <deriveIdempotencyKey(paymentId)>
       │   ├── Header: Content-Type: application/json
       │   ├── Body: { amount, currency, order_id }
-      │   └── normalizes axios error / non-2xx → ChargeResult
+      │   └── normalizes axios error / non-2xx -> ChargeResult
       │
       ▼
 payment-gateway-mock (NestJS app, port 3002)   ← TASK-03
@@ -533,32 +533,32 @@ export class GatewayModule {}
 | **Async** | Callback dapat return `Promise<void>` — adapter `await` callback sebelum throw ke retry policy. Sinkron OK. |
 | **Payload** | `GatewayAttemptContext { paymentId, attemptNumber, startedAt, finishedAt, result, breakerState? }`. |
 | **Idempotensi** | Callback TIDAK menjamin exactly-once — bila scheduler (TASK-10) memulai cycle baru untuk payment yang sama, callback dipanggil lagi untuk attempt di cycle tersebut. Audit trail (`payment_attempts` rows) harus dapat menampung ini (1 row per attempt). |
-| **Error di callback** | Bila callback throw, exception propagate ke retry policy → dihitung sebagai attempt failure. Hindari — wrap di try/catch di consumer. |
+| **Error di callback** | Bila callback throw, exception propagate ke retry policy -> dihitung sebagai attempt failure. Hindari — wrap di try/catch di consumer. |
 | **Wiring ke audit** | TASK-07 memakai `ctx.attemptNumber`, `ctx.result.httpStatus`, `ctx.result.errorCode`, `ctx.result.retryAfterMs`, `ctx.result.replayed` untuk menulis `payment_attempts` row via PrismaAuditService (TASK-08). |
 
 ### 9. Jest tests
 
 #### `http-adapter.spec.ts`
 - `charge()` mengirim POST ke `${baseUrl}/v1/charges` dengan header `Idempotency-Key` = `paymentId` + `Content-Type: application/json`. Verifikasi via mock `HttpService.axiosInstance.post = jest.fn().mockResolvedValue({ status: 200, data: { gateway_reference: 'gw_123', replayed: false } })`.
-- 2xx + body `{ gateway_reference, replayed: false }` → `ChargeResult.status='succeeded'`, `gatewayReference` set, `replayed=false`.
-- 2xx + body `{ replayed: true }` → `replayed=true`.
-- 400 `{ error_code: 'invalid_card', message: 'Card number invalid' }` → `status='failed'`, `httpStatus=400`, `errorCode='invalid_card'`, `errorMessage='Card number invalid'`, `retryAfterMs` undefined.
-- 429 + header `Retry-After: 10` → `status='failed'`, `httpStatus=429`, `retryAfterMs=10000`.
-- 500 (no Retry-After) → `status='failed'`, `httpStatus=500`, `retryAfterMs` undefined.
-- Network error (`ECONNREFUSED`, no response) → `status='failed'`, `errorCode='ECONNREFUSED'`, `errorMessage=err.message`, `httpStatus` undefined.
-- `paymentId` kosong → throw Error('paymentId is required…').
+- 2xx + body `{ gateway_reference, replayed: false }` -> `ChargeResult.status='succeeded'`, `gatewayReference` set, `replayed=false`.
+- 2xx + body `{ replayed: true }` -> `replayed=true`.
+- 400 `{ error_code: 'invalid_card', message: 'Card number invalid' }` -> `status='failed'`, `httpStatus=400`, `errorCode='invalid_card'`, `errorMessage='Card number invalid'`, `retryAfterMs` undefined.
+- 429 + header `Retry-After: 10` -> `status='failed'`, `httpStatus=429`, `retryAfterMs=10000`.
+- 500 (no Retry-After) -> `status='failed'`, `httpStatus=500`, `retryAfterMs` undefined.
+- Network error (`ECONNREFUSED`, no response) -> `status='failed'`, `errorCode='ECONNREFUSED'`, `errorMessage=err.message`, `httpStatus` undefined.
+- `paymentId` kosong -> throw Error('paymentId is required…').
 
 #### `resilient-adapter.spec.ts`
-- `charge()` dengan inner mock yang gagal 2x lalu sukses (RETRY_MAX_ATTEMPTS=3) → result.status='succeeded', attempts=3, onAttempt dipanggil 3 kali dengan attemptNumber=1,2,3.
-- `charge()` dengan inner selalu gagal (status='failed', errorCode='server_error') → result.status='failed', errorCode='server_error' (last attempt), attempts=RETRY_MAX_ATTEMPTS, onAttempt dipanggil 3 kali.
-- `charge()` dengan inner mengembalikan `status='failed', errorCode='invalid_card', httpStatus=400` (permanent) → result.status='failed', errorCode='invalid_card'. Catatan: dengan `handleAll`, Cockatiel tetap me-retry — ini trade-off yang di-dokument-kan. Test assertion: attempts === maxAttempts (bukan 1). Bila pakai `handleWhen` filter, attempts=1.
+- `charge()` dengan inner mock yang gagal 2x lalu sukses (RETRY_MAX_ATTEMPTS=3) -> result.status='succeeded', attempts=3, onAttempt dipanggil 3 kali dengan attemptNumber=1,2,3.
+- `charge()` dengan inner selalu gagal (status='failed', errorCode='server_error') -> result.status='failed', errorCode='server_error' (last attempt), attempts=RETRY_MAX_ATTEMPTS, onAttempt dipanggil 3 kali.
+- `charge()` dengan inner mengembalikan `status='failed', errorCode='invalid_card', httpStatus=400` (permanent) -> result.status='failed', errorCode='invalid_card'. Catatan: dengan `handleAll`, Cockatiel tetap me-retry — ini trade-off yang di-dokument-kan. Test assertion: attempts === maxAttempts (bukan 1). Bila pakai `handleWhen` filter, attempts=1.
 - Breaker trip: inner selalu gagal dengan `BREAKER_FAILURE_THRESHOLD=2`, panggil 3x. Call ke-3: `errorCode='circuit_open'`, attempts=0 atau 1, onAttempt tidak dipanggil (breaker fast-fail).
 - `onAttempt` dipanggil dengan `ctx.result.replayed=true` bila inner mengembalikan replayed (mensimulasikan scenario succeed-but-drop-response).
 
 #### `idempotency-key.spec.ts`
-- `deriveIdempotencyKey('pay_123')` → `'pay_123'` (identity).
-- `deriveIdempotencyKey('')` → throw.
-- `deriveIdempotencyKey(undefined as any)` → throw.
+- `deriveIdempotencyKey('pay_123')` -> `'pay_123'` (identity).
+- `deriveIdempotencyKey('')` -> throw.
+- `deriveIdempotencyKey(undefined as any)` -> throw.
 
 ## Acceptance criteria
 
@@ -566,13 +566,13 @@ export class GatewayModule {}
 - [ ] `port.ts` mengekspor `PaymentGatewayPort`, `PAYMENT_GATEWAY_PORT` token, `AttemptObservable`.
 - [ ] `idempotency-key.ts` mengekspor `deriveIdempotencyKey` — returns paymentId as-is, throw bila empty.
 - [ ] `HttpPaymentGateway.charge()` mengirim `POST {GATEWAY_MOCK_URL}/v1/charges` dengan header `Idempotency-Key: <paymentId>` + `Content-Type: application/json`, body `{ amount, currency, order_id }`.
-- [ ] Mode `always-success` → `ChargeResult.status='succeeded'`, `gatewayReference` ter-set, `replayed=false`.
-- [ ] Mode `fail-first-n=2` + `RETRY_MAX_ATTEMPTS=3` → `status='succeeded'` setelah 3 attempts (`attempts=3`), call ke-3 mengembalikan fresh success (`replayed=false`).
-- [ ] Mode `client-error` → `status='failed'`, `httpStatus=400`, `errorCode='invalid_card'`, `attempts=1` (bila pakai `handleWhen` filter) atau `attempts=maxAttempts` (bila `handleAll` — trade-off di-dokument-kan di Notes).
-- [ ] Mode `rate-limited` + `Retry-After: 2` → `status='failed'`, `httpStatus=429`, `retryAfterMs=2000`.
-- [ ] Mode `succeed-but-drop-response` + retry → attempt ke-2 `replayed=true` (gateway sudah capture di attempt pertama yang drop response).
-- [ ] Mode `always-timeout` + threshold rendah (`BREAKER_FAILURE_THRESHOLD=3`, `RETRY_MAX_ATTEMPTS=1`) → setelah 3 cycle gagal, call ke-4 `errorCode='circuit_open'`, `attempts` minimal 0 (breaker fast-fail, inner tidak dipanggil).
-- [ ] `ResilientPaymentGateway.setOnAttempt(cb)` → callback dipanggil sekali per attempt dengan `GatewayAttemptContext` lengkap (`paymentId`, `attemptNumber`, `startedAt`, `finishedAt`, `result`).
+- [ ] Mode `always-success` -> `ChargeResult.status='succeeded'`, `gatewayReference` ter-set, `replayed=false`.
+- [ ] Mode `fail-first-n=2` + `RETRY_MAX_ATTEMPTS=3` -> `status='succeeded'` setelah 3 attempts (`attempts=3`), call ke-3 mengembalikan fresh success (`replayed=false`).
+- [ ] Mode `client-error` -> `status='failed'`, `httpStatus=400`, `errorCode='invalid_card'`, `attempts=1` (bila pakai `handleWhen` filter) atau `attempts=maxAttempts` (bila `handleAll` — trade-off di-dokument-kan di Notes).
+- [ ] Mode `rate-limited` + `Retry-After: 2` -> `status='failed'`, `httpStatus=429`, `retryAfterMs=2000`.
+- [ ] Mode `succeed-but-drop-response` + retry -> attempt ke-2 `replayed=true` (gateway sudah capture di attempt pertama yang drop response).
+- [ ] Mode `always-timeout` + threshold rendah (`BREAKER_FAILURE_THRESHOLD=3`, `RETRY_MAX_ATTEMPTS=1`) -> setelah 3 cycle gagal, call ke-4 `errorCode='circuit_open'`, `attempts` minimal 0 (breaker fast-fail, inner tidak dipanggil).
+- [ ] `ResilientPaymentGateway.setOnAttempt(cb)` -> callback dipanggil sekali per attempt dengan `GatewayAttemptContext` lengkap (`paymentId`, `attemptNumber`, `startedAt`, `finishedAt`, `result`).
 - [ ] `GatewayModule` meng-export `PAYMENT_GATEWAY_PORT` yang bound ke instance `ResilientPaymentGateway` (bukan `HttpPaymentGateway` langsung).
 - [ ] Tidak ada import `cockatiel`, `axios`, atau `@nestjs/axios` di `resilient-adapter.ts` — semua via `@retry-failure/resilience` + `inner`.
 - [ ] Tidak ada import `@prisma/client` / TypeORM di seluruh `modules/gateway/` — adapter tetap framework-agnostic terhadap persistence.
@@ -587,9 +587,9 @@ export class GatewayModule {}
 > **WAJIB BACA**: sebelum menjalankan command di bawah, cek kondisi lingkungan Anda via [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 1 (Pre-flight Check).
 >
 > Ringkasan keyword:
-> - `pnpm --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
-> - `docker --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → butuh external PostgreSQL atau skip DB-dependent commands.
-> - `curl -s http://localhost:3000` sibuk → KONDISI SANDBOX → payment-api pakai PORT=3001, gateway-mock pakai PORT=3002. Bebas → KONDISI LOCAL → payment-api pakai PORT=3000, gateway-mock pakai PORT=3001.
+> - `pnpm --version` ada -> KONDISI LOCAL. Tidak ada -> KONDISI SANDBOX -> jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
+> - `docker --version` ada -> KONDISI LOCAL. Tidak ada -> KONDISI SANDBOX -> butuh external PostgreSQL atau skip DB-dependent commands.
+> - `curl -s http://localhost:3000` sibuk -> KONDISI SANDBOX -> payment-api pakai PORT=3001, gateway-mock pakai PORT=3002. Bebas -> KONDISI LOCAL -> payment-api pakai PORT=3000, gateway-mock pakai PORT=3001.
 
 Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih salah satu sesuai kondisi.
 
@@ -605,7 +605,7 @@ sleep 5
 tail -n 20 /tmp/gateway-mock.log
 # Expected: "payment-gateway-mock listening on :3001"
 
-# KONDISI SANDBOX (port 3000 dipakai Next.js preview → payment-api geser ke 3001; gateway-mock geser ke 3002):
+# KONDISI SANDBOX (port 3000 dipakai Next.js preview -> payment-api geser ke 3001; gateway-mock geser ke 3002):
 cd /home/z/my-project/retry-failure/apps/payment-gateway-mock
 PORT=3002 pnpm start:dev > /tmp/gateway-mock.log 2>&1 &
 sleep 5
@@ -818,7 +818,7 @@ pkill -f "nest start" 2>/dev/null
 
 - **`handleAll` vs `handleWhen` trade-off**: TASK-05 memakai `handleAll` (menangkap semua exception). Implikasinya untuk adapter ini:
   - **Permanent error (4xx non-429)** tetap di-retry sampai `maxAttempts` — tidak efficient tapi tidak salah (state machine di TASK-07 akan detect non-retryable dari `errorCode`/`httpStatus` dan tidak menjadwalkan durable retry).
-  - Bila ingin permanent error **tidak** di-retry sama sekali (idiomatic Cockatiel), TASK-05 dapat beralih ke `handleWhen` dengan predicate yang memeriksa `error.permanent === true`. Untuk itu, `GatewayChargeError` dapat set `error.permanent = true` bila `result.errorCode === 'invalid_card'` atau `result.httpStatus` di range 400-499 (selain 429, 408). **Decision untuk TASK-06**: scaffold `GatewayChargeError` dengan property `permanent: boolean` (default false, set true berdasarkan classifier TASK-04), tetapi **tidak** mengubah `handleAll` di TASK-05. Bila perlu, TASK-05 follow-up mengganti `handleAll` → `handleWhen`.
+  - Bila ingin permanent error **tidak** di-retry sama sekali (idiomatic Cockatiel), TASK-05 dapat beralih ke `handleWhen` dengan predicate yang memeriksa `error.permanent === true`. Untuk itu, `GatewayChargeError` dapat set `error.permanent = true` bila `result.errorCode === 'invalid_card'` atau `result.httpStatus` di range 400-499 (selain 429, 408). **Decision untuk TASK-06**: scaffold `GatewayChargeError` dengan property `permanent: boolean` (default false, set true berdasarkan classifier TASK-04), tetapi **tidak** mengubah `handleAll` di TASK-05. Bila perlu, TASK-05 follow-up mengganti `handleAll` -> `handleWhen`.
 
 - **AsyncLocalStorage trace context**: trace_id (`AsyncLocalStorage`) tidak di-handle di adapter — itu concern TASK-11. Adapter hanya memanggil `inner.charge(req)`; trace_id otomatis ter-propagate via async context bila PaymentsService sudah set di request scope.
 

@@ -128,7 +128,7 @@ describe('executeWithResilience — circuit breaker', () => {
 
     const depName = 'test-breaker';
 
-    // 3 cycles, each 1 attempt → 3 failures → breaker opens
+    // 3 cycles, each 1 attempt -> 3 failures -> breaker opens
     for (let i = 0; i < 3; i++) {
       await executeWithResilience({
         dependencyName: depName,
@@ -174,7 +174,7 @@ describe('executeWithResilience — circuit breaker', () => {
     // (not yet open because threshold not reached)
     expect(getBreakerState(depName)).toBe('closed');
 
-    // After more failures → opens
+    // After more failures -> opens
     await executeWithResilience({
       dependencyName: depName,
       fn: async () => {

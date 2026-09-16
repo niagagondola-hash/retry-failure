@@ -15,7 +15,7 @@ import { PaymentAttempt } from './payment-attempt.entity';
  *
  * Native PG types:
  *   - id: uuid (default gen_random_uuid())
- *   - amount: numeric(12,2) → JS string (preserve precision)
+ *   - amount: numeric(12,2) -> JS string (preserve precision)
  *   - status: native PG enum payment_status_enum
  *   - next_retry_at, created_at, updated_at: timestamp(3) (ms precision)
  *

@@ -12,7 +12,7 @@
 Mengimplementasikan **`AuditPort`** interface yang didefinisikan di TASK-07 (`apps/payment-api/src/modules/payments/audit/audit-port.ts`) dengan **TypeORM-based `AuditService`** yang:
 
 1. **Persist** setiap gateway attempt (sukses maupun gagal) ke tabel `payment_attempts` (TASK-02 entity `PaymentAttempt`) sebagai **satu row per Cockatiel attempt**.
-2. **Map `RecordAttemptInput` → `PaymentAttempt` row** secara 1:1 dengan kolom lengkap sesuai plan section 11.2.
+2. **Map `RecordAttemptInput` -> `PaymentAttempt` row** secara 1:1 dengan kolom lengkap sesuai plan section 11.2.
 3. **Increment `payments.attempt_count` atomic** setiap kali satu row `payment_attempts` ditulis, agar counter di parent row konsisten dengan jumlah attempt yang benar-benar terjadi di cycle berjalan.
 4. **List attempts** untuk satu payment, urut `attempt_number ASC`, sebagai `AttemptView[]` (plain object — tidak leak entity TypeORM ke caller).
 5. **Handle `circuit_open` case** — saat breaker OPEN, gateway adapter (TASK-06) TIDAK memanggil HTTP, tetapi tetap meng-invoke `onAttempt` callback sekali dengan `breakerState='open'`, `outcome='circuit_open'`, `durationMs=0`. AuditService wajib tetap menulis 1 row untuk kasus ini (traceability requirement — observability plan section 13.1).
@@ -27,12 +27,12 @@ Setelah task ini selesai, TASK-09 (controllers) dapat expose `GET /payments/:id`
 - `apps/payment-api/src/modules/audit/index.ts` — barrel + factory `createAuditService()` (utility untuk test/bootstrap).
 - Wire `AuditModule` ke `PaymentsModule` di TASK-07 — hapus provider `{ provide: AUDIT_PORT, useClass: NoopAuditService }` dan ganti dengan `imports: [AuditModule]` (yang men-export `AUDIT_PORT` binding).
 - Jest unit tests di `apps/payment-api/test/modules/audit/` (mock `PaymentAttemptRepository` + `PaymentRepository`).
-- Smoke test e2e (manual): create payment → verify `payment_attempts` rows via `psql`.
+- Smoke test e2e (manual): create payment -> verify `payment_attempts` rows via `psql`.
 
 **Out of scope**:
-- Trace ID propagation full OpenTelemetry SDK (AsyncLocalStorage + OTel context injection) → **TASK-11**. Di task ini `traceId` hanya diterima dari caller (`PaymentsService.generateTraceId() = crypto.randomUUID()` per execution cycle) dan di-persist sebagai string biasa.
-- Metrics emission aktual (`payment_gateway_requests_total`, `retry_attempts_total`, dst.) → **TASK-11**. AuditService tidak meng-import `prom-client`.
-- Retention policy / TTL / cleanup job untuk `payment_attempts` (data grows unbounded untuk production) → **di luar scope**; document di TASK-15 sebagai production caveat.
+- Trace ID propagation full OpenTelemetry SDK (AsyncLocalStorage + OTel context injection) -> **TASK-11**. Di task ini `traceId` hanya diterima dari caller (`PaymentsService.generateTraceId() = crypto.randomUUID()` per execution cycle) dan di-persist sebagai string biasa.
+- Metrics emission aktual (`payment_gateway_requests_total`, `retry_attempts_total`, dst.) -> **TASK-11**. AuditService tidak meng-import `prom-client`.
+- Retention policy / TTL / cleanup job untuk `payment_attempts` (data grows unbounded untuk production) -> **di luar scope**; document di TASK-15 sebagai production caveat.
 - Schema migration baru (kolom `payment_attempts` sudah dibuat di TASK-02 `0001_init.ts`).
 - Per-attempt row-level idempotency (dedup key) — tidak diperlukan karena row ID di-generate oleh PostgreSQL `gen_random_uuid()` dan satu attempt Cockatiel = satu callback = satu row insert.
 
@@ -49,7 +49,7 @@ Setiap field di `payment_attempts` diisi dari sumber berikut. Field bertanda `nu
 | `http_status` | int, nullable | `input.httpStatus ?? null`. `null` bila network error (no HTTP response) atau breaker OPEN (tidak ada call terjadi). |
 | `error_code` | varchar, nullable | `input.errorCode ?? null`. Dari gateway body `error_code` ATAU network `err.code` (mis. `ECONNREFUSED`, `ETIMEDOUT`) — sudah dinormalisasi di adapter TASK-06. |
 | `error_message` | varchar, nullable | `input.errorMessage ?? null`. Dari gateway body `message` ATAU `err.message` (network error). |
-| `delay_before_next_ms` | int, nullable | `input.delayBeforeNextMs ?? null`. Sumber: classifier `Retry-After` parsing (TASK-04) → `ChargeResult.retryAfterMs` ATAU Cockatiel backoff delay yang dihitung untuk attempt berikutnya (dipass via `onAttempt` callback context). `null` bila attempt terakhir (tidak ada delay). |
+| `delay_before_next_ms` | int, nullable | `input.delayBeforeNextMs ?? null`. Sumber: classifier `Retry-After` parsing (TASK-04) -> `ChargeResult.retryAfterMs` ATAU Cockatiel backoff delay yang dihitung untuk attempt berikutnya (dipass via `onAttempt` callback context). `null` bila attempt terakhir (tidak ada delay). |
 | `breaker_state` | varchar(12) | `input.breakerState` (`'closed'` \| `'open'` \| `'half_open'`). Lookup sync via `getBreakerState(dependencyName)` dari `@retry-failure/resilience` breaker-store (TASK-05) — diisi adapter saat attempt dijalankan. |
 | `duration_ms` | int | `input.durationMs` = `finishedAt.getTime() - startedAt.getTime()`. Untuk `circuit_open` case: `0` (tidak ada call terjadi). |
 | `trace_id` | char(32), nullable | `input.traceId ?? null`. UUID v4 string (32 hex char tanpa dash — atau 36 dengan dash, tergantung impl; **decision: simpan sebagai string 36-char dengan dash** untuk simplicity, kolom `varchar(36)` di entity — TODO update TASK-02 bila perlu). Di-generate sekali per execution cycle di `PaymentsService.executePayment()` via `crypto.randomUUID()`. |
@@ -226,7 +226,7 @@ import { AuditService } from './audit.service';
  * AuditModule — exports AUDIT_PORT binding ke AuditService (menggantikan
  * NoopAuditService placeholder dari TASK-07 PaymentsModule).
  *
- * PaymentsModule.imports([AuditModule]) → AUDIT_PORT token resolve ke AuditService.
+ * PaymentsModule.imports([AuditModule]) -> AUDIT_PORT token resolve ke AuditService.
  */
 @Module({
   imports: [TypeOrmModule.forFeature([PaymentAttempt])],
@@ -317,29 +317,29 @@ export class PaymentsModule {}
 ```ts
 describe('AuditService', () => {
   // Setup: mock Repository<PaymentAttempt> + mock PaymentRepository
-  //   - attemptRepo.create() → returns plain object (passthrough)
-  //   - attemptRepo.save() → resolves, captures arg
-  //   - attemptRepo.manager.createQueryBuilder() → chain mock (.update/.set/.where/.execute)
-  //   - attemptRepo.find() → returns array (configurable per-test)
+  //   - attemptRepo.create() -> returns plain object (passthrough)
+  //   - attemptRepo.save() -> resolves, captures arg
+  //   - attemptRepo.manager.createQueryBuilder() -> chain mock (.update/.set/.where/.execute)
+  //   - attemptRepo.find() -> returns array (configurable per-test)
   //   - payments.atomicUpdateStatus / increment — not called (we use query builder directly)
 
   // Test cases:
-  // 1. recordAttempt happy path: input lengkap → attemptRepo.save dipanggil dengan
+  // 1. recordAttempt happy path: input lengkap -> attemptRepo.save dipanggil dengan
   //    row yang sesuai (semua field ter-map); query builder update dipanggil dengan
   //    paymentId yang benar; tidak throw.
   // 2. recordAttempt dengan nullable fields (httpStatus=undefined, errorCode=undefined,
   //    errorMessage=undefined, delayBeforeNextMs=undefined, traceId=undefined,
-  //    gatewayReference=undefined) → row yang di-save memiliki null (BUKAN undefined)
+  //    gatewayReference=undefined) -> row yang di-save memiliki null (BUKAN undefined)
   //    di field tersebut.
   // 3. recordAttempt circuit_open case: outcome='circuit_open', durationMs=0,
-  //    breakerState='open', httpStatus=null → row tetap ter-save (sumber truth).
-  // 4. recordAttempt bila attemptRepo.save throw (mis. DB down) → AuditService
+  //    breakerState='open', httpStatus=null -> row tetap ter-save (sumber truth).
+  // 4. recordAttempt bila attemptRepo.save throw (mis. DB down) -> AuditService
   //    menangkap error, log, TIDAK re-throw ke caller. Spy logger.error dipanggil.
-  // 5. recordAttempt bila increment query throw → row attempt tetap tersimpan
+  // 5. recordAttempt bila increment query throw -> row attempt tetap tersimpan
   //    (step 1 sudah commit), error di-log, tidak re-throw.
   // 6. listAttempts: attemptRepo.find dipanggil dengan order attemptNumber ASC;
   //    return AttemptView[] dengan field mapping benar.
-  // 7. listAttempts untuk paymentId yang tidak punya attempts → return [].
+  // 7. listAttempts untuk paymentId yang tidak punya attempts -> return [].
 });
 ```
 
@@ -370,7 +370,7 @@ Namun ada beberapa hal yang perlu diperhatikan / di-update di TASK-07 setelah TA
 
 1. **Trace ID generation** — `PaymentsService.executePayment()` sudah memanggil `const traceId = randomUUID();` (TASK-07 step 5). AuditService menerima traceId via `RecordAttemptInput.traceId` dan men-persist-nya ke kolom `trace_id`. **Tidak ada perubahan** — hanya konfirmasi bahwa field ini ter-flow end-to-end.
 
-2. **Reset `attempt_count=0` saat start cycle** — `PaymentsService.executePayment()` sudah melakukan ini via `atomicUpdateStatus(paymentId, previousStatus, { status: PROCESSING, attemptCount: 0 })`. Setelah reset, setiap `recordAttempt()` akan increment kembali dari 0 → 1 → 2 → ... Sesuai dengan Cockatiel `attemptNumber` (1-based).
+2. **Reset `attempt_count=0` saat start cycle** — `PaymentsService.executePayment()` sudah melakukan ini via `atomicUpdateStatus(paymentId, previousStatus, { status: PROCESSING, attemptCount: 0 })`. Setelah reset, setiap `recordAttempt()` akan increment kembali dari 0 -> 1 -> 2 -> ... Sesuai dengan Cockatiel `attemptNumber` (1-based).
 
 3. **`onAttempt` callback payload** — TASK-07 `attachAuditCallback()` sudah membangun `RecordAttemptInput` lengkap dari `GatewayAttemptContext`:
    ```ts
@@ -404,7 +404,7 @@ Namun ada beberapa hal yang perlu diperhatikan / di-update di TASK-07 setelah TA
      finishedAt: now, // duration = 0
    }
    ```
-   `PaymentsService.classifyOutcome()` akan return `'circuit_open'`, dan `attachAuditCallback` akan set `durationMs = 0`, `httpStatus = null`, `gatewayReference = null`. AuditService tetap menulis 1 row → observability plan section 13.1 (event: "breaker state change" / "circuit open") terpenuhi.
+   `PaymentsService.classifyOutcome()` akan return `'circuit_open'`, dan `attachAuditCallback` akan set `durationMs = 0`, `httpStatus = null`, `gatewayReference = null`. AuditService tetap menulis 1 row -> observability plan section 13.1 (event: "breaker state change" / "circuit open") terpenuhi.
 
 5. **Error handling contract** — `PaymentsService.attachAuditCallback()` sudah wrap `audit.recordAttempt(input)` dalam try/catch:
    ```ts
@@ -428,7 +428,7 @@ Namun ada beberapa hal yang perlu diperhatikan / di-update di TASK-07 setelah TA
 - [ ] `audit.module.ts` mengekspor `AuditModule` dengan provider `AuditService` + binding `{ provide: AUDIT_PORT, useExisting: AuditService }`; men-export `AUDIT_PORT` token.
 - [ ] `PaymentsModule` (TASK-07) sudah di-update: hapus provider `{ provide: AUDIT_PORT, useClass: NoopAuditService }`, tambah `imports: [AuditModule]`. Module tetap bisa di-bootstrap tanpa error DI.
 - [ ] `NoopAuditService` tetap diekspor dari `audit-port.ts` (untuk unit test isolation).
-- [ ] End-to-end smoke test: `POST /payments` (setelah TASK-09 controllers ready) menghasilkan ≥ 1 row di `payment_attempts` per payment. Bila gateway success first try → 1 row. Bila retry 3x lalu success → 3 rows.
+- [ ] End-to-end smoke test: `POST /payments` (setelah TASK-09 controllers ready) menghasilkan ≥ 1 row di `payment_attempts` per payment. Bila gateway success first try -> 1 row. Bila retry 3x lalu success -> 3 rows.
 - [ ] `pnpm --filter payment-api typecheck` lulus.
 - [ ] `pnpm --filter payment-api lint` lulus.
 - [ ] Jest unit tests `audit.service.spec.ts` lulus semua test cases (happy path, nullable fields, circuit_open, error swallowing, listAttempts).
@@ -440,9 +440,9 @@ Namun ada beberapa hal yang perlu diperhatikan / di-update di TASK-07 setelah TA
 > **WAJIB BACA**: sebelum menjalankan command di bawah, cek kondisi lingkungan Anda via [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 1 (Pre-flight Check).
 >
 > Ringkasan keyword:
-> - `pnpm --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
-> - `docker --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → butuh external PostgreSQL atau skip DB-dependent commands.
-> - `curl -s http://localhost:3000` sibuk → KONDISI SANDBOX → payment-api pakai PORT=3001, gateway-mock pakai PORT=3002. Bebas → KONDISI LOCAL → payment-api pakai PORT=3000, gateway-mock pakai PORT=3001.
+> - `pnpm --version` ada -> KONDISI LOCAL. Tidak ada -> KONDISI SANDBOX -> jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
+> - `docker --version` ada -> KONDISI LOCAL. Tidak ada -> KONDISI SANDBOX -> butuh external PostgreSQL atau skip DB-dependent commands.
+> - `curl -s http://localhost:3000` sibuk -> KONDISI SANDBOX -> payment-api pakai PORT=3001, gateway-mock pakai PORT=3002. Bebas -> KONDISI LOCAL -> payment-api pakai PORT=3000, gateway-mock pakai PORT=3001.
 
 Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih salah satu sesuai kondisi.
 
@@ -575,7 +575,7 @@ pnpm db:migrate  # re-apply
 
 - **Increment `attempt_count` atomic via TypeORM raw SQL expression**: gunakan `.set({ attemptCount: () => 'attempt_count + 1' })` di query builder. JANGAN pakai read-modify-write (`payment.attemptCount += 1; repo.save(payment)`) — race condition antar concurrent audit callback (Cockatiel paralel attempt, atau scheduler + manual retry overlap). PostgreSQL `UPDATE ... SET attempt_count = attempt_count + 1` adalah atomic di row-level (implicit row lock).
 
-- **Reset `attempt_count=0` saat transitioning ke 'processing'**: dilakukan oleh `PaymentsService.executePayment()` via `atomicUpdateStatus(paymentId, previousStatus, { status: PROCESSING, attemptCount: 0 })`. Setelah reset, increment per attempt akan rebuild counter 1 → 2 → ... → N. `attempt_count` di parent row selalu = jumlah attempt di cycle terakhir. Bila perlu history, query `payment_attempts` (bukan `payments.attempt_count`).
+- **Reset `attempt_count=0` saat transitioning ke 'processing'**: dilakukan oleh `PaymentsService.executePayment()` via `atomicUpdateStatus(paymentId, previousStatus, { status: PROCESSING, attemptCount: 0 })`. Setelah reset, increment per attempt akan rebuild counter 1 -> 2 -> ... -> N. `attempt_count` di parent row selalu = jumlah attempt di cycle terakhir. Bila perlu history, query `payment_attempts` (bukan `payments.attempt_count`).
 
 - **Circuit open case WAJIB record audit row**: walaupun tidak ada HTTP call terjadi, observability plan section 13.1 mensyaratkan event "breaker state change" / "circuit open" tercatat. AuditService menerima `outcome='circuit_open'` dari `PaymentsService.classifyOutcome()` dan menulis row dengan `durationMs=0`, `httpStatus=null`, `breakerState='open'`. Tanpa row ini, debugging circuit breaker behavior di production menjadi mustahil (no audit trail).
 
@@ -593,4 +593,4 @@ pnpm db:migrate  # re-apply
 
 - **`replayed` column deviation**: plan section 11.2 tidak memuat kolom `replayed`, tapi `RecordAttemptInput` (TASK-07) memilikinya. **Decision**: tambahkan kolom `replayed boolean default false` ke entity `PaymentAttempt` TASK-02 (atau via migration `0002_add_replayed_column.ts` bila entity sudah di-deploy). Document di TASK-15 sebagai deviation dari plan original dengan justifikasi "idempotency invariant audit clarity" (plan section 9.1).
 
-- **After this task done — TASK-09 (controllers) can proceed**: TASK-09 akan expose `GET /payments/:id` yang meng-embed `attempts: AttemptView[]` (dari `PaymentsService.getById(id)` → `AuditService.listAttempts(id)`). Tidak ada perubahan API breaking yang diharapkan di TASK-08 saat TASK-09/10/11 berjalan. TASK-10 scheduler akan memanggil `executePayment(paymentId, { source: 'scheduler' })` — audit rows untuk scheduler cycles akan otomatis ter-write via callback yang sama. TASK-11 akan menambahkan OTel span context (replace `crypto.randomUUID()` traceId dengan `trace.getSpan(context.active())?.spanContext().traceId`).
+- **After this task done — TASK-09 (controllers) can proceed**: TASK-09 akan expose `GET /payments/:id` yang meng-embed `attempts: AttemptView[]` (dari `PaymentsService.getById(id)` -> `AuditService.listAttempts(id)`). Tidak ada perubahan API breaking yang diharapkan di TASK-08 saat TASK-09/10/11 berjalan. TASK-10 scheduler akan memanggil `executePayment(paymentId, { source: 'scheduler' })` — audit rows untuk scheduler cycles akan otomatis ter-write via callback yang sama. TASK-11 akan menambahkan OTel span context (replace `crypto.randomUUID()` traceId dengan `trace.getSpan(context.active())?.spanContext().traceId`).

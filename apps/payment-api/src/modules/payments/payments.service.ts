@@ -147,7 +147,7 @@ export class PaymentsService {
       });
       this.metrics?.decPaymentStatus('processing');
       this.metrics?.incPaymentStatus('failed');
-      this.logger.warn({ paymentId, traceId: ctx.traceId, errorCode: result.errorCode, event: 'permanent_failure' }, 'payment permanent failure → failed');
+      this.logger.warn({ paymentId, traceId: ctx.traceId, errorCode: result.errorCode, event: 'permanent_failure' }, 'payment permanent failure -> failed');
       return (await this.payments.findById(paymentId))!;
     }
 

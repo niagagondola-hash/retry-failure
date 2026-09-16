@@ -21,16 +21,16 @@ File tersebut berisi:
 Contoh keyword dari SANDBOX_NOTES.md:
 ```
 Cek: pnpm --version
-  ├── ada output version → KONDISI LOCAL → pnpm install langsung
-  └── command not found → KONDISI SANDBOX → corepack enable pnpm dulu
+  ├── ada output version -> KONDISI LOCAL -> pnpm install langsung
+  └── command not found -> KONDISI SANDBOX -> corepack enable pnpm dulu
 
 Cek: docker --version
-  ├── ada output version → KONDISI LOCAL → docker compose up -d postgres
-  └── command not found → KONDISI SANDBOX → butuh external PostgreSQL atau mock repository
+  ├── ada output version -> KONDISI LOCAL -> docker compose up -d postgres
+  └── command not found -> KONDISI SANDBOX -> butuh external PostgreSQL atau mock repository
 
 Cek: curl -s http://localhost:3000
-  ├── sibuk → KONDISI SANDBOX → payment-api di port 3001, gateway-mock di port 3002
-  └── bebas → KONDISI LOCAL → payment-api di port 3000, gateway-mock di port 3001
+  ├── sibuk -> KONDISI SANDBOX -> payment-api di port 3001, gateway-mock di port 3002
+  └── bebas -> KONDISI LOCAL -> payment-api di port 3000, gateway-mock di port 3001
 ```
 
 Setiap task file (`TASK-*.md`) punya section "Useful commands". Saat menjalankan command tersebut, cek dulu kondisi via Pre-flight Check, lalu ikuti Command Matrix di SANDBOX_NOTES.md.
@@ -115,11 +115,11 @@ Adaptasi lingkungan spesifik (port conflict, pnpm availability, Docker availabil
 
 - **Batch 1** (sequential): `TASK-01`
 - **Batch 2** (parallel, 3 agents): `TASK-02`, `TASK-03`, `TASK-04`
-- **Batch 3** (sequential): `TASK-05` → `TASK-06` → `TASK-07`
+- **Batch 3** (sequential): `TASK-05` -> `TASK-06` -> `TASK-07`
 - **Batch 4** (parallel, 2 agents): `TASK-08`, lalu `TASK-09` setelah `TASK-08` selesai
 - **Batch 5** (parallel, 2 agents): `TASK-10`, `TASK-11`
 - **Batch 6** (parallel, 2 agents): `TASK-12` (Next.js sandbox), `TASK-13` (Vue+PrimeVue)
-- **Batch 7** (sequential): `TASK-14` → `TASK-15`
+- **Batch 7** (sequential): `TASK-14` -> `TASK-15`
 
 ---
 
@@ -215,7 +215,7 @@ Untuk komunikasi antar service, gunakan env variable (`process.env.GATEWAY_URL`,
 - [ ] Circuit breaker dapat dibuktikan melalui E2E scenario 3.
 - [ ] Permanent 4xx tidak di-retry (scenario 2).
 - [ ] `Retry-After` dihormati (scenario 5).
-- [ ] Exhausted execution cycle → `scheduled_for_retry`.
+- [ ] Exhausted execution cycle -> `scheduled_for_retry`.
 - [ ] Scheduler memproses due payment (scenario 6).
 - [ ] `MAX_TOTAL_RETRIES` mengakhiri payment menjadi `failed` (scenario 7).
 - [ ] Idempotency menjamin `actualCharges <= 1` walaupun `calls >= 2` (scenario 4 — hero).

@@ -10,11 +10,11 @@
  *
  * Gateway mode 'succeed-but-drop-response' behavior:
  *   - 1st request with Idempotency-Key=K:
- *       → Gateway stores K, ACTUALLY CHARGES (real charge #1), drops TCP response
- *       → Client sees ECONNRESET, retries
+ *       -> Gateway stores K, ACTUALLY CHARGES (real charge #1), drops TCP response
+ *       -> Client sees ECONNRESET, retries
  *   - 2nd request with same Key=K:
- *       → Gateway looks up K, finds cached result
- *       → REPLAY (no new charge) → returns 200 {replayed:true, gatewayReference:G1}
+ *       -> Gateway looks up K, finds cached result
+ *       -> REPLAY (no new charge) -> returns 200 {replayed:true, gatewayReference:G1}
  *   - Net: actualCharges=1, requestCount=2, replayCount=1
  *
  * Preconditions:
@@ -32,10 +32,10 @@
  *   - Metrics: gateway_idempotent_replays_total increased by >= 1
  *
  * Flow diagram (rendered in MD):
- *   See docs/tasks/TASK-14a-idempotency.md → section "3. Visualisasi Alur"
+ *   See docs/tasks/TASK-14a-idempotency.md -> section "3. Visualisasi Alur"
  *
  * Manual verification procedure (5 layers L1-L5):
- *   See docs/tasks/TASK-14a-idempotency.md → section "5. Verifikasi Manual per Lapis"
+ *   See docs/tasks/TASK-14a-idempotency.md -> section "5. Verifikasi Manual per Lapis"
  *
  * Run this file only:
  *   pnpm test:e2e:idempotency

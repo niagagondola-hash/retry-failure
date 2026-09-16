@@ -46,14 +46,14 @@ Setelah task ini selesai:
 
 **Out of scope**:
 
-- **Frontend UI** (Vue dashboard + Next.js sandbox) → **TASK-12 + TASK-13**. Controller hanya menyediakan JSON; rendering di task frontend.
-- **Metrics emission aktual** (`payment_gateway_requests_total`, `retry_attempts_total`, dst. + integration ke `PaymentsService` / gateway adapter) → **TASK-11**. Di task ini `/metrics` endpoint sudah exist + return valid Prometheus text, tapi counter hanya satu stub (`http_requests_total`) — TASK-11 akan mengganti registry dengan yang penuh.
-- **Auth / RBAC** (admin token untuk `POST /payments/:id/retry`) → di luar scope plan rev 2. Di task ini endpoint retry terbuka. Document production caveat di TASK-15.
+- **Frontend UI** (Vue dashboard + Next.js sandbox) -> **TASK-12 + TASK-13**. Controller hanya menyediakan JSON; rendering di task frontend.
+- **Metrics emission aktual** (`payment_gateway_requests_total`, `retry_attempts_total`, dst. + integration ke `PaymentsService` / gateway adapter) -> **TASK-11**. Di task ini `/metrics` endpoint sudah exist + return valid Prometheus text, tapi counter hanya satu stub (`http_requests_total`) — TASK-11 akan mengganti registry dengan yang penuh.
+- **Auth / RBAC** (admin token untuk `POST /payments/:id/retry`) -> di luar scope plan rev 2. Di task ini endpoint retry terbuka. Document production caveat di TASK-15.
 - **Idempotency-Key dari client** — plan section 9.1 menyatakan key di-derived dari `payment.id` internal (bukan dari client header). Di task ini `POST /payments` TIDAK menerima header `Idempotency-Key`; service yang generate UUID payment + derive key.
 - **Pagination total count** — `GET /payments` mengembalikan `limit` + `offset` + `payments: [...]` tanpa `total`. Count query expensive di PostgreSQL bila tidak perlu; frontend tidak memerlukan total page count untuk demo (TASK-12/13 infinite scroll atau load-more). Document di TASK-15 bila production butuh.
-- **Custom exception filter** — NestJS default exception filter sudah cukup untuk task ini. Custom filter untuk format error response konsisten → opsional, boleh ditambah di TASK-11 bila metrics need structured error code.
-- **Rate limiting / throttling** → di luar scope (production caveat TASK-15).
-- **Versioning** (`/v1/payments`) → tidak dipakai di plan rev 2; endpoint langsung di root.
+- **Custom exception filter** — NestJS default exception filter sudah cukup untuk task ini. Custom filter untuk format error response konsisten -> opsional, boleh ditambah di TASK-11 bila metrics need structured error code.
+- **Rate limiting / throttling** -> di luar scope (production caveat TASK-15).
+- **Versioning** (`/v1/payments`) -> tidak dipakai di plan rev 2; endpoint langsung di root.
 
 ## Endpoints (plan section 10.1)
 
@@ -67,7 +67,7 @@ Setelah task ini selesai:
 | GET | `/metrics` | 200 | Prometheus exposition format. Content-Type: `text/plain; version=0.0.4; charset=utf-8`. | Prometheus text |
 | GET | `/docs` | 200 | Swagger UI HTML. | HTML |
 
-### Error response shape (default NestJS HttpException → JSON)
+### Error response shape (default NestJS HttpException -> JSON)
 
 ```json
 {
@@ -212,7 +212,7 @@ import { PaymentStatus } from '../../../database/entities/enums';
 export class ListPaymentsQueryDto {
   @ApiPropertyOptional({
     enum: ['processing', 'succeeded', 'failed', 'scheduled_for_retry'],
-    description: 'Filter by status. Bila omitted → semua status.',
+    description: 'Filter by status. Bila omitted -> semua status.',
   })
   @IsOptional()
   @IsEnum(PaymentStatus)
@@ -274,7 +274,7 @@ export class PaymentsController {
    * Create + process payment (synchronous).
    *
    * Flow (plan section 10.2):
-   *   validate → create(processing) → executePayment() → terminal: succeeded | failed | scheduled_for_retry
+   *   validate -> create(processing) -> executePayment() -> terminal: succeeded | failed | scheduled_for_retry
    *
    * Response 201 walaupun final status bukan 'succeeded' — endpoint ini
    * tetap mengembalikan payment yang sudah dieksekusi (mis. status='scheduled_for_retry').
@@ -335,12 +335,12 @@ export class PaymentsController {
    * Manual retry — only allowed bila status = 'failed' atau 'scheduled_for_retry'.
    *
    * State guard (plan section 10.2 — manualRetry transition):
-   *   - 'failed'                → processing (admin override)
-   *   - 'scheduled_for_retry'   → processing (early retry — tidak tunggu scheduler)
-   *   - 'processing'            → 409 (sudah berjalan)
-   *   - 'succeeded'             → 409 (terminal — tidak bisa retry)
+   *   - 'failed'                -> processing (admin override)
+   *   - 'scheduled_for_retry'   -> processing (early retry — tidak tunggu scheduler)
+   *   - 'processing'            -> 409 (sudah berjalan)
+   *   - 'succeeded'             -> 409 (terminal — tidak bisa retry)
    *
-   * Bila PaymentsService.manualRetry() throw InvalidTransitionError →
+   * Bila PaymentsService.manualRetry() throw InvalidTransitionError ->
    * map ke 409 ConflictException.
    */
   @Post(':id/retry')
@@ -365,7 +365,7 @@ export class PaymentsController {
   }
 
   /**
-   * Map entity Payment (TASK-02) → PaymentResponseDto (plain object).
+   * Map entity Payment (TASK-02) -> PaymentResponseDto (plain object).
    * Hindari leak TypeORM metadata (mis. instance methods, __entity).
    */
   private toResponse(p: any): PaymentResponseDto {
@@ -431,7 +431,7 @@ export class HealthService {
 
   /**
    * Ping DB via `SELECT 1` dengan timeout 1 detik.
-   * Bila DB down / unreachable → return 'down' (tidak throw).
+   * Bila DB down / unreachable -> return 'down' (tidak throw).
    */
   async checkDb(): Promise<'ok' | 'down'> {
     try {
@@ -445,7 +445,7 @@ export class HealthService {
 
   /**
    * Ping gateway mock via HEAD http://localhost:3002/admin/config (timeout 1 detik).
-   * Bila gateway down / unreachable → return 'down' (tidak throw).
+   * Bila gateway down / unreachable -> return 'down' (tidak throw).
    *
    * URL gateway dibootstrap dari env GATEWAY_URL (default http://localhost:3002).
    */
@@ -495,8 +495,8 @@ export class HealthController {
    * Health endpoint — selalu return 200 (body berisi detail status).
    *
    * Docker readiness/liveness probe:
-   *   - 200 + db='ok' + gateway='ok' → healthy
-   *   - 200 + db='down' atau gateway='down' → degraded (ops memutuskan)
+   *   - 200 + db='ok' + gateway='ok' -> healthy
+   *   - 200 + db='down' atau gateway='down' -> degraded (ops memutuskan)
    *
    * Bila ingin 503 saat db='down', tambahkan logika:
    *   `@HttpCode(res.db === 'ok' ? 200 : 503)` — tapi NestJS decorator
@@ -616,7 +616,7 @@ const registryProvider: Provider = {
 @Module({
   imports: [
     PrometheusModule.register({
-      // defaultMetrics: true → expose Node.js process metrics
+      // defaultMetrics: true -> expose Node.js process metrics
       defaultMetrics: { enabled: true },
       // path: '/metrics' di-handle controller manual agar bisa set Content-Type.
       // Bila controller manual dipakai, jangan set `path` di sini (akan konflik).
@@ -705,7 +705,7 @@ async function bootstrap() {
   // Global ValidationPipe — class-validator + class-transformer
   // whitelist: strip unknown properties (tidak masuk DTO)
   // forbidNonWhitelisted: throw 400 bila ada prop tidak deklarasi di DTO
-  // transform: convert string path/query ke tipe yang sesuai (mis. ?limit=50 → number)
+  // transform: convert string path/query ke tipe yang sesuai (mis. ?limit=50 -> number)
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -765,27 +765,27 @@ bootstrap();
 
 ## Acceptance criteria
 
-- [ ] `POST /payments` dengan body `{ orderId: 'ORD-001', amount: 150000, currency: 'IDR' }` → **201 Created** dengan body `{ payment: { id, status: 'succeeded'|'failed'|'scheduled_for_retry', ... } }`.
-- [ ] `POST /payments` tanpa `orderId` → **400 Bad Request** dengan `message` validasi class-validator (`['orderId must be a string']` atau serupa).
-- [ ] `POST /payments` dengan `amount: -100` → **400 Bad Request** (validation error dari `@Min(0)`).
-- [ ] `POST /payments` dengan `currency: 'XYZ'` (bukan 3-letter ISO) → **400 Bad Request** bila DTO mengenakan `@Matches(/^[A-Z]{3}$/)`.
-- [ ] `GET /payments` (tanpa query) → **200 OK** dengan body `{ payments: [...], limit: 50, offset: 0 }`.
-- [ ] `GET /payments?status=failed` → **200 OK** dengan hanya payments ber-status `failed`.
-- [ ] `GET /payments?status=invalid_status` → **400 Bad Request** (enum validation error).
-- [ ] `GET /payments?limit=200&offset=100` → **200 OK** dengan `limit: 200, offset: 100` echo.
-- [ ] `GET /payments/:id` dengan id valid → **200 OK** dengan body `{ payment, attempts: [...] }` di mana `attempts` urut `attemptNumber` ASC.
-- [ ] `GET /payments/:id` dengan id tidak ditemukan → **404 Not Found** dengan message `Payment <id> not found`.
-- [ ] `POST /payments/:id/retry` pada payment ber-status `failed` → **200 OK** dengan `{ payment: { status: 'processing' | 'succeeded' | 'failed' | 'scheduled_for_retry' } }` (hasil eksekusi retry).
-- [ ] `POST /payments/:id/retry` pada payment ber-status `scheduled_for_retry` → **200 OK** (early retry — tidak menunggu scheduler).
-- [ ] `POST /payments/:id/retry` pada payment ber-status `succeeded` → **409 Conflict** dengan message `Payment is in state 'succeeded' — retry not allowed`.
-- [ ] `POST /payments/:id/retry` pada payment ber-status `processing` → **409 Conflict** (sudah berjalan, tidak bisa double-execute).
-- [ ] `GET /health` → **200 OK** dengan body `{ db: 'ok'|'down', gateway: 'ok'|'down', timestamp: '<ISO 8601>' }`. Bila DB up + gateway up → `{ db: 'ok', gateway: 'ok' }`. Response tidak lebih dari ~2 detik.
-- [ ] `GET /metrics` → **200 OK** dengan Content-Type `text/plain; version=0.0.4; charset=utf-8` dan body mengandung setidaknya satu metric stub (mis. `http_requests_total{route="/metrics"} 1`).
-- [ ] `GET /docs` → **200 OK** dengan HTML Swagger UI. Buka di browser → semua endpoint tampil dengan tag `payments`, `health`, `metrics`.
+- [ ] `POST /payments` dengan body `{ orderId: 'ORD-001', amount: 150000, currency: 'IDR' }` -> **201 Created** dengan body `{ payment: { id, status: 'succeeded'|'failed'|'scheduled_for_retry', ... } }`.
+- [ ] `POST /payments` tanpa `orderId` -> **400 Bad Request** dengan `message` validasi class-validator (`['orderId must be a string']` atau serupa).
+- [ ] `POST /payments` dengan `amount: -100` -> **400 Bad Request** (validation error dari `@Min(0)`).
+- [ ] `POST /payments` dengan `currency: 'XYZ'` (bukan 3-letter ISO) -> **400 Bad Request** bila DTO mengenakan `@Matches(/^[A-Z]{3}$/)`.
+- [ ] `GET /payments` (tanpa query) -> **200 OK** dengan body `{ payments: [...], limit: 50, offset: 0 }`.
+- [ ] `GET /payments?status=failed` -> **200 OK** dengan hanya payments ber-status `failed`.
+- [ ] `GET /payments?status=invalid_status` -> **400 Bad Request** (enum validation error).
+- [ ] `GET /payments?limit=200&offset=100` -> **200 OK** dengan `limit: 200, offset: 100` echo.
+- [ ] `GET /payments/:id` dengan id valid -> **200 OK** dengan body `{ payment, attempts: [...] }` di mana `attempts` urut `attemptNumber` ASC.
+- [ ] `GET /payments/:id` dengan id tidak ditemukan -> **404 Not Found** dengan message `Payment <id> not found`.
+- [ ] `POST /payments/:id/retry` pada payment ber-status `failed` -> **200 OK** dengan `{ payment: { status: 'processing' | 'succeeded' | 'failed' | 'scheduled_for_retry' } }` (hasil eksekusi retry).
+- [ ] `POST /payments/:id/retry` pada payment ber-status `scheduled_for_retry` -> **200 OK** (early retry — tidak menunggu scheduler).
+- [ ] `POST /payments/:id/retry` pada payment ber-status `succeeded` -> **409 Conflict** dengan message `Payment is in state 'succeeded' — retry not allowed`.
+- [ ] `POST /payments/:id/retry` pada payment ber-status `processing` -> **409 Conflict** (sudah berjalan, tidak bisa double-execute).
+- [ ] `GET /health` -> **200 OK** dengan body `{ db: 'ok'|'down', gateway: 'ok'|'down', timestamp: '<ISO 8601>' }`. Bila DB up + gateway up -> `{ db: 'ok', gateway: 'ok' }`. Response tidak lebih dari ~2 detik.
+- [ ] `GET /metrics` -> **200 OK** dengan Content-Type `text/plain; version=0.0.4; charset=utf-8` dan body mengandung setidaknya satu metric stub (mis. `http_requests_total{route="/metrics"} 1`).
+- [ ] `GET /docs` -> **200 OK** dengan HTML Swagger UI. Buka di browser -> semua endpoint tampil dengan tag `payments`, `health`, `metrics`.
 - [ ] Swagger "Try it out" untuk `POST /payments` berhasil mengirim request + mendapat 201 response.
-- [ ] `pnpm --filter payment-api typecheck` → **lulus tanpa error**.
-- [ ] `pnpm --filter payment-api lint` → **lulus tanpa error**.
-- [ ] Dev server `pnpm --filter payment-api start:dev` → **jalan tanpa crash**, listen di port 3001, log `Swagger UI: http://localhost:3001/docs`.
+- [ ] `pnpm --filter payment-api typecheck` -> **lulus tanpa error**.
+- [ ] `pnpm --filter payment-api lint` -> **lulus tanpa error**.
+- [ ] Dev server `pnpm --filter payment-api start:dev` -> **jalan tanpa crash**, listen di port 3001, log `Swagger UI: http://localhost:3001/docs`.
 - [ ] Jest unit test `payments.controller.spec.ts` lulus (mock PaymentsService, verify mapping DTO + status code).
 - [ ] Jest unit test `health.controller.spec.ts` lulus (mock HealthService, verify response shape).
 
@@ -796,9 +796,9 @@ bootstrap();
 > **WAJIB BACA**: sebelum menjalankan command di bawah, cek kondisi lingkungan Anda via [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 1 (Pre-flight Check).
 >
 > Ringkasan keyword:
-> - `pnpm --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
-> - `docker --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → butuh external PostgreSQL atau skip DB-dependent commands.
-> - `curl -s http://localhost:3000` sibuk → KONDISI SANDBOX → payment-api pakai PORT=3001, gateway-mock pakai PORT=3002. Bebas → KONDISI LOCAL → payment-api pakai PORT=3000, gateway-mock pakai PORT=3001.
+> - `pnpm --version` ada -> KONDISI LOCAL. Tidak ada -> KONDISI SANDBOX -> jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
+> - `docker --version` ada -> KONDISI LOCAL. Tidak ada -> KONDISI SANDBOX -> butuh external PostgreSQL atau skip DB-dependent commands.
+> - `curl -s http://localhost:3000` sibuk -> KONDISI SANDBOX -> payment-api pakai PORT=3001, gateway-mock pakai PORT=3002. Bebas -> KONDISI LOCAL -> payment-api pakai PORT=3000, gateway-mock pakai PORT=3001.
 
 Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih salah satu sesuai kondisi.
 
@@ -822,7 +822,7 @@ cd /home/z/my-project/retry-failure/apps/payment-api && pnpm db:migrate
 cd /home/z/my-project/retry-failure/apps/payment-api && PORT=3000 pnpm start:dev
 # Expected log: "Payment API running on http://localhost:3000" + "Swagger UI: http://localhost:3000/docs"
 
-# KONDISI SANDBOX (port 3000 dipakai Next.js preview → payment-api geser ke 3001):
+# KONDISI SANDBOX (port 3000 dipakai Next.js preview -> payment-api geser ke 3001):
 cd /home/z/my-project/retry-failure/apps/payment-api && PORT=3001 pnpm start:dev
 # Expected log: "Payment API running on http://localhost:3001" + "Swagger UI: http://localhost:3001/docs"
 
@@ -904,11 +904,11 @@ curl -s "http://localhost:${API_PORT}/docs" | head -n 5
 # ke preview panel). Z.ai sandbox menggunakan Caddy gateway yang mem-forward
 # request dengan query param ?XTransformPort=NNNN ke port NNNN internal.
 # Contoh fetch dari browser di SANDBOX:
-#   fetch('/api/payments?XTransformPort=3001')                    # → payment-api:3001
-#   fetch('/admin/config?XTransformPort=3002', { method: 'PUT' })  # → gateway-mock:3002
+#   fetch('/api/payments?XTransformPort=3001')                    # -> payment-api:3001
+#   fetch('/admin/config?XTransformPort=3002', { method: 'PUT' })  # -> gateway-mock:3002
 # Di KONDISI LOCAL, akses langsung tanpa XTransformPort:
-#   fetch('http://localhost:3000/api/payments')                    # → payment-api:3000
-#   fetch('http://localhost:3001/admin/config', { method: 'PUT' }) # → gateway-mock:3001
+#   fetch('http://localhost:3000/api/payments')                    # -> payment-api:3000
+#   fetch('http://localhost:3001/admin/config', { method: 'PUT' }) # -> gateway-mock:3001
 # Lihat SANDBOX_NOTES.md section 2.12 untuk detail cross-service fetch.
 
 # 6. Check dev log — pastikan tidak ada unhandled promise rejection
@@ -925,7 +925,7 @@ cd /home/z/my-project/retry-failure && pnpm --filter payment-api test -- \
 
 ### NestJS exception handling — semantic mapping
 
-Tabel mapping error → HTTP status:
+Tabel mapping error -> HTTP status:
 
 | Skenario error | Throw | HTTP Status |
 |---|---|---|
@@ -936,14 +936,14 @@ Tabel mapping error → HTTP status:
 | Gateway timeout di PaymentsService | (propagate ke default filter) | **500 Internal Server Error** (bukan 504 — internal failure, bukan gateway-facing API) |
 | Unknown error | (propagate ke default filter) | **500 Internal Server Error** |
 
-> Bila ingin 504 untuk gateway timeout di controller level, wrap dengan custom `ExceptionFilter`. **Decision**: tidak dilakukan di task ini — error dari gateway sudah di-handle Cockatiel + service. Bila service melempar error ke controller, itu berarti error sistemik (DB down, deadlock, dst.) → 500 sesuai.
+> Bila ingin 504 untuk gateway timeout di controller level, wrap dengan custom `ExceptionFilter`. **Decision**: tidak dilakukan di task ini — error dari gateway sudah di-handle Cockatiel + service. Bila service melempar error ke controller, itu berarti error sistemik (DB down, deadlock, dst.) -> 500 sesuai.
 
 ### CORS allowlist
 
 Origin yang di-allow:
 
-- `http://localhost:5173` → Vue+PrimeVue dashboard (TASK-13, dev mode).
-- `http://localhost:3000` → Next.js sandbox preview (TASK-12).
+- `http://localhost:5173` -> Vue+PrimeVue dashboard (TASK-13, dev mode).
+- `http://localhost:3000` -> Next.js sandbox preview (TASK-12).
 - (Opsional) `https://<sandbox-host>` bila ingin expose via Caddy — tambahkan origin di array, atau pakai function:
 
 ```ts
@@ -965,8 +965,8 @@ app.enableCors({
 
 DocumentBuilder `.addServer()` mendaftarkan server URLs yang muncul di dropdown Swagger UI "Servers":
 
-- `http://localhost:3001` → local dev default.
-- `https://<sandbox-host>/?XTransformPort=3001` → akses via Caddy dari luar (Next.js sandbox).
+- `http://localhost:3001` -> local dev default.
+- `https://<sandbox-host>/?XTransformPort=3001` -> akses via Caddy dari luar (Next.js sandbox).
 
 User dapat memilih server aktif sebelum klik "Try it out". Bila `XTransformPort` query param dipakai, Swagger perlu konfigurasi tambahan (path-level transformer) — document di TASK-12 bila Next.js sandbox perlu memanggil `/payments?XTransformPort=3001` via relative path.
 
@@ -977,21 +977,21 @@ Plan section 9.1: `Idempotency-Key = payment.id` (UUIDv4 generated internal saat
 Implikasi:
 
 - Client TIDAK perlu generate UUID sendiri.
-- Client TIDAK bisa melakukan idempotent POST retry (mis. POST 2x dengan orderId sama → akan membuat 2 row payment dengan orderId unik constraint → 1 sukses + 1 error 500). **Acceptable untuk demo** — bila client butuh retry, harus GET dulu untuk cek apakah orderId sudah ada (responsibility client). Document di TASK-15 production caveats: idempotent create via `clientRequestId` header → maps ke orderId lookup.
+- Client TIDAK bisa melakukan idempotent POST retry (mis. POST 2x dengan orderId sama -> akan membuat 2 row payment dengan orderId unik constraint -> 1 sukses + 1 error 500). **Acceptable untuk demo** — bila client butuh retry, harus GET dulu untuk cek apakah orderId sudah ada (responsibility client). Document di TASK-15 production caveats: idempotent create via `clientRequestId` header -> maps ke orderId lookup.
 
 ### Manual retry state guard — detail
 
 `PaymentsService.manualRetry(id)` (TASK-07) hanya menerima payment dengan status:
 
-- `failed` → reset `attempt_count = 0`, transisi ke `processing`, jalankan `executePayment()`. `total_retry_count` TIDAK direset.
-- `scheduled_for_retry` → transisi ke `processing`, jalankan `executePayment()` (early retry — tidak tunggu `next_retry_at`). `total_retry_count` sudah di-increment saat transisi sebelumnya.
+- `failed` -> reset `attempt_count = 0`, transisi ke `processing`, jalankan `executePayment()`. `total_retry_count` TIDAK direset.
+- `scheduled_for_retry` -> transisi ke `processing`, jalankan `executePayment()` (early retry — tidak tunggu `next_retry_at`). `total_retry_count` sudah di-increment saat transisi sebelumnya.
 
 Untuk status lain (`processing`, `succeeded`):
 
-- `processing` → `assertCanTransition('processing', 'processing')` → throw `InvalidTransitionError` (self-transition tidak ada di `VALID_TRANSITIONS`). Map ke 409.
-- `succeeded` → `assertCanTransition('succeeded', 'processing')` → throw (succeeded adalah terminal). Map ke 409.
+- `processing` -> `assertCanTransition('processing', 'processing')` -> throw `InvalidTransitionError` (self-transition tidak ada di `VALID_TRANSITIONS`). Map ke 409.
+- `succeeded` -> `assertCanTransition('succeeded', 'processing')` -> throw (succeeded adalah terminal). Map ke 409.
 
-> **Catatan**: bila `total_retry_count > MAX_TOTAL_RETRIES` saat manual retry, `manualRetry()` akan langsung transisi `processing → failed` dengan `failureReason='max_total_retries_exceeded'` (di dalam `executePayment()`). Response controller tetap **200 OK** dengan `payment.status='failed'` (retry dijalankan tapi langsung gagal karena limit).
+> **Catatan**: bila `total_retry_count > MAX_TOTAL_RETRIES` saat manual retry, `manualRetry()` akan langsung transisi `processing -> failed` dengan `failureReason='max_total_retries_exceeded'` (di dalam `executePayment()`). Response controller tetap **200 OK** dengan `payment.status='failed'` (retry dijalankan tapi langsung gagal karena limit).
 
 ### Why no Idempotency-Key from client — plan reference
 

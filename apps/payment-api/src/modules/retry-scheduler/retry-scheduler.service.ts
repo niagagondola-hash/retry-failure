@@ -93,11 +93,11 @@ export class RetrySchedulerService implements OnApplicationBootstrap {
     // representing "scheduler is attempting this payment for the Nth time".
     //
     // MAX_TOTAL_RETRIES check: if already at max, mark as failed.
-    // This allows exactly MAX_TOTAL_RETRIES scheduler cycles (0→1→2→...→MAX).
+    // This allows exactly MAX_TOTAL_RETRIES scheduler cycles (0->1->2->...->MAX).
     if (currentTotal >= this.maxTotalRetries) {
       this.logger.warn(
         { paymentId, totalRetryCount: currentTotal, max: this.maxTotalRetries },
-        '[scheduler] max_total_retries_exceeded → failed',
+        '[scheduler] max_total_retries_exceeded -> failed',
       );
       await this.payments.atomicUpdateStatus(paymentId, PaymentStatus.SCHEDULED_FOR_RETRY, {
         status: PaymentStatus.FAILED,

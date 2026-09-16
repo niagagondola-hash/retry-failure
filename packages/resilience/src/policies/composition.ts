@@ -1,16 +1,16 @@
 /**
  * Resilience composition (plan section 5.1).
  *
- * Composition order (outermost → innermost):
- *   CircuitBreaker (singleton) → Retry → Timeout → fn (HTTP call)
+ * Composition order (outermost -> innermost):
+ *   CircuitBreaker (singleton) -> Retry -> Timeout -> fn (HTTP call)
  *
  * Behavior:
- *   - Bila breaker OPEN → reject call immediately, return breakerTripped=true
- *   - Bila breaker CLOSED/HALF_OPEN → execute retry+timeout wrapped fn
+ *   - Bila breaker OPEN -> reject call immediately, return breakerTripped=true
+ *   - Bila breaker CLOSED/HALF_OPEN -> execute retry+timeout wrapped fn
  *   - Retry: maxAttempts × exponential backoff with decorrelated jitter
  *   - Timeout: per-attempt, aggressive (throw on timeout)
- *   - Bila retry exhausted → return exhausted=true + last error
- *   - Bila success → return result + attempt count
+ *   - Bila retry exhausted -> return exhausted=true + last error
+ *   - Bila success -> return result + attempt count
  *
  * Integration with TASK-04 (classifier):
  *   - classifyError dipanggil di onFailure callback untuk determine retryable
@@ -49,7 +49,7 @@ export interface ExecuteOptions<T> {
   /** Optional callback invoked on each attempt failure (for audit + metrics). */
   onAttempt?: OnAttemptCallback;
   /**
-   * Optional callback invoked when circuit breaker state changes (CLOSED → OPEN, etc).
+   * Optional callback invoked when circuit breaker state changes (CLOSED -> OPEN, etc).
    * Attached ONCE on first getBreaker() call (singleton). Subsequent calls with
    * different callbacks are ignored (breaker already cached).
    *
@@ -67,14 +67,14 @@ export async function executeWithResilience<T>(opts: ExecuteOptions<T>): Promise
   const { dependencyName, fn, config, onAttempt, onStateChange } = opts;
 
   // Get singleton breaker — pass onStateChange so breaker state transitions
-  // (CLOSED → OPEN → HALF_OPEN → CLOSED) propagate to MetricsService.
+  // (CLOSED -> OPEN -> HALF_OPEN -> CLOSED) propagate to MetricsService.
   // NOTE: onStateChange is captured in closure on FIRST creation only.
   // Subsequent calls pass the same callback (adapter is singleton, so stable).
   const breakerPolicy = getBreaker(dependencyName, config, onStateChange);
   const retryPolicy = buildRetryPolicy(config);
   const timeoutPolicy = buildTimeoutPolicy(config);
 
-  // Composition: breaker (outer) → retry → timeout (inner)
+  // Composition: breaker (outer) -> retry -> timeout (inner)
   const policy = wrap(breakerPolicy, retryPolicy, timeoutPolicy);
 
   // Track attempts for audit

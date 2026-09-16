@@ -28,9 +28,9 @@
 Monorepo dengan struktur:
 
 ```text
-apps/payment-api/          → CJS (tsconfig: "module": "commonjs")
-packages/resilience/       → CJS (tidak ada "type": "module")
-  └── import cockatiel v4  → ESM-only (package.json: "type": "module")
+apps/payment-api/          -> CJS (tsconfig: "module": "commonjs")
+packages/resilience/       -> CJS (tidak ada "type": "module")
+  └── import cockatiel v4  -> ESM-only (package.json: "type": "module")
 ```
 
 Saat `payment-api` import `@retry-failure/resilience`, Node.js runtime gagal resolve module dengan error:
@@ -91,7 +91,7 @@ export const hello = () => 'world';
 
 ```text
 2009 ─── Node.js lahir dengan CJS
-         └── require('./errors') → auto-append /errors/index.js
+         └── require('./errors') -> auto-append /errors/index.js
          └── "Nyaman untuk developer" — tidak perlu tulis extension
 
 2015 ─── TC39 (JavaScript standard body) ratifikasi ES Modules
@@ -110,7 +110,7 @@ export const hello = () => 'world';
 
 ### Kenapa Node.js Tidak Bisa "Menyamakan"?
 
-1. **CJS tidak bisa dibuat strict** — jutaan package di npm pakai directory import (`require('./routes')` → `./routes/index.js`). Bila diubah, semuanya break.
+1. **CJS tidak bisa dibuat strict** — jutaan package di npm pakai directory import (`require('./routes')` -> `./routes/index.js`). Bila diubah, semuanya break.
 
 2. **ESM tidak bisa dibuat permissive** — TC39 spec mengharuskan explicit path. Browser juga ikut spec ini. Bila Node.js relax ESM, tidak compatible dengan browser.
 
@@ -131,7 +131,7 @@ Scenario yang trigger masalah:
     └── import CJS package (packages/resilience, main: "src/index.ts")
           └── import ESM-only package (cockatiel v4, "type": "module")
                 └── Node.js switch resolver ke ESM mode
-                      └── ESM resolver encounter directory import → ERROR
+                      └── ESM resolver encounter directory import -> ERROR
 ```
 
 ### Tiga Kondisi yang Harus Terpenuhi
@@ -142,7 +142,7 @@ Scenario yang trigger masalah:
 | 2 | Package source punya directory imports (barrel exports) | `export * from './errors'` (tanpa `/index`) |
 | 3 | Module graph mengandung ESM-only dependency | cockatiel v4 (`"type": "module"`) |
 
-Bila ketiganya terpenuhi → `ERR_UNSUPPORTED_DIR_IMPORT` atau `ERR_MODULE_NOT_FOUND`.
+Bila ketiganya terpenuhi -> `ERR_UNSUPPORTED_DIR_IMPORT` atau `ERR_MODULE_NOT_FOUND`.
 
 ### Kapan TIDAK Muncul?
 
@@ -179,9 +179,9 @@ imported from .../packages/resilience/src/index.ts
 ### Error 3: Hanya muncul di runtime, tidak di typecheck/test
 
 ```bash
-pnpm typecheck    → PASS (TypeScript resolver permissive)
-pnpm test         → PASS (ts-jest compile ke CJS, require() permissive)
-pnpm start:dev    → FAIL (Node.js ESM resolver strict)
+pnpm typecheck    -> PASS (TypeScript resolver permissive)
+pnpm test         -> PASS (ts-jest compile ke CJS, require() permissive)
+pnpm start:dev    -> FAIL (Node.js ESM resolver strict)
 ```
 
 ---
@@ -195,7 +195,7 @@ Tiga resolver berbeda dengan behavior berbeda:
 │                    TypeScript Resolver                          │
 │  (dipakai oleh: tsc --noEmit / typecheck)                       │
 │                                                                 │
-│  './errors' → resolve ke './errors/index.ts'                    │
+│  './errors' -> resolve ke './errors/index.ts'                    │
 │  Auto-append: ✅ YES                                            │
 │  Extension: opsional                                            │
 │  Result: PASS (tidak detect masalah)                            │
@@ -205,7 +205,7 @@ Tiga resolver berbeda dengan behavior berbeda:
 │                    CJS Resolver (Node.js require())              │
 │  (dipakai oleh: Jest/ts-jest, compiled CJS runtime)             │
 │                                                                 │
-│  require('./errors') → resolve ke './errors/index.js'           │
+│  require('./errors') -> resolve ke './errors/index.js'           │
 │  Auto-append: ✅ YES                                            │
 │  Extension: opsional                                            │
 │  Result: PASS (tidak detect masalah)                            │
@@ -216,8 +216,8 @@ Tiga resolver berbeda dengan behavior berbeda:
 │  (dipakai oleh: nest start --watch, node dist/main.js)          │
 │  (triggered oleh: cockatiel v4 "type": "module" di graph)       │
 │                                                                 │
-│  import './errors' → ERROR: directory import not supported       │
-│  import './errors/index' → ERROR: cannot find module (no .js)    │
+│  import './errors' -> ERROR: directory import not supported       │
+│  import './errors/index' -> ERROR: cannot find module (no .js)    │
 │  Auto-append: ❌ NO                                             │
 │  Extension: WAJIB (.js)                                         │
 │  Result: FAIL                                                    │
@@ -230,23 +230,23 @@ Tiga resolver berbeda dengan behavior berbeda:
 pnpm typecheck
   └── tsc --noEmit
       └── TypeScript resolver (permissive)
-          └── './errors' → './errors/index.ts' ✅ PASS
+          └── './errors' -> './errors/index.ts' ✅ PASS
 
 pnpm test
   └── jest (ts-jest)
-      └── Compile .ts → CJS JavaScript in-memory
-          └── require('./errors') → './errors/index.js' ✅ PASS
+      └── Compile .ts -> CJS JavaScript in-memory
+          └── require('./errors') -> './errors/index.js' ✅ PASS
 
 pnpm start:dev
   └── nest start --watch
-      └── tsc compile → CJS JavaScript di dist/
+      └── tsc compile -> CJS JavaScript di dist/
           └── node dist/main.js
               └── require('@retry-failure/resilience')
                   └── main: "src/index.ts" (source TypeScript!)
                       └── Node.js load .ts file
                           └── cockatiel (ESM) di graph
                               └── Switch ke ESM resolver
-                                  └── './errors' → ❌ ERROR
+                                  └── './errors' -> ❌ ERROR
 ```
 
 ---
@@ -265,20 +265,20 @@ SEBELUM (source TypeScript langsung):
     "main": "src/index.ts"     ← Node.js load source .ts
 
   require('@retry-failure/resilience')
-    → src/index.ts
-    → cockatiel (ESM) di graph
-    → ESM resolver aktif
-    → './errors' → ❌ ERROR
+    -> src/index.ts
+    -> cockatiel (ESM) di graph
+    -> ESM resolver aktif
+    -> './errors' -> ❌ ERROR
 
 SETELAH (compiled CJS JavaScript):
   packages/resilience/package.json:
     "main": "dist/index.js"    ← Node.js load compiled CJS
 
   require('@retry-failure/resilience')
-    → dist/index.js (CJS: "use strict"; var __createBinding...)
-    → require('cockatiel') → Node.js loadESMFromCJS (bridge)
-    → CJS resolver tetap aktif
-    → './errors' → './errors/index.js' ✅ PASS
+    -> dist/index.js (CJS: "use strict"; var __createBinding...)
+    -> require('cockatiel') -> Node.js loadESMFromCJS (bridge)
+    -> CJS resolver tetap aktif
+    -> './errors' -> './errors/index.js' ✅ PASS
 ```
 
 ### Perubahan File
@@ -286,8 +286,8 @@ SETELAH (compiled CJS JavaScript):
 | File | Perubahan |
 |---|---|
 | `packages/resilience/tsconfig.build.json` | Baru — config build (exclude tests, declaration + sourceMap) |
-| `packages/resilience/package.json` | `main: src/index.ts` → `dist/index.js`; tambah script `build` + `build:watch` |
-| `apps/payment-api/tsconfig.build.json` | Baru — exclude tests dari build (fix rootDir → output `dist/main.js`) |
+| `packages/resilience/package.json` | `main: src/index.ts` -> `dist/index.js`; tambah script `build` + `build:watch` |
+| `apps/payment-api/tsconfig.build.json` | Baru — exclude tests dari build (fix rootDir -> output `dist/main.js`) |
 | `apps/payment-api/package.json` | `build` script pakai `tsconfig.build.json` |
 | Root `package.json` | `dev`/`build`/`db:migrate` auto-build resilience pertama |
 
@@ -340,7 +340,7 @@ Tandai semua yang berlaku untuk project Anda:
 - [ ] Ada shared package dengan `"main": "src/index.ts"` (point ke source, bukan dist)
 - [ ] Dependency tree mengandung package ESM-only (`"type": "module"` di package.json-nya)
 
-**Bila ketiganya tercentang** → Anda akan kena `ERR_UNSUPPORTED_DIR_IMPORT` di runtime.
+**Bila ketiganya tercentang** -> Anda akan kena `ERR_UNSUPPORTED_DIR_IMPORT` di runtime.
 
 ### Risiko Sedang
 
@@ -375,15 +375,15 @@ grep -r '"type": "module"' node_modules/*/package.json | head -10
 
 # Atau cek package yang Anda curigai:
 cat node_modules/cockatiel/package.json | grep '"type"'
-# Output: "type": "module" → ESM-only
+# Output: "type": "module" -> ESM-only
 ```
 
 ### Step 3: Cek shared package main field
 
 ```bash
 cat packages/your-shared-package/package.json | grep '"main"'
-# Bila: "main": "src/index.ts" → BERISIKO
-# Bila: "main": "dist/index.js" → AMAN (sudah compiled)
+# Bila: "main": "src/index.ts" -> BERISIKO
+# Bila: "main": "dist/index.js" -> AMAN (sudah compiled)
 ```
 
 ### Step 4: Cek barrel exports
@@ -391,8 +391,8 @@ cat packages/your-shared-package/package.json | grep '"main"'
 ```bash
 # Cari directory imports tanpa /index atau extension
 grep -rn "from '\./" packages/your-shared-package/src/index.ts
-# Bila: export * from './errors' → BERISIKO (ESM tidak support)
-# Bila: export * from './errors/index' → MASIH BERISIKO (butuh .js extension)
+# Bila: export * from './errors' -> BERISIKO (ESM tidak support)
+# Bila: export * from './errors/index' -> MASIH BERISIKO (butuh .js extension)
 ```
 
 ### Step 5: Verify fix
@@ -406,8 +406,8 @@ ls packages/your-shared-package/dist/
 
 # Start app (bukan test, bukan typecheck)
 cd apps/your-app && pnpm start:dev
-# Bila "listening on :PORT" muncul → FIXED
-# Bila masih error → cek apakah main field sudah point ke dist/
+# Bila "listening on :PORT" muncul -> FIXED
+# Bila masih error -> cek apakah main field sudah point ke dist/
 ```
 
 ---
@@ -446,7 +446,7 @@ cd apps/your-app && pnpm start:dev
 }
 ```
 
-**Alasan**: Bila tests di-include, `rootDir` berubah → output path menjadi `dist/src/main.js` bukan `dist/main.js`.
+**Alasan**: Bila tests di-include, `rootDir` berubah -> output path menjadi `dist/src/main.js` bukan `dist/main.js`.
 
 ### Prinsip 3: Auto-build di `pnpm dev` Script
 
@@ -468,7 +468,7 @@ Sebelum tambah dependency, cek:
 ```bash
 # Cek apakah package target ESM-only
 npm view cockatiel type
-# Output: "module" → ESM-only, berisiko
+# Output: "module" -> ESM-only, berisiko
 
 # Atau cek package.json di npm registry
 npm view cockatiel --json | jq '.type'
@@ -540,7 +540,7 @@ Jest uses `src/` directly via `moduleNameMapper` (no build needed for tests).
 | **ESM** | ES Modules — sistem module standar JavaScript (`import`/`export`) |
 | **Resolver** | Algorithm yang menentukan file mana yang di-load saat `import`/`require` |
 | **Directory import** | Import path yang merujuk ke direktori (bukan file): `import './errors'` |
-| **Auto-append** | Behavior CJS resolver: `./errors` → `./errors/index.js` (otomatis) |
+| **Auto-append** | Behavior CJS resolver: `./errors` -> `./errors/index.js` (otomatis) |
 | **Barrel export** | File `index.ts` yang re-export dari subfolder: `export * from './errors'` |
 | **Module graph** | Tree semua module yang di-import (transitif) dari entry point |
 | **`loadESMFromCJS`** | Node.js internal bridge untuk load ESM module dari CJS context |

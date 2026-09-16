@@ -8,13 +8,13 @@
  *   a NEW trace ID (different cycle from initial inline retry).
  *
  * Four phases:
- *   Phase 1: set gateway to 'server-error' → createPayment
- *            → inline Cockatiel retry exhausts (3 attempts, all 500)
- *            → payment becomes 'scheduled_for_retry', totalRetryCount=0
+ *   Phase 1: set gateway to 'server-error' -> createPayment
+ *            -> inline Cockatiel retry exhausts (3 attempts, all 500)
+ *            -> payment becomes 'scheduled_for_retry', totalRetryCount=0
  *   Phase 2: switch gateway to 'always-success' (no restart of payment-api)
- *   Phase 3: sleep SCHEDULER_INTERVAL_MS + 2000ms → wait for cron tick
- *   Phase 4: scheduler picks payment → executePayment(source='scheduler')
- *            → 4th attempt succeeds → status='succeeded', totalRetryCount=1
+ *   Phase 3: sleep SCHEDULER_INTERVAL_MS + 2000ms -> wait for cron tick
+ *   Phase 4: scheduler picks payment -> executePayment(source='scheduler')
+ *            -> 4th attempt succeeds -> status='succeeded', totalRetryCount=1
  *
  * Preconditions:
  *   - PostgreSQL running + migrated
@@ -33,13 +33,13 @@
  *
  * Distinction from Scenario 1 (transient):
  *   - S1: all attempts share ONE trace_id (inline retry succeeded)
- *   - S6: 2 different trace_ids (inline exhausted → scheduler picked up)
+ *   - S6: 2 different trace_ids (inline exhausted -> scheduler picked up)
  *
  * Flow diagram (rendered in MD):
- *   See docs/tasks/TASK-14a-durable-scheduler.md → section "3. Visualisasi Alur"
+ *   See docs/tasks/TASK-14a-durable-scheduler.md -> section "3. Visualisasi Alur"
  *
  * Manual verification procedure (5 layers L1-L5):
- *   See docs/tasks/TASK-14a-durable-scheduler.md → section "5. Verifikasi Manual per Lapis"
+ *   See docs/tasks/TASK-14a-durable-scheduler.md -> section "5. Verifikasi Manual per Lapis"
  *
  * Run this file only:
  *   pnpm test:e2e:durable-scheduler
@@ -53,7 +53,7 @@ import { queryAttempts } from './helpers/db';
 import { resetBreaker } from './helpers/breaker';
 import { resetGatewayToHealthy, ensureDbConnected, closeDb } from './helpers/setup';
 
-describe('Scenario 6 — Durable scheduler retry (server-error → always-success)', () => {
+describe('Scenario 6 — Durable scheduler retry (server-error -> always-success)', () => {
   const orderId = `E2E-S6-${Date.now()}`;
   const SCHEDULER_INTERVAL_MS = parseInt(process.env.SCHEDULER_INTERVAL_MS ?? '5000', 10);
 
@@ -68,8 +68,8 @@ describe('Scenario 6 — Durable scheduler retry (server-error → always-succes
     await closeDb();
   });
 
-  it('scheduled_for_retry → scheduler picks → succeeded (totalRetryCount=1)', async () => {
-    // Phase 1: initial cycle → scheduled_for_retry
+  it('scheduled_for_retry -> scheduler picks -> succeeded (totalRetryCount=1)', async () => {
+    // Phase 1: initial cycle -> scheduled_for_retry
     const payment = await createPayment({ orderId, amount: 60000, currency: 'IDR' });
     const scheduled = await waitForScheduledForRetry(payment.id, 30000);
     expect(scheduled.status).toBe('scheduled_for_retry');

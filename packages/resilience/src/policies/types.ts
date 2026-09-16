@@ -93,7 +93,7 @@ export interface AttemptDetail {
 
 /**
  * Callback invoked on each attempt failure (for audit + metrics).
- * Wired from composition.ts → caller (TASK-07 PaymentsService → TASK-08 AuditService).
+ * Wired from composition.ts -> caller (TASK-07 PaymentsService -> TASK-08 AuditService).
  */
 export type OnAttemptCallback = (detail: AttemptDetail) => void;
 

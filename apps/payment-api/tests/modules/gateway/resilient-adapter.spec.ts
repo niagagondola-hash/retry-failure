@@ -182,7 +182,7 @@ describe('ResilientPaymentGateway — circuit breaker', () => {
     };
     const depName = 'test-gw-breaker';
 
-    // 2 execution cycles × 1 attempt each = 2 failures → breaker opens
+    // 2 execution cycles × 1 attempt each = 2 failures -> breaker opens
     const inner: PaymentGatewayPort = {
       charge: jest.fn(async () => makeFailedResult(500)),
     };

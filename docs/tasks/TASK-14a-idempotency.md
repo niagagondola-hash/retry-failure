@@ -10,7 +10,7 @@
 
 Gateway mock diset mode `succeed-but-drop-response`:
 - Request charge pertama: gateway **mencatat ke idempotency store** + **actually charge** (real charge) + **drop response** (tcp disconnect)
-- Client (Cockatiel retry) tidak terima response → timeout → retry
+- Client (Cockatiel retry) tidak terima response -> timeout -> retry
 - Request charge ke-2 (dengan **Idempotency-Key sama**): gateway **tidak charge ulang**, tapi balas result yang sama dengan sebelumnya (replay)
 - Client dapat `status=succeeded` dengan `gatewayReference` yang sama
 
@@ -42,7 +42,7 @@ pnpm exec jest --config ./tests/e2e/jest-e2e.json --runInBand \
 
 ---
 
-## 3. Visualisasi Alur (Input → Database)
+## 3. Visualisasi Alur (Input -> Database)
 
 ```mermaid
 sequenceDiagram
@@ -61,7 +61,7 @@ sequenceDiagram
 
     T->>API: POST /payments {amount:100000}
     API->>DB: INSERT payment (status=processing)
-    API->>API: deriveIdempotencyKey(paymentId, orderId) → Key K
+    API->>API: deriveIdempotencyKey(paymentId, orderId) -> Key K
     API->>RB: executeWithResilience(fn=charge, idempotencyKey=K)
 
     Note over RB: Attempt 1
@@ -69,7 +69,7 @@ sequenceDiagram
     GA->>GW: POST /v1/charges (header: Idempotency-Key=K)
 
     Note over GW,IS: Gateway sees Key K for first time
-    GW->>IS: store(K) → {status:'charging', chargeId:G1}
+    GW->>IS: store(K) -> {status:'charging', chargeId:G1}
     GW->>GW: ACTUAL CHARGE #1 (e.g., call bank mock)
     Note over GW: Drop TCP response (simulate network failure)
 
@@ -84,7 +84,7 @@ sequenceDiagram
     GA->>GW: POST /v1/charges (header: Idempotency-Key=K)
 
     Note over GW,IS: Gateway sees Key K already in store
-    GW->>IS: lookup(K) → found {status:'succeeded', chargeId:G1}
+    GW->>IS: lookup(K) -> found {status:'succeeded', chargeId:G1}
     Note over GW: REPLAY — do NOT charge again
     GW-->>GA: 200 OK {gatewayReference:G1, status:succeeded, replayed:true}
 
@@ -151,7 +151,7 @@ ORDER BY pa.attempt_number;
 | succeeded | 2 | G1 | 1 | retryable_failure | false | NULL |
 | succeeded | 2 | G1 | 2 | success            | **true** | **G1** |
 
-**Kunci**: `attempts[1].replayed = true` dan `attempts[1].gateway_reference = G1` (sama dengan payment.gateway_reference). Kalau replayed=false tapi actualChargesCount=2 → BUG (gateway double charge).
+**Kunci**: `attempts[1].replayed = true` dan `attempts[1].gateway_reference = G1` (sama dengan payment.gateway_reference). Kalau replayed=false tapi actualChargesCount=2 -> BUG (gateway double charge).
 
 ### L3: Metrics counter
 ```bash
@@ -180,7 +180,7 @@ curl -s http://localhost:3002/admin/stats
 }
 ```
 
-**Kalau `actualChargesCount=2` → BUG KRITIS. Pelanggan double-charge. Ini yang harus dicegah.**
+**Kalau `actualChargesCount=2` -> BUG KRITIS. Pelanggan double-charge. Ini yang harus dicegah.**
 
 ### L5: Log
 Cari di `logs/e2e/gateway-mock-*.log`:
@@ -194,8 +194,8 @@ Cari di `logs/e2e/gateway-mock-*.log`:
 
 Cari di `logs/e2e/payment-api-*.log`:
 ```
-[retry] attempt 1 → ECONNRESET (no response)
-[retry] attempt 2 → 200 OK {replayed:true}
+[retry] attempt 1 -> ECONNRESET (no response)
+[retry] attempt 2 -> 200 OK {replayed:true}
 [audit] attempt #2 marked as replayed {gateway_reference:G1}
 [payments] payment succeeded {gateway_reference:G1}
 ```
@@ -227,7 +227,7 @@ Cari di `logs/e2e/payment-api-*.log`:
 | `replayed = false` di attempt 2 | Gateway balas 200 tanpa flag `replayed` | Cek `charges.service.ts` di gateway mock — response harus include `replayed: true` saat replay |
 | `attemptCount = 1` (tidak retry) | Cockatiel tidak retry karena error classification salah — ECONNRESET harus `retryable` | Cek `classifyError` di `packages/resilience` — network error harus `kind: 'retryable'` |
 | `gatewayReference = null` di attempt 2 | Idempotency store return cached tanpa gatewayReference | Cek gateway mock `idempotency-store.ts` — store harus simpan full result, bukan hanya status |
-| Test timeout 90s | Idempotency store tidak menyimpan entry pertama → gateway charge ulang terus | Tidak ada retry limit efektif → timeout. Debug: cek apakah `actualChargesCount` naik terus di setiap attempt |
+| Test timeout 90s | Idempotency store tidak menyimpan entry pertama -> gateway charge ulang terus | Tidak ada retry limit efektif -> timeout. Debug: cek apakah `actualChargesCount` naik terus di setiap attempt |
 | Breaker OPEN menghalangi retry | Skenario 3 belum direset sebelum skenario 4 | `resetBreaker()` di `beforeAll` harus jalan. Verifikasi via `circuit_breaker_state` metric = 0 |
 
 ---
@@ -238,4 +238,4 @@ Cari di `logs/e2e/payment-api-*.log`:
 - **Idempotency store di gateway mock** adalah **in-memory** — hilang saat restart. Untuk produksi, harus pakai Redis atau DB persistent. Test tidak boleh restart gateway mid-test.
 - **Mode `succeed-but-drop-response` selalu drop response pertama**. Kalau test pakai retry dengan maxAttempts=2, hanya 1 drop terjadi. Kalau maxAttempts=3, attempt ke-3 juga akan drop (loop) — bisa bikin test gagal. Konfigurasi default aman.
 - **`actualChargesCount` adalah counter di MockState** — tidak reset kecuali `POST /admin/reset` dipanggil atau gateway restart. `beforeAll` tidak panggil reset, jadi counter bisa carry-over dari test sebelumnya. **Verifikasi delta, bukan nilai absolut** — kecuali kalau bersih-bersih dulu.
-- **Untuk demo ke stakeholder**: skenario ini paling persuasif. Tunjukkan `actualChargesCount=1` di gateway stats bersamaan dengan `requestCount=2` di payment-api log → bukti nyata anti double-charge bekerja.
+- **Untuk demo ke stakeholder**: skenario ini paling persuasif. Tunjukkan `actualChargesCount=1` di gateway stats bersamaan dengan `requestCount=2` di payment-api log -> bukti nyata anti double-charge bekerja.

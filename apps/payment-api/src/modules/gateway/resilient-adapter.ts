@@ -16,7 +16,7 @@ export interface ResilientPaymentGatewayOptions {
   dependencyName?: string;
   /**
    * Optional MetricsService for circuit breaker state gauge updates.
-   * When provided, breaker state transitions (CLOSED → OPEN → HALF_OPEN → CLOSED)
+   * When provided, breaker state transitions (CLOSED -> OPEN -> HALF_OPEN -> CLOSED)
    * are reflected in the `circuit_breaker_state` Prometheus gauge.
    */
   metrics?: MetricsService;

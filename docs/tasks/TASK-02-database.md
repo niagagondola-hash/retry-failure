@@ -48,7 +48,7 @@ Mendefinisikan TypeORM entities `Payment` dan `PaymentAttempt` dengan native Pos
 
 ### `payment_attempts` entity
 - `id: string` (uuid PK)
-- `paymentId: string` (uuid FK → payments.id, ON DELETE CASCADE)
+- `paymentId: string` (uuid FK -> payments.id, ON DELETE CASCADE)
 - `attemptNumber: number` (int)
 - `outcome: AttemptOutcome` (enum)
 - `httpStatus: number | null` (int, nullable)
@@ -248,9 +248,9 @@ Mendefinisikan TypeORM entities `Payment` dan `PaymentAttempt` dengan native Pos
 > **WAJIB BACA**: sebelum menjalankan command di bawah, cek kondisi lingkungan Anda via [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 1 (Pre-flight Check).
 >
 > Ringkasan keyword:
-> - `pnpm --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
-> - `docker --version` ada → KONDISI LOCAL → `docker compose up -d postgres`. Tidak ada → KONDISI SANDBOX → butuh external PostgreSQL instance, atau skip migration + gunakan mock repository untuk dev.
-> - `psql --version` ada → verifikasi schema via psql CLI. Tidak ada → verifikasi via Node script (`pg.Client`).
+> - `pnpm --version` ada -> KONDISI LOCAL. Tidak ada -> KONDISI SANDBOX -> jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
+> - `docker --version` ada -> KONDISI LOCAL -> `docker compose up -d postgres`. Tidak ada -> KONDISI SANDBOX -> butuh external PostgreSQL instance, atau skip migration + gunakan mock repository untuk dev.
+> - `psql --version` ada -> verifikasi schema via psql CLI. Tidak ada -> verifikasi via Node script (`pg.Client`).
 >
 > Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih salah satu sesuai kondisi.
 
@@ -269,7 +269,7 @@ cd /home/z/my-project/retry-failure
 docker compose up -d postgres
 sleep 5
 docker compose ps postgres
-# → PostgreSQL di localhost:5432
+# -> PostgreSQL di localhost:5432
 
 # KONDISI SANDBOX (Docker tidak tersedia):
 # Opsi A: connect ke external PostgreSQL instance (set DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME di .env)
@@ -289,8 +289,8 @@ cp ../../.env.example .env
 # KONDISI SANDBOX (Docker tidak tersedia):
 cp ../../.env.sandbox.example .env
 # .env.sandbox.example punya port shift (PORT=3001, GATEWAY_URL=http://localhost:3002).
-# Bila ada external PostgreSQL → edit DB_HOST/DB_USER/DB_PASS/DB_NAME sesuai instance.
-# Bila TIDAK ada DB → skip migration + gunakan mock repository.
+# Bila ada external PostgreSQL -> edit DB_HOST/DB_USER/DB_PASS/DB_NAME sesuai instance.
+# Bila TIDAK ada DB -> skip migration + gunakan mock repository.
 
 # 3. Run migration — sama kedua kondisi (asalkan DB dapat diakses)
 pnpm db:migrate
@@ -316,7 +316,7 @@ psql -h localhost -U retry_failure -d retry_failure -c '\dt'
 psql -h localhost -U retry_failure -d retry_failure -c '\dT'
 psql -h localhost -U retry_failure -d retry_failure -c '\d payments'
 
-# KONDISI SANDBOX (psql tidak tersedia → verifikasi via Node script):
+# KONDISI SANDBOX (psql tidak tersedia -> verifikasi via Node script):
 cd /home/z/my-project/retry-failure/apps/payment-api
 pnpm exec ts-node -e "
 import { Client } from 'pg';

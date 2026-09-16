@@ -138,8 +138,8 @@ flowchart TB
 |---|---|---|
 | **L1: HTTP response** | Status & body sesuai ekspektasi | Jest assertion (otomatis) |
 | **L2: DB state** | `payments.status`, `payment_attempts` count & outcome | `queryAttempts` / `queryPayment` helper |
-| **L3: Metrics counter** | Counter naik sesuai jumlah event | `getMetric` helper → `/metrics` |
-| **L4: Gateway mock stats** | `actualChargesCount`, `requestCount` (untuk idempotensi) | `getGatewayStats` → `/admin/stats` |
+| **L3: Metrics counter** | Counter naik sesuai jumlah event | `getMetric` helper -> `/metrics` |
+| **L4: Gateway mock stats** | `actualChargesCount`, `requestCount` (untuk idempotensi) | `getGatewayStats` -> `/admin/stats` |
 | **L5: Log Cocaktiel** | Retry event, breaker state transition, audit write | `logs/e2e/payment-api-*.log` |
 
 Untuk setiap skenario, file subtask `TASK-14a-<scenario>.md` akan menjelaskan **persis nilai ekspektasi** di setiap lapis.

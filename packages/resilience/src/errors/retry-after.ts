@@ -8,8 +8,8 @@
  * Return value: milliseconds (number) atau null bila tidak ada / invalid.
  *
  * NEVER sum Retry-After + exponential backoff. Pilih salah satu:
- *   - jika Retry-After ada → pakai Retry-After (server-directed)
- *   - jika tidak ada → pakai Cockatiel backoff (default)
+ *   - jika Retry-After ada -> pakai Retry-After (server-directed)
+ *   - jika tidak ada -> pakai Cockatiel backoff (default)
  */
 
 /**

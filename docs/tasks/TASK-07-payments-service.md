@@ -19,12 +19,12 @@ create (processing)  ──►  execute  ──►  terminal: succeeded | failed
 
 Service ini bertanggung jawab atas:
 
-1. **State machine** — transisi status payment (`processing → succeeded | failed | scheduled_for_retry`) hanya melalui jalur valid yang didefinisikan di `VALID_TRANSITIONS` map.
+1. **State machine** — transisi status payment (`processing -> succeeded | failed | scheduled_for_retry`) hanya melalui jalur valid yang didefinisikan di `VALID_TRANSITIONS` map.
 2. **Idempotency invariant** (plan section 9.1) — memastikan `actualCharges <= 1` per payment walau `HTTP calls >= 2`. Invariant dipegang oleh gateway mock + `Idempotency-Key = payment.id` (stabil lintas Cockatiel retries, scheduler cycles, dan manual retries). Helper `assertInvariant()` disediakan untuk testing & log.
 3. **Durable retry counter** (plan section 7.1) — memisahkan dua counter yang TIDAK boleh dicampur:
    - `attempt_count` = jumlah attempt Cockatiel dalam **satu execution cycle** (direset ke 0 tiap cycle baru).
    - `total_retry_count` = jumlah **scheduler cycles** (durable retry); di-increment hanya saat scheduler (TASK-10) atau manual retry memulai cycle baru.
-   - `MAX_TOTAL_RETRIES = 5` = limit atas `total_retry_count`. Bila terlampaui → status berubah menjadi `failed` + `failureReason = 'max_total_retries_exceeded'`.
+   - `MAX_TOTAL_RETRIES = 5` = limit atas `total_retry_count`. Bila terlampaui -> status berubah menjadi `failed` + `failureReason = 'max_total_retries_exceeded'`.
 4. **Audit port contract** — interface `AuditPort` (`recordAttempt`, `listAttempts`) yang di-satisfy oleh `PrismaAuditService` di TASK-08. Service ini hanya berinteraksi dengan port, bukan impl konkret.
 5. **Trace ID per execution cycle** — di-generate via `crypto.randomUUID()` di setiap pemanggilan `executePayment()`, diteruskan ke `AuditPort.recordAttempt` (kolom `trace_id`) dan ke logger. Full OpenTelemetry SDK di TASK-11 (opsional, tidak blocking).
 
@@ -45,13 +45,13 @@ Setelah task ini selesai, TASK-08 (audit impl) dan TASK-09 (controllers) dapat d
 
 **Out of scope**:
 
-- NestJS controllers (`POST /payments`, `GET /payments/:id`, dst.) → **TASK-09**.
-- Audit trail persistence impl (`payment_attempts` row write) → **TASK-08**. Di task ini hanya interface `AuditPort` + binding placeholder `NoopAuditService` agar module bisa boot tanpa TASK-08.
-- Durable retry scheduler (polling `findDueRetries`) → **TASK-10**.
-- Metrics emission (pino structured log + prom-client counter) → **TASK-11**. Service memanggil `logger.debug()` / `logger.info()` saja; hooks penuh di TASK-11.
-- OpenTelemetry SDK + Jaeger export → **TASK-11**. Trace ID di-generate tapi tidak di-export sebagai OTel span.
-- HTTP layer (axios, gateway URL, retry policy) → **TASK-06** (sudah selesai). Service hanya meng-inject `PAYMENT_GATEWAY_PORT`.
-- Cockatiel policy composition → **TASK-05** (sudah selesai).
+- NestJS controllers (`POST /payments`, `GET /payments/:id`, dst.) -> **TASK-09**.
+- Audit trail persistence impl (`payment_attempts` row write) -> **TASK-08**. Di task ini hanya interface `AuditPort` + binding placeholder `NoopAuditService` agar module bisa boot tanpa TASK-08.
+- Durable retry scheduler (polling `findDueRetries`) -> **TASK-10**.
+- Metrics emission (pino structured log + prom-client counter) -> **TASK-11**. Service memanggil `logger.debug()` / `logger.info()` saja; hooks penuh di TASK-11.
+- OpenTelemetry SDK + Jaeger export -> **TASK-11**. Trace ID di-generate tapi tidak di-export sebagai OTel span.
+- HTTP layer (axios, gateway URL, retry policy) -> **TASK-06** (sudah selesai). Service hanya meng-inject `PAYMENT_GATEWAY_PORT`.
+- Cockatiel policy composition -> **TASK-05** (sudah selesai).
 
 ## State machine (plan section 10.2)
 
@@ -68,9 +68,9 @@ Setelah task ini selesai, TASK-08 (audit impl) dan TASK-09 (controllers) dapat d
        (terminal)    (terminal)            │           │
                                          │ scheduler cycle (TASK-10)
                                          │ OR manualRetry()
-                                         │ → executePayment(source='manual')
+                                         │ -> executePayment(source='manual')
                                          │   (reset attemptCount, do NOT reset totalRetryCount)
-                                         │   if totalRetryCount > MAX_TOTAL_RETRIES → failed
+                                         │   if totalRetryCount > MAX_TOTAL_RETRIES -> failed
                                          └──────────────────────────────────────────┘
 
 Circuit open (dari ChargeResult.errorCode='circuit_open')  ───►  scheduled_for_retry
@@ -91,7 +91,7 @@ Success (ChargeResult.status='succeeded')  ────────────�
 | `failed`                   | `processing`               | `manualRetry` only (admin override)                | Reset `attempt_count = 0`; tidak reset `total_retry_count` (counter jujur).                              |
 | `failed`                   | (lainnya)                  | —                                                  | Selain `manualRetry`, transisi dari `failed` ditolak.                                                       |
 
-> **Catatan penambahan `total_retry_count`**: counter di-increment **saat transisi `processing → scheduled_for_retry`** (yaitu ketika satu execution cycle gagal dan dijadwalkan ulang). Saat `scheduled_for_retry → processing` (start of new cycle), counter **tidak** di-increment (sudah dihitung di cycle sebelumnya). Bila `total_retry_count + 1 > MAX_TOTAL_RETRIES` saat hendak transisi ke `scheduled_for_retry`, maka service **tidak** menjadwalkan retry — langsung transisi `processing → failed` dengan `failureReason='max_total_retries_exceeded'`.
+> **Catatan penambahan `total_retry_count`**: counter di-increment **saat transisi `processing -> scheduled_for_retry`** (yaitu ketika satu execution cycle gagal dan dijadwalkan ulang). Saat `scheduled_for_retry -> processing` (start of new cycle), counter **tidak** di-increment (sudah dihitung di cycle sebelumnya). Bila `total_retry_count + 1 > MAX_TOTAL_RETRIES` saat hendak transisi ke `scheduled_for_retry`, maka service **tidak** menjadwalkan retry — langsung transisi `processing -> failed` dengan `failureReason='max_total_retries_exceeded'`.
 
 ## Idempotency invariant (plan section 9.1)
 
@@ -135,14 +135,14 @@ MAX_TOTAL_RETRIES  = 5   ── scheduler, lintas execution cycles
 | Counter              | Lingkup                   | Kapan di-reset         | Kapan di-increment                                            | Di mana disimpan        |
 | -------------------- | ------------------------- | ----------------------- | ------------------------------------------------------------- | ----------------------- |
 | `attempt_count`      | Satu execution cycle      | Start tiap cycle (`executePayment`) | Tidak (di-update oleh callback `onAttempt` — nilai akhir = `attempts` Cockatiel) | `payments.attempt_count` |
-| `total_retry_count`  | Lintas scheduler cycles   | **Tidak pernah** di-reset (kecuali `manualRetry` tidak reset juga) | Saat transisi `processing → scheduled_for_retry` (cycle gagal) | `payments.total_retry_count` |
+| `total_retry_count`  | Lintas scheduler cycles   | **Tidak pernah** di-reset (kecuali `manualRetry` tidak reset juga) | Saat transisi `processing -> scheduled_for_retry` (cycle gagal) | `payments.total_retry_count` |
 
 **Lima aturan penting yang TIDAK boleh dilanggar**:
 
 1. Cockatiel retry **TIDAK** menambah `total_retry_count`. Cockatiel hanya menambah `attempt_count` dalam cycle yang sama.
-2. Scheduler cycle (TASK-10) **di-increment** `total_retry_count` saat memulai cycle baru dari `scheduled_for_retry` (setelah transisi sukses `scheduled_for_retry → processing`). Tidak — koreksi: counter di-increment **saat transisi `processing → scheduled_for_retry`**, yaitu saat cycle gagal dan dijadwalkan ulang. Saat scheduler baru saja start cycle, counter tidak di-increment lagi (sudah dihitung).
+2. Scheduler cycle (TASK-10) **di-increment** `total_retry_count` saat memulai cycle baru dari `scheduled_for_retry` (setelah transisi sukses `scheduled_for_retry -> processing`). Tidak — koreksi: counter di-increment **saat transisi `processing -> scheduled_for_retry`**, yaitu saat cycle gagal dan dijadwalkan ulang. Saat scheduler baru saja start cycle, counter tidak di-increment lagi (sudah dihitung).
 3. `manualRetry()` **TIDAK** mereset `total_retry_count`. Counter jujur menggambarkan berapa kali payment ini sudah dijadwalkan ulang.
-4. Bila `total_retry_count + 1 > MAX_TOTAL_RETRIES` (default 5) → service tidak menjadwalkan retry, langsung transisi `processing → failed` + `failureReason = 'max_total_retries_exceeded'`.
+4. Bila `total_retry_count + 1 > MAX_TOTAL_RETRIES` (default 5) -> service tidak menjadwalkan retry, langsung transisi `processing -> failed` + `failureReason = 'max_total_retries_exceeded'`.
 5. `attempt_count` di-reset ke 0 di awal setiap `executePayment()` call (karena Cockatiel mulai dari attempt #1 lagi di setiap cycle baru).
 
 ## Files to create
@@ -268,7 +268,7 @@ export class InvalidTransitionError extends Error {
     public readonly from: PaymentStatus,
     public readonly to: PaymentStatus,
   ) {
-    super(`Invalid status transition: ${from} → ${to}`);
+    super(`Invalid status transition: ${from} -> ${to}`);
     this.name = 'InvalidTransitionError';
   }
 }
@@ -435,9 +435,9 @@ export class PaymentsService {
    * Jalankan satu execution cycle (plan section 7.1 + 10.2):
    *   - atomic set status=processing, reset attempt_count=0
    *   - generate traceId per cycle
-   *   - wire onAttempt callback → audit.recordAttempt
+   *   - wire onAttempt callback -> audit.recordAttempt
    *   - call gateway.charge(req)
-   *   - map ChargeResult → status transition + side-effects
+   *   - map ChargeResult -> status transition + side-effects
    *
    * Dipanggil dari:
    *   - createPayment (source='api')
@@ -448,7 +448,7 @@ export class PaymentsService {
     const payment = await this.payments.findById(paymentId);
     if (!payment) throw new NotFoundException(`Payment ${paymentId} not found`);
 
-    // Atomic transition: whatever current status → processing.
+    // Atomic transition: whatever current status -> processing.
     // (untuk source='api' status sudah processing; untuk source='scheduler'/'manual'
     //  status sebelumnya = scheduled_for_retry atau failed).
     const previousStatus = payment.status;
@@ -498,7 +498,7 @@ export class PaymentsService {
   }
 
   /**
-   * Map ChargeResult → status transition + persist side-effects.
+   * Map ChargeResult -> status transition + persist side-effects.
    * Semua transisi di sini atomic via atomicUpdateStatus(paymentId, PROCESSING, patch).
    */
   private async applyOutcome(
@@ -506,17 +506,17 @@ export class PaymentsService {
     result: ChargeResult,
     ctx: { traceId: string; idempotencyKey: string; durationMs: number; source: string },
   ): Promise<Payment> {
-    // 1. Permanent failure (4xx non-429) → failed
+    // 1. Permanent failure (4xx non-429) -> failed
     if (this.isPermanentFailure(result)) {
       await this.atomicTransition(paymentId, PaymentStatus.FAILED, {
         failureReason: result.errorMessage ?? result.errorCode ?? 'permanent_failure',
         // audit: juga tulis attempt terakhir via onAttempt (sudah dipanggil adapter)
       });
-      this.logger.warn({ paymentId, errorCode: result.errorCode }, 'payment permanent failure → failed');
+      this.logger.warn({ paymentId, errorCode: result.errorCode }, 'payment permanent failure -> failed');
       return (await this.payments.findById(paymentId))!;
     }
 
-    // 2. Success → succeeded + gatewayReference
+    // 2. Success -> succeeded + gatewayReference
     if (result.status === 'succeeded') {
       await this.atomicTransition(paymentId, PaymentStatus.SUCCEEDED, {
         gatewayReference: result.gatewayReference ?? null,
@@ -525,12 +525,12 @@ export class PaymentsService {
       return (await this.payments.findById(paymentId))!;
     }
 
-    // 3. Circuit open → scheduled_for_retry (tidak increment counter — circuit bukan cycle gagal baru)
+    // 3. Circuit open -> scheduled_for_retry (tidak increment counter — circuit bukan cycle gagal baru)
     //    Catatan: sebenarnya circuit_open juga mengindikasikan cycle gagal; keputusan:
     //    di-increment totalRetryCount juga (cycle gagal karena breaker).
-    //    Bila totalRetryCount + 1 > MAX → failed.
-    // 4. Retry exhausted (attempts === RETRY_MAX_ATTEMPTS, status='failed') → scheduled_for_retry
-    //    Bila totalRetryCount + 1 > MAX → failed.
+    //    Bila totalRetryCount + 1 > MAX -> failed.
+    // 4. Retry exhausted (attempts === RETRY_MAX_ATTEMPTS, status='failed') -> scheduled_for_retry
+    //    Bila totalRetryCount + 1 > MAX -> failed.
     if (result.errorCode === 'circuit_open' || result.attempts !== undefined) {
       const current = (await this.payments.findById(paymentId))!;
       const nextTotal = current.totalRetryCount + 1;
@@ -538,7 +538,7 @@ export class PaymentsService {
         await this.atomicTransition(paymentId, PaymentStatus.FAILED, {
           failureReason: 'max_total_retries_exceeded',
         });
-        this.logger.warn({ paymentId, totalRetryCount: current.totalRetryCount }, 'max_total_retries_exceeded → failed');
+        this.logger.warn({ paymentId, totalRetryCount: current.totalRetryCount }, 'max_total_retries_exceeded -> failed');
         return (await this.payments.findById(paymentId))!;
       }
       const delayMs = result.retryAfterMs ?? this.schedulerBaseDelayMs;
@@ -727,22 +727,22 @@ export * from './dto/create-payment.dto';
 ### 8. Jest tests
 
 #### `state-machine.spec.ts`
-- `canTransition(PROCESSING, SUCCEEDED)` → true.
-- `canTransition(PROCESSING, FAILED)` → true.
-- `canTransition(PROCESSING, SCHEDULED_FOR_RETRY)` → true.
-- `canTransition(SCHEDULED_FOR_RETRY, PROCESSING)` → true.
-- `canTransition(SUCCEEDED, PROCESSING)` → false (terminal).
-- `canTransition(FAILED, PROCESSING)` → true (manualRetry).
-- `canTransition(FAILED, SUCCEEDED)` → false (must go through processing).
+- `canTransition(PROCESSING, SUCCEEDED)` -> true.
+- `canTransition(PROCESSING, FAILED)` -> true.
+- `canTransition(PROCESSING, SCHEDULED_FOR_RETRY)` -> true.
+- `canTransition(SCHEDULED_FOR_RETRY, PROCESSING)` -> true.
+- `canTransition(SUCCEEDED, PROCESSING)` -> false (terminal).
+- `canTransition(FAILED, PROCESSING)` -> true (manualRetry).
+- `canTransition(FAILED, SUCCEEDED)` -> false (must go through processing).
 - `assertCanTransition(SUCCEEDED, FAILED)` throws `InvalidTransitionError`.
-- `isTerminal(SUCCEEDED)` → true; `isTerminal(FAILED)` → true; `isTerminal(PROCESSING)` → false; `isTerminal(SCHEDULED_FOR_RETRY)` → false.
+- `isTerminal(SUCCEEDED)` -> true; `isTerminal(FAILED)` -> true; `isTerminal(PROCESSING)` -> false; `isTerminal(SCHEDULED_FOR_RETRY)` -> false.
 
 #### `idempotency.spec.ts`
-- `deriveIdempotencyKey('pay_123')` → `'pay_123'` (re-export behavior sama TASK-06).
-- `deriveIdempotencyKey('')` → throw.
-- `assertInvariant(1, 5)` → true (1 charge, 5 calls — invariant hold).
-- `assertInvariant(2, 5)` → false (invariant violated).
-- `assertInvariant(0, 0)` → true.
+- `deriveIdempotencyKey('pay_123')` -> `'pay_123'` (re-export behavior sama TASK-06).
+- `deriveIdempotencyKey('')` -> throw.
+- `assertInvariant(1, 5)` -> true (1 charge, 5 calls — invariant hold).
+- `assertInvariant(2, 5)` -> false (invariant violated).
+- `assertInvariant(0, 0)` -> true.
 
 #### `payments.service.spec.ts`
 - **Setup**: mock `PaymentRepository` (jest), mock `PaymentGatewayPort` (jest), mock `AuditPort` (jest), `ConfigService` with `MAX_TOTAL_RETRIES=5`, `SCHEDULER_BASE_DELAY_MS=30000`.
@@ -755,8 +755,8 @@ export * from './dto/create-payment.dto';
 - **executePayment MAX_TOTAL_RETRIES exceeded**: payment dengan `totalRetryCount=5` (sama dengan MAX), call `executePayment` yang gagal. Result: `status=failed`, `failureReason='max_total_retries_exceeded'`. `totalRetryCount` tidak di-increment ke 6.
 - **getById**: mock `payments.findById` + `audit.listAttempts` returns 2 attempts. Result: `PaymentDetail` dengan `attempts.length === 2`.
 - **list dengan filter status**: `payments.list({ status: 'scheduled_for_retry' })` dipanggil dengan benar.
-- **Idempotency**: dua call `createPayment` dengan `orderId` yang sama → repository.create throw unique constraint (mock). Service propagates error (tidak double-create).
-- **Audit callback graceful degradation**: `audit.recordAttempt` throw → service tetap lanjut (tidak propagate). Verifikasi via spy: `gateway.charge` tetap selesai.
+- **Idempotency**: dua call `createPayment` dengan `orderId` yang sama -> repository.create throw unique constraint (mock). Service propagates error (tidak double-create).
+- **Audit callback graceful degradation**: `audit.recordAttempt` throw -> service tetap lanjut (tidak propagate). Verifikasi via spy: `gateway.charge` tetap selesai.
 - **Trace ID**: tiap call `executePayment` generate UUID baru. Verifikasi via mock: `audit.recordAttempt` dipanggil dengan `traceId` berbeda untuk dua cycle berbeda payment.
 
 ## Acceptance criteria
@@ -767,14 +767,14 @@ export * from './dto/create-payment.dto';
 - [ ] `audit/audit-port.ts` mengekspor `AuditPort` interface, `RecordAttemptInput` (semua field plan section 11.2), `AttemptView`, `AUDIT_PORT` token, dan `NoopAuditService` placeholder.
 - [ ] `dto/create-payment.dto.ts` memakai `class-validator`: `orderId IsString MinLength(1) MaxLength(64)`, `amount IsNumber IsPositive Max(1_000_000) maxDecimalDigits=2`, `currency Length(3,3) default 'IDR'`.
 - [ ] `payments.service.ts` meng-inject: `PaymentRepository`, `PAYMENT_GATEWAY_PORT`, `AUDIT_PORT`, `ConfigService`.
-- [ ] `createPayment(input)` membuat row `status=processing` → panggil `executePayment(source='api')` → return `PaymentView` dengan status terminal (`succeeded` / `failed` / `scheduled_for_retry`).
-- [ ] `executePayment(paymentId, { source })` atomic transisi `* → processing` via `atomicUpdateStatus(paymentId, previousStatus, { status: processing, attemptCount: 0 })`; reset `attempt_count=0`; TIDAK reset `total_retry_count`; generate `traceId = crypto.randomUUID()`.
-- [ ] `executePayment` wire callback `onAttempt` ke adapter (option A) → memanggil `audit.recordAttempt` per-attempt dengan field lengkap (`attemptNumber`, `outcome`, `httpStatus`, `errorCode`, `errorMessage`, `delayBeforeNextMs`, `breakerState`, `durationMs`, `traceId`, `idempotencyKey`, `gatewayReference`, `replayed`).
-- [ ] Permanent failure (4xx non-429 / `errorCode='invalid_card'`) → `status=failed` + `failureReason` di-set; `totalRetryCount` tidak berubah.
-- [ ] Retry exhausted (attempts === maxAttempts, `status='failed'`) → `status=scheduled_for_retry`, `totalRetryCount` di-increment, `nextRetryAt = now + delay` (delay = `retryAfterMs` bila ada, else `SCHEDULER_BASE_DELAY_MS`).
-- [ ] Circuit open (`errorCode='circuit_open'`) → `status=scheduled_for_retry` (counter juga di-increment).
-- [ ] Bila `totalRetryCount + 1 > MAX_TOTAL_RETRIES` (default 5) → transisi `processing → failed` + `failureReason='max_total_retries_exceeded'`. Tidak menjadwalkan retry.
-- [ ] `manualRetry(paymentId)` hanya boleh dipanggil dari status `failed` atau `scheduled_for_retry`; dari status lain → throw `BadRequestException`. Reset `attempt_count=0`; TIDAK reset `total_retry_count`.
+- [ ] `createPayment(input)` membuat row `status=processing` -> panggil `executePayment(source='api')` -> return `PaymentView` dengan status terminal (`succeeded` / `failed` / `scheduled_for_retry`).
+- [ ] `executePayment(paymentId, { source })` atomic transisi `* -> processing` via `atomicUpdateStatus(paymentId, previousStatus, { status: processing, attemptCount: 0 })`; reset `attempt_count=0`; TIDAK reset `total_retry_count`; generate `traceId = crypto.randomUUID()`.
+- [ ] `executePayment` wire callback `onAttempt` ke adapter (option A) -> memanggil `audit.recordAttempt` per-attempt dengan field lengkap (`attemptNumber`, `outcome`, `httpStatus`, `errorCode`, `errorMessage`, `delayBeforeNextMs`, `breakerState`, `durationMs`, `traceId`, `idempotencyKey`, `gatewayReference`, `replayed`).
+- [ ] Permanent failure (4xx non-429 / `errorCode='invalid_card'`) -> `status=failed` + `failureReason` di-set; `totalRetryCount` tidak berubah.
+- [ ] Retry exhausted (attempts === maxAttempts, `status='failed'`) -> `status=scheduled_for_retry`, `totalRetryCount` di-increment, `nextRetryAt = now + delay` (delay = `retryAfterMs` bila ada, else `SCHEDULER_BASE_DELAY_MS`).
+- [ ] Circuit open (`errorCode='circuit_open'`) -> `status=scheduled_for_retry` (counter juga di-increment).
+- [ ] Bila `totalRetryCount + 1 > MAX_TOTAL_RETRIES` (default 5) -> transisi `processing -> failed` + `failureReason='max_total_retries_exceeded'`. Tidak menjadwalkan retry.
+- [ ] `manualRetry(paymentId)` hanya boleh dipanggil dari status `failed` atau `scheduled_for_retry`; dari status lain -> throw `BadRequestException`. Reset `attempt_count=0`; TIDAK reset `total_retry_count`.
 - [ ] `getById(id)` return `PaymentDetail` dengan `attempts` dari `audit.listAttempts(id)`.
 - [ ] `list({ status? })` meneruskan filter ke `PaymentRepository.list`.
 - [ ] Semua transisi status pakai `atomicUpdateStatus(paymentId, expectedFrom, patch)` (atomic via `UPDATE ... WHERE id=? AND status=?`).
@@ -793,9 +793,9 @@ export * from './dto/create-payment.dto';
 > **WAJIB BACA**: sebelum menjalankan command di bawah, cek kondisi lingkungan Anda via [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 1 (Pre-flight Check).
 >
 > Ringkasan keyword:
-> - `pnpm --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
-> - `docker --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → butuh external PostgreSQL atau skip DB-dependent commands.
-> - `curl -s http://localhost:3000` sibuk → KONDISI SANDBOX → payment-api pakai PORT=3001, gateway-mock pakai PORT=3002. Bebas → KONDISI LOCAL → payment-api pakai PORT=3000, gateway-mock pakai PORT=3001.
+> - `pnpm --version` ada -> KONDISI LOCAL. Tidak ada -> KONDISI SANDBOX -> jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
+> - `docker --version` ada -> KONDISI LOCAL. Tidak ada -> KONDISI SANDBOX -> butuh external PostgreSQL atau skip DB-dependent commands.
+> - `curl -s http://localhost:3000` sibuk -> KONDISI SANDBOX -> payment-api pakai PORT=3001, gateway-mock pakai PORT=3002. Bebas -> KONDISI LOCAL -> payment-api pakai PORT=3000, gateway-mock pakai PORT=3001.
 
 Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih salah satu sesuai kondisi.
 
@@ -811,7 +811,7 @@ sleep 5
 tail -n 20 /tmp/gateway-mock.log
 # Expected: "payment-gateway-mock listening on :3001"
 
-# KONDISI SANDBOX (port 3001 dipakai payment-api → gateway-mock geser ke 3002):
+# KONDISI SANDBOX (port 3001 dipakai payment-api -> gateway-mock geser ke 3002):
 cd /home/z/my-project/retry-failure/apps/payment-gateway-mock
 PORT=3002 pnpm start:dev > /tmp/gateway-mock.log 2>&1 &
 sleep 5
@@ -869,7 +869,7 @@ sleep 8
 tail -n 30 /tmp/payment-api.log
 # Expected: "Nest application successfully started" + listening on :3000
 
-# KONDISI SANDBOX (port 3000 dipakai Next.js preview → payment-api geser ke 3001):
+# KONDISI SANDBOX (port 3000 dipakai Next.js preview -> payment-api geser ke 3001):
 cd /home/z/my-project/retry-failure/apps/payment-api
 PORT=3001 pnpm start:dev > /tmp/payment-api.log 2>&1 &
 sleep 8
@@ -931,37 +931,37 @@ async function run(label: string, fn: () => Promise<void>): Promise<void> {
   await run('always-success (should succeed on attempt 1)', async () => {
     await setGatewayMode('always-success');
     const p = await svc.createPayment({ orderId: `smoke-success-${Date.now()}`, amount: 10000, currency: 'IDR' });
-    console.log('  →', JSON.stringify({ status: p.status, gatewayReference: p.gatewayReference, totalRetryCount: p.totalRetryCount }));
+    console.log('  ->', JSON.stringify({ status: p.status, gatewayReference: p.gatewayReference, totalRetryCount: p.totalRetryCount }));
   });
 
   await run('client-error (should fail permanently)', async () => {
     await setGatewayMode('client-error');
     const p = await svc.createPayment({ orderId: `smoke-client-${Date.now()}`, amount: 10000, currency: 'IDR' });
-    console.log('  →', JSON.stringify({ status: p.status, failureReason: p.failureReason, totalRetryCount: p.totalRetryCount }));
+    console.log('  ->', JSON.stringify({ status: p.status, failureReason: p.failureReason, totalRetryCount: p.totalRetryCount }));
   });
 
   await run('fail-first-n=2 RETRY_MAX_ATTEMPTS=3 (should succeed after 3 attempts)', async () => {
     await setGatewayMode('fail-first-n', { n: 2 });
     const p = await svc.createPayment({ orderId: `smoke-ffn-${Date.now()}`, amount: 10000, currency: 'IDR' });
-    console.log('  →', JSON.stringify({ status: p.status, gatewayReference: p.gatewayReference }));
+    console.log('  ->', JSON.stringify({ status: p.status, gatewayReference: p.gatewayReference }));
   });
 
   await run('server-error (should schedule_for_retry)', async () => {
     await setGatewayMode('server-error');
     const p = await svc.createPayment({ orderId: `smoke-server-${Date.now()}`, amount: 10000, currency: 'IDR' });
-    console.log('  →', JSON.stringify({ status: p.status, failureReason: p.failureReason, totalRetryCount: p.totalRetryCount, nextRetryAt: p.nextRetryAt }));
+    console.log('  ->', JSON.stringify({ status: p.status, failureReason: p.failureReason, totalRetryCount: p.totalRetryCount, nextRetryAt: p.nextRetryAt }));
   });
 
   await run('getById returns attempts list', async () => {
     await setGatewayMode('always-success');
     const created = await svc.createPayment({ orderId: `smoke-detail-${Date.now()}`, amount: 5000, currency: 'IDR' });
     const detail = await svc.getById(created.id);
-    console.log('  →', JSON.stringify({ status: detail.status, attemptsCount: detail.attempts.length }));
+    console.log('  ->', JSON.stringify({ status: detail.status, attemptsCount: detail.attempts.length }));
   });
 
   await run('list filter by status', async () => {
     const succeeded = await svc.list({ status: 'succeeded' as never });
-    console.log('  →', JSON.stringify({ count: succeeded.length }));
+    console.log('  ->', JSON.stringify({ count: succeeded.length }));
   });
 
   // Reset ke always-success
@@ -1007,20 +1007,20 @@ pkill -f "nest start" 2>/dev/null
   - **Option B (alternatif ditolak)**: service meneruskan `onAttempt` ke `executeWithResilience({ fn, onAttempt })` langsung. Tapi itu meng-couple service ke `@retry-failure/resilience` API (TASK-05) — melanggar layering yang sudah dibangun TASK-06 (adapter sebagai boundary). Tidak dipakai.
   - **Graceful degradation**: bila adapter tidak mendukung `AttemptObservable` (mis. di test mock), `attachAuditCallback` no-op. Service tetap berfungsi — hanya tidak ada audit row.
 
-- **Atomic status transition via `updateMany WHERE status=expectedFrom`**: TypeORM `repository.update({ id, status: expectedFrom }, patch)` menghasilkan SQL `UPDATE payments SET ... WHERE id=? AND status=?`. Bila affected rows = 0 → status sudah berubah (concurrent execution) → service throw `BadRequestException`. Ini menjamin idempotensi scheduler (TASK-10) — bila dua instance scheduler pick payment yang sama, hanya satu yang berhasil transisi.
+- **Atomic status transition via `updateMany WHERE status=expectedFrom`**: TypeORM `repository.update({ id, status: expectedFrom }, patch)` menghasilkan SQL `UPDATE payments SET ... WHERE id=? AND status=?`. Bila affected rows = 0 -> status sudah berubah (concurrent execution) -> service throw `BadRequestException`. Ini menjamin idempotensi scheduler (TASK-10) — bila dua instance scheduler pick payment yang sama, hanya satu yang berhasil transisi.
 
 - **Counter separation critical**:
   - `attempt_count` di-update oleh callback `onAttempt` dari adapter (nilai akhir = `attempts` Cockatiel). Service hanya reset ke 0 di awal cycle. Bila audit NoopAuditService (placeholder), `attempt_count` row payment tidak ter-update akurat — itu OK untuk dev (TASK-08 akan fix dengan impl konkre).
-  - `total_retry_count` di-increment **hanya** oleh `PaymentsService.applyOutcome()` saat transisi `processing → scheduled_for_retry`. Cockatiel tidak pernah menyentuh counter ini. Scheduler (TASK-10) memanggil `executePayment(source='scheduler')` — service yang increment. Manual retry (TASK-09 controller) memanggil `manualRetry()` — service yang increment (jika cycle gagal lagi).
+  - `total_retry_count` di-increment **hanya** oleh `PaymentsService.applyOutcome()` saat transisi `processing -> scheduled_for_retry`. Cockatiel tidak pernah menyentuh counter ini. Scheduler (TASK-10) memanggil `executePayment(source='scheduler')` — service yang increment. Manual retry (TASK-09 controller) memanggil `manualRetry()` — service yang increment (jika cycle gagal lagi).
 
 - **Idempotency test scenario 4** (`succeed-but-drop-response`): tidak diuji di task ini — ada di TASK-14 E2E. Helper `assertInvariant(actualCharges, httpCalls)` disediakan untuk assertion di task itu. Service tidak bisa mengetahui `actualCharges` sendiri (itu gateway-side truth via `replayed: true`); invariant di-enforce oleh gateway mock in-memory store.
 
 - **Trace ID per execution cycle**: `crypto.randomUUID()` di-generate di awal `executePayment()`. Same trace ID untuk semua attempt dalam satu cycle (Cockatiel retries). Berbeda trace ID untuk cycle berbeda (scheduler / manual retry). Full OpenTelemetry SDK (span export ke Jaeger) di TASK-11 — di task ini trace ID hanya disimpan di `payment_attempts.trace_id` (via audit callback) dan di log line.
 
 - **Permanent failure classification**: dilakukan di service (`isPermanentFailure`) berdasarkan `errorCode` + `httpStatus`. Bila TASK-04 classifier sudah ada, sebaiknya service memanggil `classifyError(result)` untuk konsistensi. Untuk sekarang, classification inline dengan tabel:
-  - `errorCode` in `['invalid_card', 'insufficient_funds', 'expired_card']` → permanent.
-  - `httpStatus` in `[400, 401, 403, 404, 410, 422]` (4xx non-429, non-408) → permanent.
-  - Lainnya → retryable.
+  - `errorCode` in `['invalid_card', 'insufficient_funds', 'expired_card']` -> permanent.
+  - `httpStatus` in `[400, 401, 403, 404, 410, 422]` (4xx non-429, non-408) -> permanent.
+  - Lainnya -> retryable.
 
 - **`MAX_TOTAL_RETRIES` dari config**: dibaca via `ConfigService.get<number>('MAX_TOTAL_RETRIES', 5)`. Default 5 sesuai plan section 7.1. Schema validation di TASK-01 (`validation.schema.ts`) — Joi atau zod. Tidak di-hardcode di service.
 

@@ -77,7 +77,7 @@ function makeMockAudit() {
 // --- Tests ---
 
 describe('PaymentsService — createPayment', () => {
-  it('always-success → status=succeeded, gatewayReference set', async () => {
+  it('always-success -> status=succeeded, gatewayReference set', async () => {
     const repo = makeMockRepo();
     const gateway = makeMockGateway({
       status: 'succeeded' as const,
@@ -101,7 +101,7 @@ describe('PaymentsService — createPayment', () => {
     );
   });
 
-  it('client-error → status=failed, failureReason set', async () => {
+  it('client-error -> status=failed, failureReason set', async () => {
     const repo = makeMockRepo();
     const gateway = makeMockGateway({
       status: 'failed' as const,
@@ -121,7 +121,7 @@ describe('PaymentsService — createPayment', () => {
     expect(result.totalRetryCount).toBe(0);
   });
 
-  it('server-error (500) → status=scheduled_for_retry, totalRetryCount=1', async () => {
+  it('server-error (500) -> status=scheduled_for_retry, totalRetryCount=1', async () => {
     const repo = makeMockRepo();
     const gateway = makeMockGateway({
       status: 'failed' as const,
@@ -141,7 +141,7 @@ describe('PaymentsService — createPayment', () => {
     expect(result.failureReason).toBe('internal server error');
   });
 
-  it('circuit_open → status=scheduled_for_retry', async () => {
+  it('circuit_open -> status=scheduled_for_retry', async () => {
     const repo = makeMockRepo();
     const gateway = makeMockGateway({
       status: 'failed' as const,
@@ -161,7 +161,7 @@ describe('PaymentsService — createPayment', () => {
 });
 
 describe('PaymentsService — manualRetry', () => {
-  it('from scheduled_for_retry → executePayment runs', async () => {
+  it('from scheduled_for_retry -> executePayment runs', async () => {
     const repo = makeMockRepo();
     repo._setPayment(makePayment({ status: PaymentStatus.SCHEDULED_FOR_RETRY, totalRetryCount: 2 }));
     const gateway = makeMockGateway({
@@ -178,7 +178,7 @@ describe('PaymentsService — manualRetry', () => {
     expect(result.status).toBe(PaymentStatus.SUCCEEDED);
   });
 
-  it('from succeeded → throw BadRequestException', async () => {
+  it('from succeeded -> throw BadRequestException', async () => {
     const repo = makeMockRepo();
     repo._setPayment(makePayment({ status: PaymentStatus.SUCCEEDED }));
     const gateway = makeMockGateway({ status: 'succeeded' as const, replayed: false });
@@ -188,7 +188,7 @@ describe('PaymentsService — manualRetry', () => {
     await expect(svc.manualRetry('pay-001')).rejects.toThrow('Cannot manualRetry');
   });
 
-  it('from processing → throw BadRequestException', async () => {
+  it('from processing -> throw BadRequestException', async () => {
     const repo = makeMockRepo();
     repo._setPayment(makePayment({ status: PaymentStatus.PROCESSING }));
     const gateway = makeMockGateway({ status: 'succeeded' as const, replayed: false });
@@ -200,7 +200,7 @@ describe('PaymentsService — manualRetry', () => {
 });
 
 describe('PaymentsService — MAX_TOTAL_RETRIES exceeded', () => {
-  it('totalRetryCount=5 + failed result → status=failed, failureReason=max_total_retries_exceeded', async () => {
+  it('totalRetryCount=5 + failed result -> status=failed, failureReason=max_total_retries_exceeded', async () => {
     const repo = makeMockRepo();
     repo._setPayment(makePayment({ status: PaymentStatus.PROCESSING, totalRetryCount: 5 }));
     const gateway = makeMockGateway({
@@ -276,7 +276,7 @@ describe('PaymentsService — list', () => {
 });
 
 describe('PaymentsService — audit graceful degradation', () => {
-  it('audit.recordAttempt throws → service tetap selesai (tidak propagate)', async () => {
+  it('audit.recordAttempt throws -> service tetap selesai (tidak propagate)', async () => {
     const repo = makeMockRepo();
     const gateway = makeMockGateway({
       status: 'succeeded' as const,

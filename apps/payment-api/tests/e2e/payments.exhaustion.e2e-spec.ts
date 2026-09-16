@@ -8,9 +8,9 @@
  *   scheduler does NOT pick it up again (no infinite retry loop).
  *
  * Gateway mode 'server-error' returns 500 for every charge request.
- * Cockatiel inline retry (3 attempts per cycle) exhausts → payment scheduled
- * for retry → scheduler picks → 3 more attempts → repeat until
- * totalRetryCount >= MAX_TOTAL_RETRIES (5) → terminal 'failed'.
+ * Cockatiel inline retry (3 attempts per cycle) exhausts -> payment scheduled
+ * for retry -> scheduler picks -> 3 more attempts -> repeat until
+ * totalRetryCount >= MAX_TOTAL_RETRIES (5) -> terminal 'failed'.
  *
  * Preconditions:
  *   - PostgreSQL running + migrated
@@ -32,10 +32,10 @@
  *     (scheduler stops picking this payment — proves no infinite loop)
  *
  * Flow diagram (rendered in MD):
- *   See docs/tasks/TASK-14a-exhaustion.md → section "3. Visualisasi Alur"
+ *   See docs/tasks/TASK-14a-exhaustion.md -> section "3. Visualisasi Alur"
  *
  * Manual verification procedure (5 layers L1-L5):
- *   See docs/tasks/TASK-14a-exhaustion.md → section "5. Verifikasi Manual per Lapis"
+ *   See docs/tasks/TASK-14a-exhaustion.md -> section "5. Verifikasi Manual per Lapis"
  *
  * Run this file only (this is the LONGEST test — up to 240s):
  *   pnpm test:e2e:exhaustion
@@ -44,7 +44,7 @@
  *     tests/e2e/payments.exhaustion.e2e-spec.ts
  *
  * Note on breaker interaction:
- *   Gateway returns 500 for every request → after 3 failures, breaker may OPEN
+ *   Gateway returns 500 for every request -> after 3 failures, breaker may OPEN
  *   and subsequent attempts get 'circuit_open' instead of 'retryable_failure'.
  *   Test does NOT assert per-attempt outcome (only total count), so this is OK.
  *   For cleaner test, set CIRCUIT_BREAKER_THRESHOLD=100 in env to disable breaker.

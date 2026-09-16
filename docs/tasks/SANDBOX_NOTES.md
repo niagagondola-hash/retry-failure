@@ -13,8 +13,8 @@
 Sebelum mulai task apapun, jalankan **Pre-flight Check** (section 1 di bawah). Hasilnya menentukan kondisi mana yang berlaku. Setiap task file (`TASK-*.md`) punya section "Useful commands" yang merujuk ke file ini untuk command yang berbeda per kondisi.
 
 **Aturan praktis:**
-- Bila command native tersedia → gunakan langsung (Kondisi Local)
-- Bila command native TIDAK tersedia → gunakan alternatif yang dicatat di sini (Kondisi Sandbox)
+- Bila command native tersedia -> gunakan langsung (Kondisi Local)
+- Bila command native TIDAK tersedia -> gunakan alternatif yang dicatat di sini (Kondisi Sandbox)
 
 ---
 
@@ -29,7 +29,7 @@ if command -v pnpm &>/dev/null; then
   PNPM_CMD="pnpm"
 else
   echo "✗ pnpm tidak tersedia (KONDISI SANDBOX)"
-  echo "  → aktifkan via corepack:"
+  echo "  -> aktifkan via corepack:"
   echo "  corepack enable pnpm"
   echo "  corepack prepare pnpm@latest --activate"
   PNPM_CMD="corepack pnpm"
@@ -47,7 +47,7 @@ if command -v docker &>/dev/null; then
   DOCKER_AVAILABLE=1
 else
   echo "✗ docker tidak tersedia (KONDISI SANDBOX)"
-  echo "  → PostgreSQL butuh external instance atau skip integration test"
+  echo "  -> PostgreSQL butuh external instance atau skip integration test"
   DOCKER_AVAILABLE=0
 fi
 
@@ -56,7 +56,7 @@ echo "=== 4. PostgreSQL client (psql) ==="
 if command -v psql &>/dev/null; then
   echo "✓ psql tersedia"
 else
-  echo "✗ psql tidak tersedia → verifikasi schema via Node script, bukan psql CLI"
+  echo "✗ psql tidak tersedia -> verifikasi schema via Node script, bukan psql CLI"
 fi
 
 echo ""
@@ -64,14 +64,14 @@ echo "=== 5. Bun (untuk Next.js frontend) ==="
 if command -v bun &>/dev/null; then
   echo "✓ bun tersedia"
 else
-  echo "✗ bun tidak tersedia → install via npm i -g bun atau skip Next.js frontend"
+  echo "✗ bun tidak tersedia -> install via npm i -g bun atau skip Next.js frontend"
 fi
 
 echo ""
 echo "=== 6. Port 3000 availability ==="
 if curl -s http://localhost:3000 >/dev/null 2>&1; then
   echo "✗ port 3000 sudah dipakai (KONDISI SANDBOX — ada Next.js preview)"
-  PORT_OFFSET=1  # payment-api → 3001, gateway-mock → 3002
+  PORT_OFFSET=1  # payment-api -> 3001, gateway-mock -> 3002
 else
   echo "✓ port 3000 kosong (KONDISI LOCAL)"
   PORT_OFFSET=0
@@ -101,7 +101,7 @@ else
 fi
 ```
 
-**Keyword**: `pnpm --version` → bila output version string, KONDISI LOCAL. Bila "command not found", KONDISI SANDBOX.
+**Keyword**: `pnpm --version` -> bila output version string, KONDISI LOCAL. Bila "command not found", KONDISI SANDBOX.
 
 ### 2.2 Run dev server (payment-api)
 
@@ -109,15 +109,15 @@ fi
 # KONDISI LOCAL (port 3000 bebas):
 cd /home/z/my-project/retry-failure/apps/payment-api
 PORT=3000 pnpm start:dev
-# → payment-api di port 3000
+# -> payment-api di port 3000
 
 # KONDISI SANDBOX (port 3000 dipakai Next.js preview):
 cd /home/z/my-project/retry-failure/apps/payment-api
 PORT=3001 pnpm start:dev
-# → payment-api di port 3001
+# -> payment-api di port 3001
 ```
 
-**Keyword**: `curl -s http://localhost:3000 >/dev/null && echo "SANDOX" || echo "LOCAL"`. Bila port 3000 sibuk → pakai 3001.
+**Keyword**: `curl -s http://localhost:3000 >/dev/null && echo "SANDOX" || echo "LOCAL"`. Bila port 3000 sibuk -> pakai 3001.
 
 ### 2.3 Run dev server (gateway-mock)
 
@@ -125,12 +125,12 @@ PORT=3001 pnpm start:dev
 # KONDISI LOCAL:
 cd /home/z/my-project/retry-failure/apps/payment-gateway-mock
 PORT=3001 pnpm start:dev
-# → gateway-mock di port 3001
+# -> gateway-mock di port 3001
 
 # KONDISI SANDBOX:
 cd /home/z/my-project/retry-failure/apps/payment-gateway-mock
 PORT=3002 pnpm start:dev
-# → gateway-mock di port 3002
+# -> gateway-mock di port 3002
 ```
 
 ### 2.4 Setup env file (.env) berdasarkan kondisi
@@ -148,8 +148,8 @@ cp ../../.env.example .env
 # KONDISI SANDBOX:
 cp ../../.env.sandbox.example .env
 # Default sudah set: PORT=3001, GATEWAY_URL=http://localhost:3002 (port shift karena Next.js preview di 3000).
-# Bila ada external PostgreSQL dengan credentials berbeda → edit DB_* sesuai instance.
-# Bila TIDAK ada DB → skip migration + gunakan mock repository.
+# Bila ada external PostgreSQL dengan credentials berbeda -> edit DB_* sesuai instance.
+# Bila TIDAK ada DB -> skip migration + gunakan mock repository.
 ```
 
 ### 2.5 PostgreSQL setup
@@ -160,7 +160,7 @@ cd /home/z/my-project/retry-failure
 docker compose up -d postgres
 sleep 5
 docker compose ps postgres
-# → PostgreSQL di localhost:5432
+# -> PostgreSQL di localhost:5432
 
 # KONDISI SANDBOX (Docker tidak tersedia):
 # Opsi A: connect ke external PostgreSQL instance (set DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME)
@@ -173,7 +173,7 @@ psql -h localhost -U retry_failure -d retry_failure -c "SELECT 1;"
 # pnpm exec ts-node -e "import { Client } from 'pg'; const c = new Client({...}); await c.connect(); console.log('ok'); await c.end();"
 ```
 
-**Keyword**: `docker --version` → bila ada version string, KONDISI LOCAL. Bila "command not found", KONDISI SANDBOX → gunakan external PostgreSQL atau skip.
+**Keyword**: `docker --version` -> bila ada version string, KONDISI LOCAL. Bila "command not found", KONDISI SANDBOX -> gunakan external PostgreSQL atau skip.
 
 ### 2.6 Verify DB schema
 
@@ -247,7 +247,7 @@ pnpm test:e2e
 cd /path/to/nextjs-frontend
 bun run dev
 # atau pnpm dev
-# → Next.js di port 3000
+# -> Next.js di port 3000
 
 # KONDISI SANDBOX (sudah ada Next.js preview di port 3000):
 # Next.js di parent root /home/z/my-project/ sudah otomatis berjalan di port 3000
@@ -261,7 +261,7 @@ bun run dev  # bila belum jalan
 # Sama untuk kedua kondisi:
 cd /home/z/my-project/retry-failure/apps/frontend-vue
 pnpm dev
-# → Vite di port 5173
+# -> Vite di port 5173
 
 # Akses:
 # KONDISI LOCAL: http://localhost:5173 di browser
@@ -275,8 +275,8 @@ pnpm dev
 
 # Caddy gateway memforward request dengan ?XTransformPort=NNNN ke port NNNN
 # Frontend code (client-side fetch):
-fetch('/api/payments?XTransformPort=3001')              # → payment-api:3001
-fetch('/admin/config?XTransformPort=3002', { method: 'PUT' })  # → gateway-mock:3002
+fetch('/api/payments?XTransformPort=3001')              # -> payment-api:3001
+fetch('/admin/config?XTransformPort=3002', { method: 'PUT' })  # -> gateway-mock:3002
 
 # JANGAN hardcode:
 # fetch('http://localhost:3001/api/payments')  # ❌ akan break di sandbox preview
@@ -306,8 +306,8 @@ Setiap task di `retry-failure/docs/tasks/TASK-*.md` punya section "Useful comman
 - Tidak ada adaptasi — pure TypeScript package
 
 ### TASK-09 (API Routes)
-- KONDISI LOCAL: payment-api di port 3000 → curl `http://localhost:3000/api/payments`
-- KONDISI SANDBOX: payment-api di port 3001 → curl `http://localhost:3001/api/payments`
+- KONDISI LOCAL: payment-api di port 3000 -> curl `http://localhost:3000/api/payments`
+- KONDISI SANDBOX: payment-api di port 3001 -> curl `http://localhost:3001/api/payments`
 
 ### TASK-10 (Retry Scheduler)
 - Tidak ada adaptasi — scheduler in-process di NestJS, tidak butuh port terpisah
@@ -377,8 +377,8 @@ pnpm start:dev   # payment-api di port 3000
 ```bash
 cd /home/z/my-project/retry-failure/apps/payment-api
 cp ../../.env.sandbox.example .env
-# Bila ada external PostgreSQL → edit DB_HOST/DB_USER/DB_PASS/DB_NAME sesuai instance.
-# Bila TIDAK ada DB → skip migration + gunakan mock repository.
+# Bila ada external PostgreSQL -> edit DB_HOST/DB_USER/DB_PASS/DB_NAME sesuai instance.
+# Bila TIDAK ada DB -> skip migration + gunakan mock repository.
 # Jalankan:
 corepack enable pnpm
 corepack prepare pnpm@9.12.0 --activate
@@ -398,7 +398,7 @@ pnpm start:dev    # payment-api di port 3001 (port 3000 dipakai Next.js preview)
 | `DB_HOST` | localhost | localhost (asumsi external PG di host yang sama) |
 | `DB_PORT` | 5432 | 5432 (sama) |
 | `DB_USER` / `DB_PASS` / `DB_NAME` / `DB_SCHEMA` | retry_failure (docker compose default) | retry_failure (asumsi external PG pakai credentials sama) |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | http://localhost:4318 | http://localhost:4318 (Jaeger mungkin tidak jalan di sandbox → no-op) |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | http://localhost:4318 | http://localhost:4318 (Jaeger mungkin tidak jalan di sandbox -> no-op) |
 | `LOG_LEVEL` | info | info |
 
 ### Catatan penting
@@ -413,7 +413,7 @@ pnpm start:dev    # payment-api di port 3001 (port 3000 dipakai Next.js preview)
 
 - **Opsi C** (NODE_ENV switch via `@nestjs/config` `envFilePath`): kompleks, butuh `NODE_ENV` env var untuk switch, bisa conflict key. Tidak worth untuk use case kita (sandbox selalu sandbox, local selalu local).
 - **Opsi D** (1 file dengan commented blocks): rawan human error (lupa uncomment atau comment tidak konsisten). Tidak rekomendasi.
-- **Opsi B** (copy pattern): paling simple, paling eksplisit, paling reliable. Agent sandbox bisa `cp .env.sandbox.example .env` → langsung jalan. User local bisa `cp .env.example .env` → langsung jalan.
+- **Opsi B** (copy pattern): paling simple, paling eksplisit, paling reliable. Agent sandbox bisa `cp .env.sandbox.example .env` -> langsung jalan. User local bisa `cp .env.example .env` -> langsung jalan.
 
 ---
 
@@ -423,18 +423,18 @@ pnpm start:dev    # payment-api di port 3001 (port 3000 dipakai Next.js preview)
 Mulai task
   │
   ├── pnpm --version ?
-  │     ├── ada  → KONDISI LOCAL  → pnpm install langsung
-  │     └── tidak → KONDISI SANDBOX → corepack enable pnpm dulu
+  │     ├── ada  -> KONDISI LOCAL  -> pnpm install langsung
+  │     └── tidak -> KONDISI SANDBOX -> corepack enable pnpm dulu
   │
   ├── docker --version ?
-  │     ├── ada  → KONDISI LOCAL  → docker compose up -d postgres
-  │     └── tidak → KONDISI SANDBOX → cek DB_HOST env
-  │                  ├── ada external PG → connect langsung
-  │                  └── tidak ada       → skip DB tests, pakai mock repository
+  │     ├── ada  -> KONDISI LOCAL  -> docker compose up -d postgres
+  │     └── tidak -> KONDISI SANDBOX -> cek DB_HOST env
+  │                  ├── ada external PG -> connect langsung
+  │                  └── tidak ada       -> skip DB tests, pakai mock repository
   │
   ├── curl localhost:3000 ?
-  │     ├── sibuk → KONDISI SANDBOX → payment-api di 3001, gateway di 3002
-  │     └── bebas → KONDISI LOCAL   → payment-api di 3000, gateway di 3001
+  │     ├── sibuk -> KONDISI SANDBOX -> payment-api di 3001, gateway di 3002
+  │     └── bebas -> KONDISI LOCAL   -> payment-api di 3000, gateway di 3001
   │
   └── Selesai: mulai task sesuai urutan
 ```

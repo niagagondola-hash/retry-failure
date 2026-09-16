@@ -5,9 +5,9 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  *
  * Bug context:
  *   - Schema 0001 defined `trace_id char(32)`.
- *   - `PaymentsService` generates traceId via `randomUUID()` → 36 chars (UUIDv4 with hyphens).
+ *   - `PaymentsService` generates traceId via `randomUUID()` -> 36 chars (UUIDv4 with hyphens).
  *   - INSERT failed: "value too long for type character(32)".
- *   - `AuditService.recordAttempt` swallowed the error → silent audit loss.
+ *   - `AuditService.recordAttempt` swallowed the error -> silent audit loss.
  *   - Test scenario 3 (circuit-breaker) failed with attemptCount=0.
  *
  * Fix:

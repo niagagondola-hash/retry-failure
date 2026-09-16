@@ -4,7 +4,7 @@
  *
  * Goal:
  *   Verify that 4xx client errors are NOT retried. Gateway mock returns 400
- *   with errorCode:'invalid_card' → Cockatiel must fast-fail immediately,
+ *   with errorCode:'invalid_card' -> Cockatiel must fast-fail immediately,
  *   payment ends in 'failed' state after exactly 1 attempt.
  *
  * Preconditions:
@@ -21,10 +21,10 @@
  *   - Metrics: retry_attempts_total MUST NOT increase (no retry happened)
  *
  * Flow diagram (rendered in MD):
- *   See docs/tasks/TASK-14a-permanent.md → section "3. Visualisasi Alur"
+ *   See docs/tasks/TASK-14a-permanent.md -> section "3. Visualisasi Alur"
  *
  * Manual verification procedure (5 layers L1-L5):
- *   See docs/tasks/TASK-14a-permanent.md → section "5. Verifikasi Manual per Lapis"
+ *   See docs/tasks/TASK-14a-permanent.md -> section "5. Verifikasi Manual per Lapis"
  *
  * Inverse of Scenario 1:
  *   If S1 (transient) passes but S2 (permanent) fails (or vice versa),

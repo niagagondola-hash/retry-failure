@@ -2,9 +2,9 @@ import { describe, it, expect } from '@jest/globals';
 import { classifyError } from '../../src/errors/classifier';
 
 describe('classifyError — HTTP classification', () => {
-  describe('5xx → retryable server_error', () => {
+  describe('5xx -> retryable server_error', () => {
     for (const status of [500, 502, 503, 504]) {
-      it(`status ${status} → retryable=true, reason=server_error`, () => {
+      it(`status ${status} -> retryable=true, reason=server_error`, () => {
         const r = classifyError({ kind: 'http', status });
         expect(r.retryable).toBe(true);
         expect(r.reason).toBe('server_error');
@@ -12,7 +12,7 @@ describe('classifyError — HTTP classification', () => {
       });
     }
 
-    it('5xx with body containing error_code → errorCode extracted', () => {
+    it('5xx with body containing error_code -> errorCode extracted', () => {
       const r = classifyError({
         kind: 'http',
         status: 500,
@@ -24,7 +24,7 @@ describe('classifyError — HTTP classification', () => {
     });
   });
 
-  describe('429 → retryable rate_limited', () => {
+  describe('429 -> retryable rate_limited', () => {
     it('429 without Retry-After header', () => {
       const r = classifyError({ kind: 'http', status: 429 });
       expect(r.retryable).toBe(true);
@@ -33,7 +33,7 @@ describe('classifyError — HTTP classification', () => {
       expect(r.retryAfterMs).toBeUndefined();
     });
 
-    it('429 with Retry-After: 10 → retryAfterMs=10000', () => {
+    it('429 with Retry-After: 10 -> retryAfterMs=10000', () => {
       const r = classifyError({
         kind: 'http',
         status: 429,
@@ -65,7 +65,7 @@ describe('classifyError — HTTP classification', () => {
       expect(r.retryAfterMs ?? 0).toBeGreaterThanOrEqual(9000);
     });
 
-    it('429 with array Retry-After header → takes first value', () => {
+    it('429 with array Retry-After header -> takes first value', () => {
       const r = classifyError({
         kind: 'http',
         status: 429,
@@ -74,7 +74,7 @@ describe('classifyError — HTTP classification', () => {
       expect(r.retryAfterMs).toBe(10000);
     });
 
-    it('429 with invalid Retry-After → retryAfterMs undefined (no throw)', () => {
+    it('429 with invalid Retry-After -> retryAfterMs undefined (no throw)', () => {
       const r = classifyError({
         kind: 'http',
         status: 429,
@@ -86,9 +86,9 @@ describe('classifyError — HTTP classification', () => {
     });
   });
 
-  describe('4xx selain 429 → permanent client_error', () => {
+  describe('4xx selain 429 -> permanent client_error', () => {
     for (const status of [400, 401, 403, 404, 422]) {
-      it(`status ${status} → retryable=false, reason=client_error`, () => {
+      it(`status ${status} -> retryable=false, reason=client_error`, () => {
         const r = classifyError({ kind: 'http', status });
         expect(r.retryable).toBe(false);
         expect(r.reason).toBe('client_error');
@@ -96,7 +96,7 @@ describe('classifyError — HTTP classification', () => {
       });
     }
 
-    it('400 with body error_code=invalid_card → errorCode extracted', () => {
+    it('400 with body error_code=invalid_card -> errorCode extracted', () => {
       const r = classifyError({
         kind: 'http',
         status: 400,
@@ -107,7 +107,7 @@ describe('classifyError — HTTP classification', () => {
       expect(r.errorMessage).toBe('Card number invalid');
     });
 
-    it('400 with body errorCode (camelCase) → errorCode extracted', () => {
+    it('400 with body errorCode (camelCase) -> errorCode extracted', () => {
       const r = classifyError({
         kind: 'http',
         status: 400,
@@ -117,7 +117,7 @@ describe('classifyError — HTTP classification', () => {
       expect(r.errorMessage).toBe('Card number invalid');
     });
 
-    it('400 with empty body → no errorCode', () => {
+    it('400 with empty body -> no errorCode', () => {
       const r = classifyError({ kind: 'http', status: 400 });
       expect(r.retryable).toBe(false);
       expect(r.errorCode).toBeUndefined();
@@ -125,9 +125,9 @@ describe('classifyError — HTTP classification', () => {
     });
   });
 
-  describe('2xx/3xx → success (caller ignore)', () => {
+  describe('2xx/3xx -> success (caller ignore)', () => {
     for (const status of [200, 201, 204, 301, 302]) {
-      it(`status ${status} → retryable=false, reason=success`, () => {
+      it(`status ${status} -> retryable=false, reason=success`, () => {
         const r = classifyError({ kind: 'http', status });
         expect(r.retryable).toBe(false);
         expect(r.reason).toBe('success');
@@ -135,7 +135,7 @@ describe('classifyError — HTTP classification', () => {
     }
   });
 
-  it('unknown HTTP status (e.g. 700) → reason=unknown, retryable=false', () => {
+  it('unknown HTTP status (e.g. 700) -> reason=unknown, retryable=false', () => {
     const r = classifyError({ kind: 'http', status: 700 });
     expect(r.retryable).toBe(false);
     expect(r.reason).toBe('unknown');
@@ -152,7 +152,7 @@ describe('classifyError — network classification', () => {
   ];
 
   for (const [code, reason] of retryableCases) {
-    it(`code ${code} → retryable=true, reason=${reason}`, () => {
+    it(`code ${code} -> retryable=true, reason=${reason}`, () => {
       const r = classifyError({ kind: 'network', code, message: `failed: ${code}` });
       expect(r.retryable).toBe(true);
       expect(r.reason).toBe(reason);
@@ -161,7 +161,7 @@ describe('classifyError — network classification', () => {
     });
   }
 
-  it('unknown network code → retryable=false (safe default)', () => {
+  it('unknown network code -> retryable=false (safe default)', () => {
     const r = classifyError({ kind: 'network', code: 'EUNKNOWN', message: 'weird error' });
     expect(r.retryable).toBe(false);
     expect(r.reason).toBe('unknown');
@@ -170,7 +170,7 @@ describe('classifyError — network classification', () => {
 });
 
 describe('classifyError — timeout classification', () => {
-  it('kind=timeout → retryable=true, reason=timeout', () => {
+  it('kind=timeout -> retryable=true, reason=timeout', () => {
     const r = classifyError({ kind: 'timeout', message: 'request timeout after 2000ms' });
     expect(r.retryable).toBe(true);
     expect(r.reason).toBe('timeout');

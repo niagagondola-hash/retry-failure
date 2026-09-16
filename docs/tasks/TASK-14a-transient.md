@@ -36,7 +36,7 @@ pnpm exec jest --config ./tests/e2e/jest-e2e.json --runInBand \
 
 ---
 
-## 3. Visualisasi Alur (Input → Database)
+## 3. Visualisasi Alur (Input -> Database)
 
 ```mermaid
 sequenceDiagram
@@ -75,7 +75,7 @@ sequenceDiagram
     API->>DB: INSERT payment_attempts #2 (outcome=retryable_failure)
 
     Note over RB: Wait backoff
-    Note over RB: Attempt 3 (n=2 exhausted → return 200)
+    Note over RB: Attempt 3 (n=2 exhausted -> return 200)
     RB->>GW: POST /v1/charges (Idempotency-Key: K)
     GW-->>RB: 200 OK {gatewayReference, status:succeeded}
     RB->>API: onAttempt({outcome:success, httpStatus:200})
@@ -104,8 +104,8 @@ sequenceDiagram
 
 ```
 ☐ PostgreSQL running + migrated
-☐ payment-api :3001 listening (curl http://localhost:3001/health → 200)
-☐ gateway-mock :3002 listening (curl http://localhost:3002/admin/config → 200)
+☐ payment-api :3001 listening (curl http://localhost:3001/health -> 200)
+☐ gateway-mock :3002 listening (curl http://localhost:3002/admin/config -> 200)
 ☐ DB bersih dari payment dengan orderId `E2E-S1-*` (optional — beforeAll cleanDb() akan handle)
 ```
 
@@ -131,7 +131,7 @@ ORDER BY attempt_number ASC;
 | 2              | retryable_failure | 500         | T1       | NULL              |
 | 3              | success           | 200         | T1       | NOT NULL          |
 
-`trace_id` di 3 baris harus **sama persis** (kalau beda → scheduler ikut campur, itu bug).
+`trace_id` di 3 baris harus **sama persis** (kalau beda -> scheduler ikut campur, itu bug).
 
 ### L3: Metrics counter
 ```bash
@@ -153,9 +153,9 @@ Cek `requestCount` naik 3 dan `successCount` naik 1. `actualChargesCount` naik 1
 ### L5: Log Cockatiel di `logs/e2e/payment-api-*.log`
 Cari baris:
 ```
-[retry] attempt 1 of 3 → HttpError 500
-[retry] attempt 2 of 3 → HttpError 500
-[retry] attempt 3 of 3 → success
+[retry] attempt 1 of 3 -> HttpError 500
+[retry] attempt 2 of 3 -> HttpError 500
+[retry] attempt 3 of 3 -> success
 ```
 Atau format yang dipakai `@retry-failure/resilience` — lihat implementasinya.
 
@@ -170,7 +170,7 @@ Atau format yang dipakai `@retry-failure/resilience` — lihat implementasinya.
 ☐ Metrics: retry_attempts_total{outcome=failure} naik ≥ 2
 ☐ Log: ada minimal 2 baris retry event dari Cockatiel
 ☐ Tidak ada "Jest did not exit" warning
-☐ Test selesai dalam < 30 detik (kalau lebih → backoff terlalu lama, cek konfigurasi retry)
+☐ Test selesai dalam < 30 detik (kalau lebih -> backoff terlalu lama, cek konfigurasi retry)
 ```
 
 ---
@@ -179,7 +179,7 @@ Atau format yang dipakai `@retry-failure/resilience` — lihat implementasinya.
 
 | Gejala | Kemungkinan cause | Fix |
 |---|---|---|
-| Test timeout 60s tanpa assertion jalan | Gateway mode tidak ter-set (masih `always-success`) | Cek `beforeAll` → pastikan `setGatewayMode('fail-first-n', {n:2})` dipanggil sebelum `createPayment` |
+| Test timeout 60s tanpa assertion jalan | Gateway mode tidak ter-set (masih `always-success`) | Cek `beforeAll` -> pastikan `setGatewayMode('fail-first-n', {n:2})` dipanggil sebelum `createPayment` |
 | `attemptCount = 1` padahal expect 3 | Cockatiel tidak retry karena error classification salah — mungkin 500 dianggap permanent | Cek `classifyError` di `packages/resilience` — 500 harus return `retryable` |
 | `trace_id` beda di attempts | Scheduler ikut retry, bukan Cockatiel inline | Pastikan `nextRetryAt` masih NULL selama inline retry. Scheduler hanya boleh pick up kalau status=`scheduled_for_retry` |
 | Test pass tapi metrics counter tidak naik | `MetricsService` tidak di-inject ke `PaymentsService` | Cek `PaymentsModule` providers — `MetricsService` harus ada di `providers: [...]` |
@@ -190,6 +190,6 @@ Atau format yang dipakai `@retry-failure/resilience` — lihat implementasinya.
 
 ## 8. Catatan Edge Case
 
-- **Jika `MAX_TOTAL_RETRIES < 2`** (mis. 1), Cockatiel retry hanya boleh sekali → test akan fail karena attemptCount=2. Default konfigurasi: `MAX_TOTAL_RETRIES=5`, aman.
+- **Jika `MAX_TOTAL_RETRIES < 2`** (mis. 1), Cockatiel retry hanya boleh sekali -> test akan fail karena attemptCount=2. Default konfigurasi: `MAX_TOTAL_RETRIES=5`, aman.
 - **Jika backoff Cockatiel = 1s fixed**, test akan selesai ~5s. Kalau exponential (default), bisa sampai 10-15s. Sesuaikan timeout Jest (`60000` di test sudah aman).
-- Gateway mock **mode tidak auto-reset**. Kalau skenario 1 diikuti skenario 2 tanpa `resetGatewayToHealthy()`, mode `fail-first-n` akan terus aktif → skenario 2 akan fail. `afterAll` di test ini sudah handle dengan `resetGatewayToHealthy()`.
+- Gateway mock **mode tidak auto-reset**. Kalau skenario 1 diikuti skenario 2 tanpa `resetGatewayToHealthy()`, mode `fail-first-n` akan terus aktif -> skenario 2 akan fail. `afterAll` di test ini sudah handle dengan `resetGatewayToHealthy()`.

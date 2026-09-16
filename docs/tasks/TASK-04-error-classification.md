@@ -33,14 +33,14 @@ Function ini adalah **application policy** (bukan Cockatiel concern), sesuai res
 ## Classification rules (plan section 5.3)
 
 ```text
-5xx                  → retryable (reason: 'server_error')
-429                  → retryable (reason: 'rate_limited')
-timeout (ETIMEDOUT)  → retryable (reason: 'timeout')
-ECONNREFUSED         → retryable (reason: 'connection_refused')
-ECONNRESET           → retryable (reason: 'connection_reset')
-ENOTFOUND            → retryable (reason: 'dns_failure')  // tambahan
-4xx (selain 429)     → permanent (reason: 'client_error')
-unknown              → permanent (reason: 'unknown')     // safe default
+5xx                  -> retryable (reason: 'server_error')
+429                  -> retryable (reason: 'rate_limited')
+timeout (ETIMEDOUT)  -> retryable (reason: 'timeout')
+ECONNREFUSED         -> retryable (reason: 'connection_refused')
+ECONNRESET           -> retryable (reason: 'connection_reset')
+ENOTFOUND            -> retryable (reason: 'dns_failure')  // tambahan
+4xx (selain 429)     -> permanent (reason: 'client_error')
+unknown              -> permanent (reason: 'unknown')     // safe default
 ```
 
 ## Retry-After rules (plan section 6)
@@ -52,8 +52,8 @@ Retry-After: <HTTP-date>          (RFC 7231, e.g. "Wed, 21 Oct 2015 07:28:00 GMT
 return value: milliseconds (number) | null  (jika tidak ada / invalid)
 
 NEVER sum Retry-After + exponential backoff. Pilih salah satu:
-  - jika Retry-After ada → pakai Retry-After (server-directed)
-  - jika tidak ada → pakai Cockatiel backoff (default)
+  - jika Retry-After ada -> pakai Retry-After (server-directed)
+  - jika tidak ada -> pakai Cockatiel backoff (default)
 ```
 
 ## Files to create
@@ -86,14 +86,14 @@ NEVER sum Retry-After + exponential backoff. Pilih salah satu:
 2. `errors/classifier.ts`:
    - Export `classifyError(input: ClassifiableInput): ErrorClassification`.
    - `kind: 'http'`:
-     - 5xx → `{ retryable: true, reason: 'server_error', httpStatus }`.
-     - 429 → `{ retryable: true, reason: 'rate_limited', httpStatus, retryAfterMs: parseRetryAfter(retryAfterHeader) }`.
-     - 4xx selain 429 → `{ retryable: false, reason: 'client_error', httpStatus, errorCode, errorMessage }`. Coba ekstrak `error_code` dari body jika `{ error_code: string }`.
-     - 2xx/3xx → `{ retryable: false, reason: 'success', httpStatus }` (caller ignore).
+     - 5xx -> `{ retryable: true, reason: 'server_error', httpStatus }`.
+     - 429 -> `{ retryable: true, reason: 'rate_limited', httpStatus, retryAfterMs: parseRetryAfter(retryAfterHeader) }`.
+     - 4xx selain 429 -> `{ retryable: false, reason: 'client_error', httpStatus, errorCode, errorMessage }`. Coba ekstrak `error_code` dari body jika `{ error_code: string }`.
+     - 2xx/3xx -> `{ retryable: false, reason: 'success', httpStatus }` (caller ignore).
    - `kind: 'network'`: cek `code`:
-     - `ECONNREFUSED`, `ECONNRESET`, `ETIMEDOUT`, `ENOTFOUND`, `EAI_AGAIN` → retryable.
-     - Lainnya → permanent (safe default).
-   - `kind: 'timeout'` → retryable, `reason: 'timeout'`.
+     - `ECONNREFUSED`, `ECONNRESET`, `ETIMEDOUT`, `ENOTFOUND`, `EAI_AGAIN` -> retryable.
+     - Lainnya -> permanent (safe default).
+   - `kind: 'timeout'` -> retryable, `reason: 'timeout'`.
 3. `errors/retry-after.ts`:
    ```ts
    export function parseRetryAfter(value: string | null | undefined, now: Date = new Date()): number | null {
@@ -121,15 +121,15 @@ NEVER sum Retry-After + exponential backoff. Pilih salah satu:
 
 ## Acceptance criteria
 
-- [ ] `classifyError({ kind: 'http', status: 500 })` → `{ retryable: true, reason: 'server_error', httpStatus: 500 }`.
-- [ ] `classifyError({ kind: 'http', status: 429, headers: { 'retry-after': '10' } })` → `{ retryable: true, reason: 'rate_limited', httpStatus: 429, retryAfterMs: 10000 }`.
-- [ ] `classifyError({ kind: 'http', status: 400, body: { error_code: 'invalid_card' } })` → `{ retryable: false, reason: 'client_error', httpStatus: 400, errorCode: 'invalid_card' }`.
-- [ ] `classifyError({ kind: 'network', code: 'ECONNREFUSED', message: 'x' })` → `{ retryable: true, reason: 'connection_refused' }`.
-- [ ] `classifyError({ kind: 'timeout', message: 'x' })` → `{ retryable: true, reason: 'timeout' }`.
-- [ ] `parseRetryAfter('10')` → `10000`.
-- [ ] `parseRetryAfter('Wed, 21 Oct 2025 07:28:00 GMT', new Date('2025-10-21T07:27:50Z'))` → `10000`.
-- [ ] `parseRetryAfter(null)` → `null`.
-- [ ] `parseRetryAfter('garbage')` → `null` (tidak throw).
+- [ ] `classifyError({ kind: 'http', status: 500 })` -> `{ retryable: true, reason: 'server_error', httpStatus: 500 }`.
+- [ ] `classifyError({ kind: 'http', status: 429, headers: { 'retry-after': '10' } })` -> `{ retryable: true, reason: 'rate_limited', httpStatus: 429, retryAfterMs: 10000 }`.
+- [ ] `classifyError({ kind: 'http', status: 400, body: { error_code: 'invalid_card' } })` -> `{ retryable: false, reason: 'client_error', httpStatus: 400, errorCode: 'invalid_card' }`.
+- [ ] `classifyError({ kind: 'network', code: 'ECONNREFUSED', message: 'x' })` -> `{ retryable: true, reason: 'connection_refused' }`.
+- [ ] `classifyError({ kind: 'timeout', message: 'x' })` -> `{ retryable: true, reason: 'timeout' }`.
+- [ ] `parseRetryAfter('10')` -> `10000`.
+- [ ] `parseRetryAfter('Wed, 21 Oct 2025 07:28:00 GMT', new Date('2025-10-21T07:27:50Z'))` -> `10000`.
+- [ ] `parseRetryAfter(null)` -> `null`.
+- [ ] `parseRetryAfter('garbage')` -> `null` (tidak throw).
 - [ ] `pnpm test` di `packages/resilience` lulus semua.
 - [ ] `pnpm lint` & `pnpm typecheck` lulus.
 
@@ -140,7 +140,7 @@ NEVER sum Retry-After + exponential backoff. Pilih salah satu:
 > **WAJIB BACA**: sebelum menjalankan command di bawah, cek kondisi lingkungan Anda via [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 1 (Pre-flight Check).
 >
 > Ringkasan keyword:
-> - `pnpm --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu (lihat [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 2.1).
+> - `pnpm --version` ada -> KONDISI LOCAL. Tidak ada -> KONDISI SANDBOX -> jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu (lihat [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 2.1).
 >
 > Tidak ada port-specific command di task ini (pure TypeScript package, Jest unit test only). Command di bawah sama untuk kedua kondisi (LOCAL & SANDBOX).
 

@@ -14,16 +14,16 @@ describe('deriveIdempotencyKey (re-export dari TASK-06)', () => {
 });
 
 describe('assertInvariant (plan section 9.1)', () => {
-  it('actualCharges=1, httpCalls=5 → true (invariant hold)', () => {
+  it('actualCharges=1, httpCalls=5 -> true (invariant hold)', () => {
     expect(assertInvariant(1, 5)).toBe(true);
   });
-  it('actualCharges=2, httpCalls=5 → false (invariant violated)', () => {
+  it('actualCharges=2, httpCalls=5 -> false (invariant violated)', () => {
     expect(assertInvariant(2, 5)).toBe(false);
   });
-  it('actualCharges=0, httpCalls=0 → true', () => {
+  it('actualCharges=0, httpCalls=0 -> true', () => {
     expect(assertInvariant(0, 0)).toBe(true);
   });
-  it('actualCharges=1, httpCalls=1 → true', () => {
+  it('actualCharges=1, httpCalls=1 -> true', () => {
     expect(assertInvariant(1, 1)).toBe(true);
   });
 });

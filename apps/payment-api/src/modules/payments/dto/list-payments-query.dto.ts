@@ -6,7 +6,7 @@ import { PaymentStatus } from '../../../database/entities/enums';
 export class ListPaymentsQueryDto {
   @ApiPropertyOptional({
     enum: ['processing', 'succeeded', 'failed', 'scheduled_for_retry'],
-    description: 'Filter by status. Bila omitted → semua status.',
+    description: 'Filter by status. Bila omitted -> semua status.',
   })
   @IsOptional()
   @IsEnum(PaymentStatus)

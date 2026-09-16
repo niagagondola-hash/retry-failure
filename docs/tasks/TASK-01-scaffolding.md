@@ -103,7 +103,7 @@ Menyiapkan monorepo pnpm workspaces di `/home/z/my-project/retry-failure/` denga
      }
    }
    ```
-   - **`packageManager: "pnpm@9.12.0"`** — Node corepack membaca field ini dan otomatis activate pnpm v9.12.0 saat `pnpm` dipanggil. Kedua kondisi (LOCAL dengan pnpm global terinstall, SANDBOX dengan pnpm via corepack) akan resolve ke versi yang sama → `pnpm-lock.yaml` compatible, tidak ada drift.
+   - **`packageManager: "pnpm@9.12.0"`** — Node corepack membaca field ini dan otomatis activate pnpm v9.12.0 saat `pnpm` dipanggil. Kedua kondisi (LOCAL dengan pnpm global terinstall, SANDBOX dengan pnpm via corepack) akan resolve ke versi yang sama -> `pnpm-lock.yaml` compatible, tidak ada drift.
    - **`engines.node: ">=20"`** — Node v20, v22, v24 semua OK. Plan minta v20.19.0; kita pakai floor `>=20` agar sandbox (yang sering dapat v24) tetap jalan tanpa API breaking. Document caveat Node 24 vs 20 di TASK-15.
    - **`engines.pnpm: ">=9"`** — pelengkap pin `packageManager`; memberi error jelas bila ada dev yang masih pakai pnpm v8.
 3. `pnpm-workspace.yaml`:
@@ -297,9 +297,9 @@ Menyiapkan monorepo pnpm workspaces di `/home/z/my-project/retry-failure/` denga
 > **WAJIB BACA**: sebelum menjalankan command di bawah, cek kondisi lingkungan Anda via [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 1 (Pre-flight Check).
 >
 > Ringkasan keyword:
-> - `pnpm --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu (versi pin ke `packageManager` field di root `package.json`).
-> - `docker --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → butuh external PostgreSQL atau skip DB-dependent commands (lihat TASK-02).
-> - `curl -s http://localhost:3000` sibuk → KONDISI SANDBOX → pakai PORT=3001 (payment-api), PORT=3002 (gateway-mock). Bebas → KONDISI LOCAL → pakai PORT=3000 (payment-api), PORT=3001 (gateway-mock).
+> - `pnpm --version` ada -> KONDISI LOCAL. Tidak ada -> KONDISI SANDBOX -> jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu (versi pin ke `packageManager` field di root `package.json`).
+> - `docker --version` ada -> KONDISI LOCAL. Tidak ada -> KONDISI SANDBOX -> butuh external PostgreSQL atau skip DB-dependent commands (lihat TASK-02).
+> - `curl -s http://localhost:3000` sibuk -> KONDISI SANDBOX -> pakai PORT=3001 (payment-api), PORT=3002 (gateway-mock). Bebas -> KONDISI LOCAL -> pakai PORT=3000 (payment-api), PORT=3001 (gateway-mock).
 
 Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih salah satu sesuai kondisi.
 

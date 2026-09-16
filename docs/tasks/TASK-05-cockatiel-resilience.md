@@ -25,11 +25,11 @@ Setelah task ini selesai, TASK-06 (HTTP adapter) cukup membungkus `axios.call` d
 - Jest unit tests di `packages/resilience/test/policies/`.
 
 **Out of scope**:
-- HTTP adapter (axios wrapper) → TASK-06.
-- Metrics emission aktual (pino logs + prom-client counters) → TASK-11. Hooks disediakan, tapi emit di TASK-11.
+- HTTP adapter (axios wrapper) -> TASK-06.
+- Metrics emission aktual (pino logs + prom-client counters) -> TASK-11. Hooks disediakan, tapi emit di TASK-11.
 - Multi-region / multi-cluster breaker (single-region only).
-- Durable business retry (MAX_TOTAL_RETRIES) → TASK-07 & TASK-10.
-- Custom breaker strategy (sampling rate, error-rate based) → pakai default Cockatiel `ConsecutiveBreaker`.
+- Durable business retry (MAX_TOTAL_RETRIES) -> TASK-07 & TASK-10.
+- Custom breaker strategy (sampling rate, error-rate based) -> pakai default Cockatiel `ConsecutiveBreaker`.
 
 ## Cockatiel API
 
@@ -41,7 +41,7 @@ import {
   handleAll,          // handler yang menangkap semua error (default untuk retry)
   handleWhen,         // handler berbasis predicate (untuk klasifikasi custom)
   circuitBreaker,    // policy builder untuk circuit breaker
-  ConsecutiveBreaker, // strategy: N kegagalan konsekutif → OPEN
+  ConsecutiveBreaker, // strategy: N kegagalan konsekutif -> OPEN
   ExponentialBackoff, // backoff: initialDelay * 2^attempt, capped maxDelay, +jitter
   timeout,           // policy builder untuk timeout
   wrap,              // compose multiple policies: wrap(outer, middle, inner)
@@ -107,9 +107,9 @@ Per plan section 5.1, urutan policy **dari luar ke dalam**:
 ```
 
 **Rationale**:
-- Breaker paling luar → jika OPEN, langsung throw `BrokenCircuitError` tanpa menyentuh retry/timeout/HTTP. Menghemat resource.
-- Retry di tengah → menangani transient failure (5xx, 429, timeout) dalam satu execution cycle.
-- Timeout paling dalam → membatasi **per-attempt** duration, bukan total cycle. Setiap retry attempt dapat timeout sendiri (config `GATEWAY_TIMEOUT_MS=2000`).
+- Breaker paling luar -> jika OPEN, langsung throw `BrokenCircuitError` tanpa menyentuh retry/timeout/HTTP. Menghemat resource.
+- Retry di tengah -> menangani transient failure (5xx, 429, timeout) dalam satu execution cycle.
+- Timeout paling dalam -> membatasi **per-attempt** duration, bukan total cycle. Setiap retry attempt dapat timeout sendiri (config `GATEWAY_TIMEOUT_MS=2000`).
 
 **Implementasi via `wrap()`**:
 
@@ -120,7 +120,7 @@ const composed = wrap(breakerPolicy, retryPolicy, timeoutPolicy);
 
 ## Config (plan section 15)
 
-Berikut nilai default yang dipakai policy builder. Konfigurasi dilewatkan sebagai `ResilienceConfig` object (bukan env string) — env → config mapping dilakukan di TASK-01 (`apps/payment-api/src/config/`) dan TASK-06.
+Berikut nilai default yang dipakai policy builder. Konfigurasi dilewatkan sebagai `ResilienceConfig` object (bukan env string) — env -> config mapping dilakukan di TASK-01 (`apps/payment-api/src/config/`) dan TASK-06.
 
 | Key                         | Default | Diterapkan ke                                  |
 |-----------------------------|---------|------------------------------------------------|
@@ -267,7 +267,7 @@ export function buildRetryPolicy(
 }
 
 export function buildTimeoutPolicy(config: ResilienceConfig) {
-  // strategy: 'absolute' → total deadline per-attempt = gatewayTimeoutMs
+  // strategy: 'absolute' -> total deadline per-attempt = gatewayTimeoutMs
   return timeout(config.gatewayTimeoutMs, { strategy: 'absolute' });
 }
 
@@ -390,7 +390,7 @@ export async function executeWithResilience<T>(
     if (e instanceof BrokenCircuitError) {
       breakerTripped = true;
     } else {
-      // Retry exhausted (maxAttempts tercapai tanpa success) → Cockatiel melempar error terakhir
+      // Retry exhausted (maxAttempts tercapai tanpa success) -> Cockatiel melempar error terakhir
       exhausted = true;
     }
   }
@@ -435,23 +435,23 @@ export * from './server-directed-backoff';
 - `buildBreakerPolicy` menghasilkan policy yang OPEN setelah N failure konsekutif.
 
 #### `breaker-store.spec.ts`
-- `getBreaker('foo', config)` dua kali → instance referensi sama (`===`).
-- `getBreaker('foo')` dan `getBreaker('bar')` → instance berbeda.
+- `getBreaker('foo', config)` dua kali -> instance referensi sama (`===`).
+- `getBreaker('foo')` dan `getBreaker('bar')` -> instance berbeda.
 - `resetBreakerStore()` menghapus semua.
-- `getBreakerState('foo')` awal → `'CLOSED'`.
+- `getBreakerState('foo')` awal -> `'CLOSED'`.
 
 #### `composition.spec.ts`
-- **Retry success after 2 failures**: fn mock yang gagal 2x lalu sukses → outcome `result` ter-set, `attempts === 3`, `exhausted === false`, `breakerTripped === false`.
-- **Retry exhausted**: fn selalu throw retryable error → `exhausted === true`, `error` ter-set, `attempts === retryMaxAttempts`.
-- **Permanent error no retry**: fn throw custom `PermanentError` (yang tidak ditangkap `handleAll` karena `handleWhen` filter) → `attempts === 1`. *Catatan: bila pakai `handleAll`, test ini menjadi: error terakhir tetap dilempar dan `exhausted=true`, `attempts===maxAttempts`. Trade-off di dokumentasikan.*
-- **Breaker OPEN after N failures**: jalankan N+1 call yang gagal konsekutif → call ke-N+1 langsung `breakerTripped === true` dan `durationMs < 50ms` (cepat, tidak menyentuh fn).
-- **Breaker singleton reuse**: dua `executeWithResilience({ dependencyName: 'x' })` memakai breaker yang sama → setelah trip di call pertama, call kedua juga `breakerTripped === true`.
-- **Retry-After respected**: fn throw error dengan `retryAfterMs: 10000`, lalu sukses → total delay ≥ 10s (gunakan fake timer Jest).
+- **Retry success after 2 failures**: fn mock yang gagal 2x lalu sukses -> outcome `result` ter-set, `attempts === 3`, `exhausted === false`, `breakerTripped === false`.
+- **Retry exhausted**: fn selalu throw retryable error -> `exhausted === true`, `error` ter-set, `attempts === retryMaxAttempts`.
+- **Permanent error no retry**: fn throw custom `PermanentError` (yang tidak ditangkap `handleAll` karena `handleWhen` filter) -> `attempts === 1`. *Catatan: bila pakai `handleAll`, test ini menjadi: error terakhir tetap dilempar dan `exhausted=true`, `attempts===maxAttempts`. Trade-off di dokumentasikan.*
+- **Breaker OPEN after N failures**: jalankan N+1 call yang gagal konsekutif -> call ke-N+1 langsung `breakerTripped === true` dan `durationMs < 50ms` (cepat, tidak menyentuh fn).
+- **Breaker singleton reuse**: dua `executeWithResilience({ dependencyName: 'x' })` memakai breaker yang sama -> setelah trip di call pertama, call kedua juga `breakerTripped === true`.
+- **Retry-After respected**: fn throw error dengan `retryAfterMs: 10000`, lalu sukses -> total delay ≥ 10s (gunakan fake timer Jest).
 
 #### `server-directed-backoff.spec.ts`
-- `next()` dengan `getServerDelay() === 10000` → return `10000`.
-- `getServerDelay() === null` → delegate ke `ExponentialBackoff` (return initialDelay untuk attempt pertama).
-- `getServerDelay()` berubah dari `null` ke `10000` di tengah → `next()` mengikuti nilai terbaru.
+- `next()` dengan `getServerDelay() === 10000` -> return `10000`.
+- `getServerDelay() === null` -> delegate ke `ExponentialBackoff` (return initialDelay untuk attempt pertama).
+- `getServerDelay()` berubah dari `null` ke `10000` di tengah -> `next()` mengikuti nilai terbaru.
 - `reset()` mengembalikan delegate ke state awal.
 
 ## Acceptance criteria
@@ -460,13 +460,13 @@ export * from './server-directed-backoff';
 - [ ] `policies.ts` mengekspor `buildRetryPolicy`, `buildTimeoutPolicy`, `buildBreakerPolicy`.
 - [ ] `breaker-store.ts` mengekspor `getBreaker`, `getBreakerState`, `resetBreakerStore`.
 - [ ] `composition.ts` mengekspor `executeWithResilience`, `setLogHook`, `setMetricsHook`.
-- [ ] Retry: fn yang gagal 2x lalu sukses → `attempts === 3`, `result` ter-set, `exhausted === false`.
-- [ ] Retry exhausted: fn selalu gagal → `exhausted === true`, `attempts === retryMaxAttempts`.
+- [ ] Retry: fn yang gagal 2x lalu sukses -> `attempts === 3`, `result` ter-set, `exhausted === false`.
+- [ ] Retry exhausted: fn selalu gagal -> `exhausted === true`, `attempts === retryMaxAttempts`.
 - [ ] Permanent error: throw pada call pertama, outcome menunjukkan tidak ada retry sukses.
-- [ ] Breaker OPEN setelah `BREAKER_FAILURE_THRESHOLD` failure konsekutif → call berikutnya `breakerTripped === true` dan **cepat** (durationMs < 50ms).
-- [ ] Breaker singleton: 2 call dengan `dependencyName` sama → instance breaker identik (uji via `getBreaker(name) === getBreaker(name)`).
+- [ ] Breaker OPEN setelah `BREAKER_FAILURE_THRESHOLD` failure konsekutif -> call berikutnya `breakerTripped === true` dan **cepat** (durationMs < 50ms).
+- [ ] Breaker singleton: 2 call dengan `dependencyName` sama -> instance breaker identik (uji via `getBreaker(name) === getBreaker(name)`).
 - [ ] `ServerDirectedOrExponentialBackoff` mengembalikan server delay (≥10s) ketika `Retry-After: 10` hadir, lalu fallback ke exponential setelah clear.
-- [ ] `BrokenCircuitError` ditangkap eksplisit → `breakerTripped === true` (tidak propagate ke caller sebagai exception).
+- [ ] `BrokenCircuitError` ditangkap eksplisit -> `breakerTripped === true` (tidak propagate ke caller sebagai exception).
 - [ ] Semua event hook (`onFailure`, `onBreak`, `onReset`, `onActivate`) dapat di-attach tanpa throw.
 - [ ] `pnpm --filter @retry-failure/resilience test` lulus semua.
 - [ ] `pnpm --filter @retry-failure/resilience lint` lulus.
@@ -479,7 +479,7 @@ export * from './server-directed-backoff';
 > **WAJIB BACA**: sebelum menjalankan command di bawah, cek kondisi lingkungan Anda via [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 1 (Pre-flight Check).
 >
 > Ringkasan keyword:
-> - `pnpm --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu (lihat [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 2.1).
+> - `pnpm --version` ada -> KONDISI LOCAL. Tidak ada -> KONDISI SANDBOX -> jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu (lihat [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 2.1).
 >
 > Tidak ada port-specific atau Docker-dependent command di task ini (pure TypeScript package, Jest unit test + ts-node sanity check). Command di bawah sama untuk kedua kondisi (LOCAL & SANDBOX).
 
@@ -541,8 +541,8 @@ import { executeWithResilience, resetBreakerStore } from "./src/policies";
   }
 })();
 '
-# Expected: call #1, #2, #3 → exhausted=true (breaker still CLOSED)
-#           call #4 → breakerTripped=true, duration < 50ms (breaker OPEN, fast-fail)
+# Expected: call #1, #2, #3 -> exhausted=true (breaker still CLOSED)
+#           call #4 -> breakerTripped=true, duration < 50ms (breaker OPEN, fast-fail)
 
 # 6. Verifikasi signature Cockatiel di node_modules — sama kedua kondisi
 cat /home/z/my-project/retry-failure/node_modules/cockatiel/dist/index.d.ts | head -200
@@ -554,7 +554,7 @@ cat /home/z/my-project/retry-failure/node_modules/cockatiel/dist/index.d.ts | he
   - Signature `retry(handler, options)` — `options.maxAttempts`, `options.backoff`.
   - Signature `circuitBreaker(handler, options)` — `options.halfOpenAfter`, `options.breaker` (instance dari `ConsecutiveBreaker` / `SampledBreaker`).
   - Signature `timeout(durationMs, options)` — `options.strategy: 'absolute' | 'aggressive'`.
-  - Signature `wrap(...policies)` → `Policy` yang `.execute(fn)`.
+  - Signature `wrap(...policies)` -> `Policy` yang `.execute(fn)`.
   - `BrokenCircuitError` export tersedia.
   - `Backoff` interface (`next(): number`, `reset(): void`).
   - `ExponentialBackoff` options: `{ initialDelay, maxDelay, exponent, jitter }` (jitter = number 0..1).
@@ -572,12 +572,12 @@ cat /home/z/my-project/retry-failure/node_modules/cockatiel/dist/index.d.ts | he
   - **Pendekatan yang dipilih**: custom `Backoff` class yang membaca closure `getServerDelay()` setiap `next()` call. Delay server menang jika tersedia, exponential backoff sebaliknya.
   - **Kelebihan**: tidak mengubah domain semantics Cockatiel; backoff tetap satu sumber kebenaran; reset otomatis saat retry cycle selesai.
   - **Kekurangan**: closure mutable state per-call — harus di-reset antar `executeWithResilience` call (sudah ditangani karena closure dibuat fresh setiap call di composition layer).
-  - **Alternatif yang ditolak**: (a) post-retry sleep manual → bypass Cockatiel entirely, hilangkan observability hooks. (b) two-policy composition dengan conditional retry → lebih kompleks, testing lebih sulit.
+  - **Alternatif yang ditolak**: (a) post-retry sleep manual -> bypass Cockatiel entirely, hilangkan observability hooks. (b) two-policy composition dengan conditional retry -> lebih kompleks, testing lebih sulit.
   - **Trade-off accept**: tidak ada pengecekan bahwa `Retry-After` tidak ekstrem (mis. 1 jam). Production harus clamp `retryAfterMs` ke `RETRY_MAX_DELAY_MS`. Document di TASK-15.
 
-- **`handleAll` vs `handleWhen`**: default `handleAll` menangkap semua exception → semua di-retry sampai `maxAttempts`. Untuk payment case, classifier sudah berjalan di TASK-06 (HTTP adapter) yang melempar `PermanentError` TIDAK ditangkap retry — tetapi ini butuh `handleWhen`. Trade-off:
+- **`handleAll` vs `handleWhen`**: default `handleAll` menangkap semua exception -> semua di-retry sampai `maxAttempts`. Untuk payment case, classifier sudah berjalan di TASK-06 (HTTP adapter) yang melempar `PermanentError` TIDAK ditangkap retry — tetapi ini butuh `handleWhen`. Trade-off:
   - **Pakai `handleAll` (recommended awal)**: sederhana; classifier meng-throw `PermanentError` yang **tidak retryable** dengan marker (mis. `error.permanent = true`); composition mengecek marker di `onFailure` untuk membatalkan retry cycle via `throw` dari dalam callback.
-  - **Pakai `handleWhen`**: lebih idiomatic Cockatiel; classifier dipanggil di predicate. Tapi classifier butuh akses ke HTTP response shape → leak abstraction ke package ini.
+  - **Pakai `handleWhen`**: lebih idiomatic Cockatiel; classifier dipanggil di predicate. Tapi classifier butuh akses ke HTTP response shape -> leak abstraction ke package ini.
   - **Decision untuk TASK-05**: scaffold `buildRetryPolicy` dengan `handleAll` + comment bahwa TASK-06 dapat meng-override dengan `handleWhen` bila perlu.
 
 - **Setelah task ini selesai**: TASK-06 bisa langsung `import { executeWithResilience } from '@retry-failure/resilience'` dan membungkus `axios.post()` ke gateway. Tidak ada perubahan API breaking yang diharapkan di TASK-05 saat TASK-06/11 berjalan — hanya penambahan hook emit.

@@ -7,7 +7,7 @@
 
 ## 1. Apa yang Diuji
 
-Gateway mock diset mode `client-error` → selalu balas `400 Bad Request` dengan body `{errorCode: "invalid_card"}`. Cockatiel **tidak boleh retry** karena error 4xx diklasifikasikan sebagai `permanent_failure`. Payment langsung gagal dengan `attemptCount=1`.
+Gateway mock diset mode `client-error` -> selalu balas `400 Bad Request` dengan body `{errorCode: "invalid_card"}`. Cockatiel **tidak boleh retry** karena error 4xx diklasifikasikan sebagai `permanent_failure`. Payment langsung gagal dengan `attemptCount=1`.
 
 **Assertion utama**:
 - `finalPayment.status === 'failed'`
@@ -35,7 +35,7 @@ pnpm exec jest --config ./tests/e2e/jest-e2e.json --runInBand \
 
 ---
 
-## 3. Visualisasi Alur (Input → Database)
+## 3. Visualisasi Alur (Input -> Database)
 
 ```mermaid
 sequenceDiagram
@@ -64,7 +64,7 @@ sequenceDiagram
     RB->>CLS: classify(400, "invalid_card")
     CLS-->>RB: {kind:'permanent', retryable:false}
 
-    Note over RB: Permanent error → NO RETRY<br/>throw immediately
+    Note over RB: Permanent error -> NO RETRY<br/>throw immediately
     RB-->>API: outcome={result:null, breakerTripped:false, exhausted:false, error:permanent}
 
     API->>API: onAttempt({outcome:permanent_failure, httpStatus:400, errorCode:invalid_card})
@@ -72,7 +72,7 @@ sequenceDiagram
     API->>DB: UPDATE payment SET status=failed, attempt_count=1, failure_reason='invalid_card'
     API-->>T: 201 Created {payment:{status:failed, attemptCount:1}}
 
-    Note over T: waitForTerminalStatus (status=failed → langsung return)
+    Note over T: waitForTerminalStatus (status=failed -> langsung return)
     Note over T: Assertions:
     Note over T: - status=failed ✓
     Note over T: - attemptCount=1 ✓
@@ -117,7 +117,7 @@ WHERE p.order_id = 'E2E-S2-<timestamp>';
 |--------|---------------|----------------|----------------|--------------------|-------------|--------------|
 | failed | 1             | invalid_card   | 1              | permanent_failure  | 400         | invalid_card |
 
-**Hanya 1 baris di payment_attempts**. Kalau ada ≥ 2 → Cockatiel melakukan retry padahal seharusnya tidak → bug di `classifyError`.
+**Hanya 1 baris di payment_attempts**. Kalau ada ≥ 2 -> Cockatiel melakukan retry padahal seharusnya tidak -> bug di `classifyError`.
 
 ### L3: Metrics counter
 ```bash
@@ -126,7 +126,7 @@ curl -s http://localhost:3001/metrics | grep -E '^payments_(permanent_failures_t
 
 **Yang diharapkan**:
 - `payments_current_status{status="failed"}` naik 1
-- Tidak ada peningkatan `retry_attempts_total` (kalau naik → Cockatiel retry, itu bug)
+- Tidak ada peningkatan `retry_attempts_total` (kalau naik -> Cockatiel retry, itu bug)
 
 ### L4: Gateway mock stats
 ```bash
@@ -137,7 +137,7 @@ curl -s http://localhost:3002/admin/stats
 ### L5: Log Cockatiel
 Cari di `logs/e2e/payment-api-*.log`:
 ```
-[retry] error classified as permanent → not retrying
+[retry] error classified as permanent -> not retrying
 [audit] payment_attempt inserted {outcome:permanent_failure, http_status:400}
 [payments] payment failed permanently {reason:invalid_card}
 ```
@@ -154,7 +154,7 @@ Tidak boleh ada baris `[retry] attempt 2 of N` — kalau ada, berarti retry terj
 ☐ DB: payment.status='failed', attempt_count=1, failure_reason contains 'invalid_card'
 ☐ Metrics: retry_attempts_total TIDAK naik (harus 0 increment)
 ☐ Log: tidak ada "[retry] attempt 2" event
-☐ Test selesai dalam < 5 detik (kalau lebih → ada retry tidak terduga)
+☐ Test selesai dalam < 5 detik (kalau lebih -> ada retry tidak terduga)
 ```
 
 ---
@@ -166,7 +166,7 @@ Tidak boleh ada baris `[retry] attempt 2 of N` — kalau ada, berarti retry terj
 | `attemptCount = 2 atau lebih` | Error 400 salah diklasifikasikan sebagai retryable | Cek `classifyError()` di `packages/resilience/src/errors/` — 4xx harus return `kind: 'permanent'` |
 | `failureReason` kosong/null | Body parsing dari gateway gagal ekstrak `errorCode` | Cek `HttpGatewayAdapter.mapResponse()` — pastikan baca `errorCode` field dari body |
 | Test timeout 30s | Status `failed` tidak terdeteksi oleh `waitForTerminalStatus` | Cek `payments.ts` helper — `['succeeded', 'failed'].includes(...)` sudah benar |
-| Masih 500 bukan 400 | Gateway mock mode tidak terganti ke `client-error` | Cek `beforeAll` → `setGatewayMode('client-error')`. Verifikasi via `GET /admin/config` |
+| Masih 500 bukan 400 | Gateway mock mode tidak terganti ke `client-error` | Cek `beforeAll` -> `setGatewayMode('client-error')`. Verifikasi via `GET /admin/config` |
 | `ECONNREFUSED` | Service belum start | Start payment-api + gateway-mock |
 
 ---

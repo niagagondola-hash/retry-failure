@@ -5,7 +5,7 @@
  * EXCEPT breaker (singleton via breaker-store.ts).
  *
  * Composition order (plan section 5.1):
- *   CircuitBreaker (outermost) → Retry → Timeout → HTTP call (innermost)
+ *   CircuitBreaker (outermost) -> Retry -> Timeout -> HTTP call (innermost)
  *
  * Wrapper order memengaruhi semantics — verifikasi via tests (TASK-14 scenario 3).
  */
@@ -60,9 +60,9 @@ export function buildTimeoutPolicy(config: ResilienceConfig): TimeoutPolicy {
 /**
  * Build circuit breaker policy dengan ConsecutiveBreaker + halfOpenAfter cooldown.
  *
- * Plan section 5.2: BREAKER_FAILURE_THRESHOLD consecutive failures → OPEN.
- * After BREAKER_COOLDOWN_MS → HALF_OPEN (trial call).
- * HALF_OPEN success → CLOSED. HALF_OPEN failure → OPEN lagi.
+ * Plan section 5.2: BREAKER_FAILURE_THRESHOLD consecutive failures -> OPEN.
+ * After BREAKER_COOLDOWN_MS -> HALF_OPEN (trial call).
+ * HALF_OPEN success -> CLOSED. HALF_OPEN failure -> OPEN lagi.
  *
  * Catatan: policy ini biasanya di-cache via breaker-store.ts (singleton per dependency).
  */
@@ -78,9 +78,9 @@ export function buildBreakerPolicy(
 
   // Wire state change listeners (TASK-11 metrics)
   // Cockatiel v4 CircuitBreakerPolicy exposes:
-  //   - onBreak: fires when CLOSED → OPEN (failure threshold reached)
-  //   - onHalfOpen: fires when OPEN → HALF_OPEN (cooldown elapsed, trial call permitted)
-  //   - onReset: fires when HALF_OPEN → CLOSED (trial call succeeded)
+  //   - onBreak: fires when CLOSED -> OPEN (failure threshold reached)
+  //   - onHalfOpen: fires when OPEN -> HALF_OPEN (cooldown elapsed, trial call permitted)
+  //   - onReset: fires when HALF_OPEN -> CLOSED (trial call succeeded)
   // All three are wired so MetricsService.setBreakerState() receives every transition.
 
   if (onStateChange) {

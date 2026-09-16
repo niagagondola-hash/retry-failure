@@ -22,7 +22,7 @@ TASK-11 mengimplementasi `trace-context.ts` dengan **dua mode** yang di-toggle v
 | `IS_OTEL` | Trace ID source | OTel SDK | Jaeger export | Span tree | Butuh Docker |
 |---|---|---|---|---|---|
 | `false` (default) | `crypto.randomUUID()` via `AsyncLocalStorage` | ❌ tidak di-load | ❌ tidak ada | ❌ tidak ada | ❌ tidak |
-| `true` | OTel active span (bila SDK aktif) → fallback ALS | ✅ bila TASK-11b dieksekusi | ✅ bila TASK-11b + Docker | ✅ bila TASK-11b dieksekusi | ✅ Jaeger |
+| `true` | OTel active span (bila SDK aktif) -> fallback ALS | ✅ bila TASK-11b dieksekusi | ✅ bila TASK-11b + Docker | ✅ bila TASK-11b dieksekusi | ✅ Jaeger |
 
 **Penting**: TASK-11 hanya mengimplementasi mode `IS_OTEL=false` (simplified). Tapi `trace-context.ts` sudah disiapkan untuk menerima `IS_OTEL=true` — bila TASK-11b dieksekusi, cukup set `IS_OTEL=true` di `.env` dan otomatis beralih ke OTel trace ID. Tidak perlu modify `trace-context.ts` lagi (TASK-11b hanya tambah `otel.ts` + dependencies + custom span).
 
@@ -37,7 +37,7 @@ Wire pilar-pilar tersebut ke **semua layer** yang sudah ada: gateway HTTP adapte
 - `apps/payment-api/src/modules/observability/trace-context.ts` — `AsyncLocalStorage<TraceContext>` + `withTrace()` / `getTraceId()` / `getTraceContext()` helpers.
 - `apps/payment-api/src/modules/observability/index.ts` — barrel.
 - Modify `apps/payment-api/src/modules/gateway/http-adapter.ts` — time `charge()`, observe `payment_gateway_request_duration_seconds` histogram + increment `payment_gateway_requests_total` counter (+ `gateway_idempotent_replays_total` saat `replayed=true`).
-- Modify `apps/payment-api/src/modules/gateway/resilient-adapter.ts` — invoke metrics on outcome (retry `onFailure` / `onSuccess` → `retry_attempts_total`, breaker `onBreak` / `onReset` / `onActivate` → `circuit_breaker_state` gauge).
+- Modify `apps/payment-api/src/modules/gateway/resilient-adapter.ts` — invoke metrics on outcome (retry `onFailure` / `onSuccess` -> `retry_attempts_total`, breaker `onBreak` / `onReset` / `onActivate` -> `circuit_breaker_state` gauge).
 - Modify `packages/resilience/src/policies/composition.ts` (atau di consumer site) — wire `retryPolicy.onFailure` / `onSuccess` + `breakerPolicy.onBreak` / `onReset` / `onActivate` hooks ke `MetricsService` callbacks (bila belum di-wire di TASK-05).
 - Modify `apps/payment-api/src/modules/payments/payments.service.ts` — lifecycle logs (`payment_start`, `payment_finish`, `attempt_start`, `attempt_finish`, `retry_scheduled`, `permanent_failure`), timing `payment_processing_duration_seconds` histogram, delta `payments_current_status` gauge pada state transitions, replace `crypto.randomUUID()` traceId dengan `getTraceId() ?? randomUUID()` + wrap `executePayment` di `withTrace()` bila context belum ada.
 - Modify `apps/payment-api/src/modules/audit/audit.service.ts` — fallback `input.traceId ?? getTraceId()` saat membentuk `RecordAttemptInput`.
@@ -60,7 +60,7 @@ Wire pilar-pilar tersebut ke **semua layer** yang sudah ada: gateway HTTP adapte
 
 ## Metrics table (plan section 13.2)
 
-Tujuh metric yang dibuat di `MetricsService`. **Anti-pattern yang dijauhi**: TIDAK ada label high-cardinality (`payment_id`, `order_id`, `trace_id`, raw `error_message`) — data tersebut hanya sebagai **log field** (pino), bukan metric label. Rationale: cardinality explosion di Prometheus TSDB → OOM.
+Tujuh metric yang dibuat di `MetricsService`. **Anti-pattern yang dijauhi**: TIDAK ada label high-cardinality (`payment_id`, `order_id`, `trace_id`, raw `error_message`) — data tersebut hanya sebagai **log field** (pino), bukan metric label. Rationale: cardinality explosion di Prometheus TSDB -> OOM.
 
 | # | Metric name | Type | Labels | Source (increment/observe site) |
 |---|---|---|---|---|
@@ -84,10 +84,10 @@ buckets: [0.1, 0.5, 1, 2, 5, 10, 30, 60, 120]  // total cycle incl. retries (3 a
 
 **Anti-pattern checklist** (yang harus TIDAK ada di code review):
 
-- [ ] `trace_id` sebagai label → MUST NOT. `traceId` hanya sebagai pino log field.
-- [ ] `payment_id` / `order_id` sebagai label → MUST NOT. Hanya sebagai log field + persisted di `payment_attempts`.
-- [ ] Raw `error_message` sebagai label → MUST NOT. Hanya `error_code` (low-cardinality enum) yang boleh jadi label bila diperlukan — di task ini TIDAK dipakai sebagai label (cuma `outcome`).
-- [ ] Membuat `new Registry()` per metric → MUST NOT. Pakai default `Registry` (`prom-client.register` atau instance singleton yang di-share).
+- [ ] `trace_id` sebagai label -> MUST NOT. `traceId` hanya sebagai pino log field.
+- [ ] `payment_id` / `order_id` sebagai label -> MUST NOT. Hanya sebagai log field + persisted di `payment_attempts`.
+- [ ] Raw `error_message` sebagai label -> MUST NOT. Hanya `error_code` (low-cardinality enum) yang boleh jadi label bila diperlukan — di task ini TIDAK dipakai sebagai label (cuma `outcome`).
+- [ ] Membuat `new Registry()` per metric -> MUST NOT. Pakai default `Registry` (`prom-client.register` atau instance singleton yang di-share).
 
 ---
 
@@ -105,9 +105,9 @@ Setiap log line via `PinoLogger` (atau `console.log(JSON.stringify(...))` di min
 | `payment_finish` | info | `paymentId`, `finalStatus`, `attemptCount`, `totalRetryCount`, `durationMs` | `PaymentsService.executePayment()` exit |
 | `attempt_start` | info | `paymentId`, `attemptNumber`, `traceId` | `attachAuditCallback` (TASK-07) sebelum `gateway.charge()` |
 | `attempt_finish` | info | `paymentId`, `attemptNumber`, `outcome`, `httpStatus`, `replayed`, `durationMs` | audit callback setelah `gateway.charge()` resolve |
-| `retry_scheduled` | warn | `paymentId`, `totalRetryCount`, `nextRetryAt`, `delayBeforeNextMs`, `failureReason` | `PaymentsService.applyOutcome()` saat transisi `processing → scheduled_for_retry` |
+| `retry_scheduled` | warn | `paymentId`, `totalRetryCount`, `nextRetryAt`, `delayBeforeNextMs`, `failureReason` | `PaymentsService.applyOutcome()` saat transisi `processing -> scheduled_for_retry` |
 | `retry_delay` | info | `paymentId`, `attemptNumber`, `delayBeforeNextMs` | `retryPolicy.onFailure` hook (Cockatiel) — log delay sebelum next attempt |
-| `permanent_failure` | error | `paymentId`, `failureReason`, `errorCode`, `attemptCount` | `PaymentsService.applyOutcome()` saat transisi `processing → failed` |
+| `permanent_failure` | error | `paymentId`, `failureReason`, `errorCode`, `attemptCount` | `PaymentsService.applyOutcome()` saat transisi `processing -> failed` |
 | `breaker_state_change` | warn | `service`, `newState` (`open` \| `closed` \| `half_open`), `previousState` | `breakerPolicy.onBreak` / `onReset` / `onActivate` hooks |
 | `scheduler_poll` | info | `cycleId`, `dueCount`, `processedCount`, `errorCount`, `durationMs` | `RetrySchedulerService.poll()` exit |
 | `idempotency_replay` | warn | `paymentId`, `idempotencyKey`, `attemptNumber` | `HttpPaymentGateway.charge()` saat `result.replayed === true` |
@@ -134,7 +134,7 @@ Setiap log line via `PinoLogger` (atau `console.log(JSON.stringify(...))` di min
 
 - `apps/payment-api/src/main.ts` — `app.useLogger(app.get(Logger))`.
 - `apps/payment-api/src/app.module.ts` — import `LoggerModule` + `ObservabilityModule`.
-- `apps/payment-api/src/modules/gateway/http-adapter.ts` — inject `MetricsService` + `PinoLogger`. Time `charge()`, observe histogram + counter. Detect `replayed=true` → inc replay counter.
+- `apps/payment-api/src/modules/gateway/http-adapter.ts` — inject `MetricsService` + `PinoLogger`. Time `charge()`, observe histogram + counter. Detect `replayed=true` -> inc replay counter.
 - `apps/payment-api/src/modules/gateway/resilient-adapter.ts` — inject `MetricsService` + `PinoLogger`. Wire `retryPolicy.onFailure` / `onSuccess` + `breakerPolicy.onBreak` / `onReset` / `onActivate` ke metrics callbacks (bila belum di TASK-05/06).
 - `apps/payment-api/src/modules/payments/payments.service.ts` — inject `MetricsService` + `PinoLogger`. Lifecycle logs. `payments_current_status` delta on transition. `payment_processing_duration_seconds` histogram. Replace `crypto.randomUUID()` traceId dengan `getTraceId() ?? randomUUID()` + `withTrace()` wrap.
 - `apps/payment-api/src/modules/audit/audit.service.ts` — fallback `input.traceId ?? getTraceId()` di `recordAttempt()`.
@@ -236,7 +236,7 @@ export function withTrace<T>(
  *   Langsung return AsyncLocalStorage.traceId.
  *
  * Safe bila IS_OTEL=true TAPI TASK-11b belum dieksekusi:
- *   Lazy import gagal (package tidak ada) → catch → fallback ALS.
+ *   Lazy import gagal (package tidak ada) -> catch -> fallback ALS.
  *   Tidak crash.
  */
 export async function getTraceId(): Promise<string | undefined> {
@@ -285,7 +285,7 @@ export function setTracePaymentId(paymentId: string): void {
 > - `getTraceId()` adalah `async` karena lazy import `@opentelemetry/api` butuh `await import()`.
 > - `getTraceIdSync()` disediakan untuk code path yang tidak bisa await (pino mixin, sync logger).
 > - Bila IS_OTEL=false, `getTraceId()` sama saja dengan `getTraceIdSync()` — async wrapper saja.
-> - Bila IS_OTEL=true TAPI TASK-11b belum dieksekusi (tidak ada `@opentelemetry/api`), `await import('@opentelemetry/api')` gagal → catch → fallback ALS. **Tidak crash.**
+> - Bila IS_OTEL=true TAPI TASK-11b belum dieksekusi (tidak ada `@opentelemetry/api`), `await import('@opentelemetry/api')` gagal -> catch -> fallback ALS. **Tidak crash.**
 >
 > AsyncLocalStorage bekerja lintas async boundary (Cockatiel internal `await`, axios, TypeORM query, scheduler callback). Tidak perlu manual propagation.
 
@@ -575,7 +575,7 @@ export class HttpPaymentGateway implements PaymentGatewayPort {
       const httpStatus = err.response?.status ?? (err.code === 'ECONNABORTED' ? 'timeout' : 'network_error');
       this.metrics.incGatewayRequest('failure', httpStatus);
       this.logger.warn({ paymentId: req.paymentId, traceId, httpStatus, errorCode: err.code, event: 'attempt_finish' }, 'gateway charge failed');
-      // ... map err → ChargeResult (existing TASK-06 logic) ...
+      // ... map err -> ChargeResult (existing TASK-06 logic) ...
       return mappedFailureResult;
     }
   }
@@ -602,7 +602,7 @@ export class ResilientPaymentGateway implements PaymentGatewayPort {
     this.retryPolicy = buildRetryPolicy(config.retry);
     this.breakerPolicy = buildBreakerPolicy(config.breaker);
 
-    // Wire Cockatiel hooks → MetricsService + logger.
+    // Wire Cockatiel hooks -> MetricsService + logger.
     this.retryPolicy.onFailure((event) => {
       const paymentStatus = getTraceContext()?.source === 'scheduler' ? 'scheduled_for_retry' : 'processing';
       this.metrics.incRetryAttempt('failure', paymentStatus);
@@ -645,7 +645,7 @@ export class ResilientPaymentGateway implements PaymentGatewayPort {
         fn: () => this.inner.charge(req),
         composed: this.composed,
       });
-      // Map outcome → ChargeResult (existing TASK-06 logic).
+      // Map outcome -> ChargeResult (existing TASK-06 logic).
       return mapOutcome(outcome);
     }, { paymentId: req.paymentId });
   }
@@ -902,7 +902,7 @@ async function bootstrap() {
 bootstrap();
 ```
 
-### 16. (Extension) Full OTel SDK + Jaeger export → lihat TASK-11b-otel-sdk.md
+### 16. (Extension) Full OTel SDK + Jaeger export -> lihat TASK-11b-otel-sdk.md
 
 TASK-11 sudah menyediakan `IS_OTEL` env toggle di `trace-context.ts`. Untuk mengaktifkan full OTel SDK + Jaeger export, eksekusi **TASK-11b** (`docs/tasks/TASK-11b-otel-sdk.md`):
 
@@ -955,7 +955,7 @@ TASK-11 sudah menyediakan `IS_OTEL` env toggle di `trace-context.ts`. Untuk meng
   payments_current_status{status="processing"} 0
   ```
 - [ ] Setiap log line payment lifecycle (`payment_start`, `payment_finish`, `attempt_start`, `attempt_finish`, `retry_scheduled`, `permanent_failure`, `breaker_state_change`, `scheduler_poll`, `idempotency_replay`, `api_request`) memuat field `traceId` (string UUID v4).
-- [ ] `payment_attempts.trace_id` diisi dengan **trace ID yang sama** untuk semua attempt dalam satu execution cycle (e.g. 3 Cockatiel attempts → 3 rows dengan `trace_id` identik). Verifiable via:
+- [ ] `payment_attempts.trace_id` diisi dengan **trace ID yang sama** untuk semua attempt dalam satu execution cycle (e.g. 3 Cockatiel attempts -> 3 rows dengan `trace_id` identik). Verifiable via:
   ```sql
   SELECT payment_id, attempt_number, outcome, trace_id, created_at
   FROM payment_attempts
@@ -963,11 +963,11 @@ TASK-11 sudah menyediakan `IS_OTEL` env toggle di `trace-context.ts`. Untuk meng
   ORDER BY created_at ASC;
   -- Expected: trace_id kolom identik untuk 3 rows dalam cycle yang sama.
   ```
-- [ ] Trace ID berbeda antar execution cycle (scheduler re-trigger atau manual retry) — verifiable via query di atas (cycle berbeda → `trace_id` berbeda).
+- [ ] Trace ID berbeda antar execution cycle (scheduler re-trigger atau manual retry) — verifiable via query di atas (cycle berbeda -> `trace_id` berbeda).
 - [ ] TIDAK ada label high-cardinality (`payment_id`, `order_id`, `trace_id`, raw `error_message`) di metric apapun — grep `/metrics` output untuk memverifikasi hanya label low-cardinality yang muncul.
-- [ ] `pnpm --filter payment-api typecheck` → **lulus tanpa error**.
-- [ ] `pnpm --filter payment-api lint` → **lulus tanpa error**.
-- [ ] Dev mode (`pnpm --filter payment-api start:dev`) — log di console ter-format pino-pretty (colorized, readable) di dev. Bila `NODE_ENV=production` di-set → log newline-delimited JSON ke stdout.
+- [ ] `pnpm --filter payment-api typecheck` -> **lulus tanpa error**.
+- [ ] `pnpm --filter payment-api lint` -> **lulus tanpa error**.
+- [ ] Dev mode (`pnpm --filter payment-api start:dev`) — log di console ter-format pino-pretty (colorized, readable) di dev. Bila `NODE_ENV=production` di-set -> log newline-delimited JSON ke stdout.
 - [ ] Endpoint `/health` dan `/metrics` tidak di-log oleh pino auto-logging (supaya tidak spam log saat Prometheus scrape `/metrics` setiap 15s).
 
 ---
@@ -979,9 +979,9 @@ TASK-11 sudah menyediakan `IS_OTEL` env toggle di `trace-context.ts`. Untuk meng
 > **WAJIB BACA**: sebelum menjalankan command di bawah, cek kondisi lingkungan Anda via [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 1 (Pre-flight Check).
 >
 > Ringkasan keyword:
-> - `pnpm --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
-> - `docker --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → butuh external PostgreSQL atau skip DB-dependent commands.
-> - `curl -s http://localhost:3000` sibuk → KONDISI SANDBOX → payment-api pakai PORT=3001, gateway-mock pakai PORT=3002, Next.js preview sudah otomatis jalan di 3000. Bebas → KONDISI LOCAL → payment-api pakai PORT=3000, gateway-mock pakai PORT=3001, Next.js di-start manual di 3000.
+> - `pnpm --version` ada -> KONDISI LOCAL. Tidak ada -> KONDISI SANDBOX -> jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
+> - `docker --version` ada -> KONDISI LOCAL. Tidak ada -> KONDISI SANDBOX -> butuh external PostgreSQL atau skip DB-dependent commands.
+> - `curl -s http://localhost:3000` sibuk -> KONDISI SANDBOX -> payment-api pakai PORT=3001, gateway-mock pakai PORT=3002, Next.js preview sudah otomatis jalan di 3000. Bebas -> KONDISI LOCAL -> payment-api pakai PORT=3000, gateway-mock pakai PORT=3001, Next.js di-start manual di 3000.
 
 Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih salah satu sesuai kondisi.
 
@@ -1015,7 +1015,7 @@ pnpm --filter payment-api typecheck
 pnpm --filter payment-api lint
 
 # ============================================================
-# 3. Reset gateway mode → create test payment → inspect /metrics
+# 3. Reset gateway mode -> create test payment -> inspect /metrics
 #    Pola env var: API_PORT default 3000 LOCAL; set API_PORT=3001 untuk SANDBOX.
 #                   GW_PORT default 3001 LOCAL; set GW_PORT=3002 untuk SANDBOX.
 #    Set sekali di sesi shell:
@@ -1071,8 +1071,8 @@ docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postg
    JOIN payments p ON p.id = pa.payment_id
    WHERE p.order_id LIKE 'OBS-%'
    ORDER BY p.created_at DESC, pa.attempt_number ASC;"
-# Expected: attempts dalam satu payment cycle → trace_id identik.
-#           Different payment → different trace_id.
+# Expected: attempts dalam satu payment cycle -> trace_id identik.
+#           Different payment -> different trace_id.
 
 # KONDISI SANDBOX (Docker tidak tersedia, psql host atau Node script):
 # Opsi A — psql host (bila psql tersedia & external PG connectable):
@@ -1106,20 +1106,20 @@ for i in 1 2 3; do
     -H 'Content-Type: application/json' \
     -d "{\"orderId\":\"OBS-BREAKER-00${i}\",\"amount\":5000,\"currency\":\"IDR\"}" | jq '.payment | {id, status, failureReason}'
 done
-# Expected: 3rd payment → breaker OPEN, langsung return failure (no HTTP call to gateway).
+# Expected: 3rd payment -> breaker OPEN, langsung return failure (no HTTP call to gateway).
 #           Log: breaker_state_change newState=open.
 
 # 6b. Verify breaker gauge === 1
 curl -sS "http://localhost:${API_PORT}/metrics" | grep 'circuit_breaker_state{service="payment-gateway"}'
 # Expected: circuit_breaker_state{service="payment-gateway"} 1
 
-# 6c. Wait for half_open (halfOpenAfter: 10s), then switch gateway → success.
+# 6c. Wait for half_open (halfOpenAfter: 10s), then switch gateway -> success.
 sleep 10
 curl -sS -X PUT "http://localhost:${GW_PORT}/admin/config" \
   -H 'Content-Type: application/json' \
   -d '{"mode":"always-success"}' | jq .
 
-# 6d. Create 1 more payment → breaker HALF_OPEN → success → CLOSED.
+# 6d. Create 1 more payment -> breaker HALF_OPEN -> success -> CLOSED.
 curl -sS -X POST "http://localhost:${API_PORT}/payments" \
   -H 'Content-Type: application/json' \
   -d '{"orderId":"OBS-BREAKER-RECOVER","amount":5000,"currency":"IDR"}' | jq '.payment.status'
@@ -1143,8 +1143,8 @@ curl -sS -X PUT "http://localhost:${GW_PORT}/admin/config" \
   -H 'Content-Type: application/json' \
   -d '{"mode":"succeed-but-drop-response"}' | jq .
 
-# 8a. Create 1 payment → first attempt: gateway simpan Idempotency-Key, lalu drop response.
-#     Cockatiel retry → second attempt: gateway detect Idempotency-Key, return replayed=true.
+# 8a. Create 1 payment -> first attempt: gateway simpan Idempotency-Key, lalu drop response.
+#     Cockatiel retry -> second attempt: gateway detect Idempotency-Key, return replayed=true.
 curl -sS -X POST "http://localhost:${API_PORT}/payments" \
   -H 'Content-Type: application/json' \
   -d '{"orderId":"OBS-REPLAY-001","amount":15000,"currency":"IDR"}' | jq '.payment | {id, status, attemptCount, gatewayReference}'
@@ -1186,7 +1186,7 @@ curl -sS -X PUT "http://localhost:${GW_PORT}/admin/config" \
 
 `AsyncLocalStorage` dari `node:async_hooks` secara native men-propagate context store lintas `await` / `setTimeout` / `setInterval` / `Promise.then` / `process.nextTick` / I/O callbacks (TypeORM `query`, axios `httpRef.post`, Cockatiel internal `retryPolicy.execute`, scheduler `setInterval` callback). Tidak perlu manual propagation via parameter.
 
-**Performance**: ada overhead kecil (~5-10% per async operation bila context aktif). Untuk throughput demo (ratusan RPS), acceptable. Production high-throughput (>10k RPS) → pertimbangkan `AsyncResource` manual atau OTel context.
+**Performance**: ada overhead kecil (~5-10% per async operation bila context aktif). Untuk throughput demo (ratusan RPS), acceptable. Production high-throughput (>10k RPS) -> pertimbangkan `AsyncResource` manual atau OTel context.
 
 **Pitfall**: `AsyncLocalStorage` tidak men-propagate lintas `worker_threads` atau child process. Untuk scheduler yang dijalankan via `worker_threads` (bukan kasus kita — scheduler di NestJS process utama), context hilang. Document di TASK-15 bila relevant.
 
@@ -1220,7 +1220,7 @@ Buckets dipilih berdasarkan SLO demo:
 - `payment_gateway_request_duration_seconds`: target p95 < 1s, timeout 2s. Buckets `[0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10]` — `+Inf` otomatis.
 - `payment_processing_duration_seconds`: target p95 < 30s (3 attempts × max 2s timeout + backoff). Buckets `[0.1, 0.5, 1, 2, 5, 10, 30, 60, 120]`.
 
-Production tuning: load test → inspect histogram → adjust buckets. Document di TASK-15.
+Production tuning: load test -> inspect histogram -> adjust buckets. Document di TASK-15.
 
 ### NO high-cardinality labels (trace_id, payment_id, order_id as log fields, not metric labels)
 
@@ -1240,7 +1240,7 @@ new Counter({
 });
 ```
 
-`trace_id` (UUID v4 — praktis unlimited), `payment_id` (UUID v4 — unlimited), `order_id` (business identifier — bisa jutaan), raw `error_message` (free text) → semua hanya sebagai **pino log field** + persisted di `payment_attempts`. TIDAK pernah jadi metric label.
+`trace_id` (UUID v4 — praktis unlimited), `payment_id` (UUID v4 — unlimited), `order_id` (business identifier — bisa jutaan), raw `error_message` (free text) -> semua hanya sebagai **pino log field** + persisted di `payment_attempts`. TIDAK pernah jadi metric label.
 
 ### OTel simplified for now (trace ID custom-generated + persisted in payment_attempts)
 
@@ -1261,7 +1261,7 @@ Untuk demo ini, **trace ID via `AsyncLocalStorage` + `crypto.randomUUID()`** sud
 - Buat `apps/payment-api/src/otel.ts` (load sebelum NestJS bootstrap via `node --import otel.js dist/main.js`).
 - Replace `getTraceId()` impl — baca dari `trace.getSpan(context.active())?.spanContext().traceId` (bukan `AsyncLocalStorage`).
 - Add Jaeger service di docker-compose (port 16686 UI, 4318 OTLP HTTP).
-- Update DoD checklist (section 22) "Trace payment dapat ditemukan di Jaeger" → ✓.
+- Update DoD checklist (section 22) "Trace payment dapat ditemukan di Jaeger" -> ✓.
 
 Document di TASK-15 production caveats: "Full OTel SDK optional extension — lihat TASK-11 section 16 implementation step".
 

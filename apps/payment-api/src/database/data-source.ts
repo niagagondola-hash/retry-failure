@@ -4,9 +4,9 @@
  * Application runtime uses TypeOrmModule.forRootAsync (see database.module.ts).
  *
  * Usage:
- *   pnpm db:migrate            → tsx typeorm migration:run -d src/database/data-source.ts
- *   pnpm db:migrate:revert     → tsx typeorm migration:revert -d src/database/data-source.ts
- *   pnpm db:migration:generate → tsx typeorm migration:generate -d src/database/data-source.ts
+ *   pnpm db:migrate            -> tsx typeorm migration:run -d src/database/data-source.ts
+ *   pnpm db:migrate:revert     -> tsx typeorm migration:revert -d src/database/data-source.ts
+ *   pnpm db:migration:generate -> tsx typeorm migration:generate -d src/database/data-source.ts
  *
  * NOTE: `dotenv/config` di-import untuk load .env sebelum baca process.env.
  * NOTE: tsx (bukan ts-node) dipakai karena lebih reliable dengan TypeScript decorator.

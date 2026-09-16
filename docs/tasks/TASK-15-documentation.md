@@ -14,7 +14,7 @@ Menyusun **dokumentasi final** project sebagai **single source of truth** untuk 
 1. **Root `README.md`** project — overview, quick start, struktur, link table.
 2. **`docs/DEMO_SCENARIOS.md`** — narasi 5 scenario demo A–E dengan **business impact** (bukan hanya curl), resep run via Vue dashboard atau curl, expected outcome, dan link ke baris `e2e-results.md`. **Hero scenario D** (idempotency anti double-charge) mendapat emphasis khusus.
 3. **`docs/PRODUCTION_CAVEATS.md`** — semua caveat dari plan section 20.1-20.4 + adaptation notes sandbox vs production (PostgreSQL vs MySQL rev 2, in-memory idempotency store, no distributed lock, no OTel SDK export, no auth/rate-limit, no Docker di sandbox, dsb).
-4. **`docs/ADAPTATION_NOTES.md`** — tabel perbandingan plan asli vs implementasi: yang dipertahankan utuh vs yang diadaptasi (MySQL → PostgreSQL, single UI → dual frontend, scheduler as separate mini-service → in-process `@nestjs/schedule`, port assignments, Node v20 → v24, dsb).
+4. **`docs/ADAPTATION_NOTES.md`** — tabel perbandingan plan asli vs implementasi: yang dipertahankan utuh vs yang diadaptasi (MySQL -> PostgreSQL, single UI -> dual frontend, scheduler as separate mini-service -> in-process `@nestjs/schedule`, port assignments, Node v20 -> v24, dsb).
 5. **Cross-link** dari `docs/tasks/README.md` ke `e2e-results.md`, `DEMO_SCENARIOS.md`, `PRODUCTION_CAVEATS.md`, `ADAPTATION_NOTES.md`.
 6. **Definition of Done checklist** (plan section 22) di-recap di akhir file task ini sebagai **final verification** sebelum project dideklarasikan selesai.
 
@@ -35,13 +35,13 @@ Menyusun **dokumentasi final** project sebagai **single source of truth** untuk 
 **Out of scope**:
 
 - **Implementation code changes** — TASK-15 murni dokumentasi. Tidak boleh modify `.ts` / `.vue` / `.json` files kecuali `package.json` scripts bila perlu `docs:check` (opsional, tidak wajib).
-- **Grafana dashboard JSON** — TASK-15 hanya menyediakan **sample PromQL queries** dalam bentuk text/code block di `PRODUCTION_CAVEATS.md` (sudah ada draft dari TASK-11). Tidak ada provisioning JSON ke `docker-compose/grafana/provisioning/dashboards/`. Full Grafana dashboard as-code → future work.
+- **Grafana dashboard JSON** — TASK-15 hanya menyediakan **sample PromQL queries** dalam bentuk text/code block di `PRODUCTION_CAVEATS.md` (sudah ada draft dari TASK-11). Tidak ada provisioning JSON ke `docker-compose/grafana/provisioning/dashboards/`. Full Grafana dashboard as-code -> future work.
 - **OpenTelemetry / Jaeger full setup guide** — TASK-11 menyimplifikasi tracing ke `AsyncLocalStorage` + `payment_attempts.trace_id`. TASK-15 menyebut ini sebagai **future evolution** di `PRODUCTION_CAVEATS.md` (3-5 baris bullet: rekomendasi `@opentelemetry/sdk-node` + `@opentelemetry/auto-instrumentations-node` + OTLP exporter ke Jaeger). Tidak ada tutorial step-by-step.
 - **Performance / SLO documentation** — plan section 19 eksplisit out-of-scope. Tidak ada p95/p99 latency targets, tidak ada throughput SLO. Hanya mention di caveats bahwa production perlu load test (k6/Artillery).
 - **Runbook on-call** — bukan bagian plan rev 2. Hanya pointer ke `PRODUCTION_CAVEATS.md` di README.
-- **Architecture diagram (Mermaid / PlantUML)** — TASK-15 menyediakan text-based dependency tree (sudah ada di `docs/tasks/README.md` section 2). Visual diagram → future work.
+- **Architecture diagram (Mermaid / PlantUML)** — TASK-15 menyediakan text-based dependency tree (sudah ada di `docs/tasks/README.md` section 2). Visual diagram -> future work.
 - **Translation / i18n dokumentasi** — bahasa Indonesia + technical English mix, sesuai konvensi `docs/tasks/TASK-*.md` yang ada. Tidak ada terjemahan formal.
-- **Changelog / RELEASE_NOTES** — single-shot project, bukan versioned release. Tidak ada `CHANGELOG.md`. Bila nanti project di-versioning → future work.
+- **Changelog / RELEASE_NOTES** — single-shot project, bukan versioned release. Tidak ada `CHANGELOG.md`. Bila nanti project di-versioning -> future work.
 
 ---
 
@@ -95,7 +95,7 @@ pnpm db:migrate
 pnpm dev
 \`\`\`
 
-Bila sandbox tanpa Docker → gunakan PostgreSQL eksternal / managed, set `DATABASE_URL`
+Bila sandbox tanpa Docker -> gunakan PostgreSQL eksternal / managed, set `DATABASE_URL`
 di `.env`, skip step 3.
 
 ## Services & ports
@@ -150,7 +150,7 @@ retry-failure/
 - **Logging**: `nestjs-pino`
 - **Metrics**: `prom-client` (Prometheus text format at `/metrics`)
 - **Tracing**: `AsyncLocalStorage` + `trace_id` column in `payment_attempts`
-  (OpenTelemetry SDK → future evolution, see caveats)
+  (OpenTelemetry SDK -> future evolution, see caveats)
 - **Validation**: `class-validator` + `class-transformer` + `@nestjs/swagger`
 - **Config**: `@nestjs/config` + Joi schema
 - **Frontend**: dual — Next.js sandbox (port 3000, shadcn/ui) + Vue 3 + PrimeVue (port 5173)
@@ -188,7 +188,7 @@ Buat `/home/z/my-project/retry-failure/docs/DEMO_SCENARIOS.md` dengan struktur:
 2. Buka `http://localhost:5173`.
 3. Scroll ke section **Demo Scenario Runner**.
 4. Klik tombol sesuai scenario (A/B/C/D/E).
-5. Dashboard akan otomatis: set gateway mode → POST payment → poll status → show Toast + Dialog result.
+5. Dashboard akan otomatis: set gateway mode -> POST payment -> poll status -> show Toast + Dialog result.
 
 **Opsi 2 — via curl** (untuk CI / headless demo):
 
@@ -199,7 +199,7 @@ Lihat step "Steps (curl)" di setiap scenario. Semua command self-contained.
 **Gateway mode**: `fail-first-n=2` (gagal 2x, sukses ke-3).
 
 **Business impact**: Gateway mengalami transient error (network blip, brief overload).
-Tanpa retry, payment langsung gagal → customer melihat "payment failed" padahal sebenarnya
+Tanpa retry, payment langsung gagal -> customer melihat "payment failed" padahal sebenarnya
 sistem gateway sehat di attempt ke-3. Retry menyelamatkan payment yang seharusnya bisa sukses.
 
 ### Steps (curl)
@@ -289,7 +289,7 @@ curl -X PUT http://localhost:3002/admin/config \
   -H 'Content-Type: application/json' \
   -d '{"mode":"always-timeout","timeoutMs":5000}'
 
-# 2. Submit 3 payments — semua akan exhaust retry (3 attempts each) → scheduled_for_retry
+# 2. Submit 3 payments — semua akan exhaust retry (3 attempts each) -> scheduled_for_retry
 for i in 1 2 3; do
   curl -sX POST http://localhost:3001/api/payments \
     -H 'Content-Type: application/json' \
@@ -311,7 +311,7 @@ curl -sX POST http://localhost:3001/api/payments \
 curl -X PUT http://localhost:3002/admin/config \
   -H 'Content-Type: application/json' -d '{"mode":"always-success"}'
 sleep 11  # BREAKER_COOLDOWN_MS=10000
-# Submit 1 success → HALF_OPEN → CLOSED
+# Submit 1 success -> HALF_OPEN -> CLOSED
 curl -sX POST http://localhost:3001/api/payments \
   -H 'Content-Type: application/json' \
   -d '{"orderId":"DEMO-C-reset","amount":1000,"currency":"IDR"}' > /dev/null
@@ -343,18 +343,18 @@ hilang di tengah jalan — network blip sesaat setelah gateway commit charge).
 idempotency*. Bayangkan:
 
 1. Payment API POST ke gateway.
-2. Gateway charge kartu → **sukses, customer dikenakan biaya $50**.
-3. Response gateway → payment API hilang di network (TCP reset, timeout, dsb).
-4. Payment API lihat timeout → **retry** (cockatiel retry policy kick in).
-5. Bila TANPA idempotency: gateway charge lagi → customer dikenakan $100 untuk order yang sama.
-6. DENGAN idempotency: gateway detect `Idempotency-Key` sama → replay response original →
+2. Gateway charge kartu -> **sukses, customer dikenakan biaya $50**.
+3. Response gateway -> payment API hilang di network (TCP reset, timeout, dsb).
+4. Payment API lihat timeout -> **retry** (cockatiel retry policy kick in).
+5. Bila TANPA idempotency: gateway charge lagi -> customer dikenakan $100 untuk order yang sama.
+6. DENGAN idempotency: gateway detect `Idempotency-Key` sama -> replay response original ->
    customer dikenakan $50 (single charge), payment API dapat response sukses.
 
 **Kenapa idempotency mandatory untuk retry-safe payment API**:
 
 - HTTP timeout **TIDAK menjamin** server tidak memproses request — server bisa saja
   sudah commit transaction tapi response hilang di jalan.
-- Retry tanpa idempotency = double-charge risk. Customer complain → chargeback →
+- Retry tanpa idempotency = double-charge risk. Customer complain -> chargeback ->
   reputational damage + financial loss.
 - Idempotency key (UUID per payment) menjadi **deduplication contract** antara client
   dan server: "idempotency key yang sama = request yang sama, jangan proses ulang".
@@ -370,7 +370,7 @@ curl -X PUT http://localhost:3002/admin/config \
   -d '{"mode":"succeed-but-drop-response"}'
 
 # 2. Create payment — first attempt akan "timeout" (response dropped)
-#    Cockatiel akan retry. Gateway detect Idempotency-Key sama → replay.
+#    Cockatiel akan retry. Gateway detect Idempotency-Key sama -> replay.
 PAYMENT_ID=$(curl -sX POST http://localhost:3001/api/payments \
   -H 'Content-Type: application/json' \
   -d '{"orderId":"DEMO-D-001","amount":99000,"currency":"IDR"}' \
@@ -401,8 +401,8 @@ curl -s http://localhost:3001/api/payments/$PAYMENT_ID \
 ### Expected outcome
 
 - `payment.status === 'succeeded'`.
-- `payment.attemptCount === 2` (first attempt: timeout/response-dropped → retryable_failure;
-  second attempt: gateway replay → success).
+- `payment.attemptCount === 2` (first attempt: timeout/response-dropped -> retryable_failure;
+  second attempt: gateway replay -> success).
 - **`payment.actualCharges === 1`** (hanya 1 charge ke kartu customer).
 - `payment.gatewayCallCount === 2` (gateway menerima 2 request dengan Idempotency-Key sama).
 - `attempts[0].outcome === 'retryable_failure'`.
@@ -509,8 +509,8 @@ Circuit breaker Cockatiel pada instance aplikasi bersifat **in-memory** kecuali
 mekanisme persistence/hydration digunakan. Pada multi-instance deployment:
 
 \`\`\`text
-API instance A → breaker state A
-API instance B → breaker state B
+API instance A -> breaker state A
+API instance B -> breaker state B
 \`\`\`
 
 Ini berbeda dari global / distributed breaker.
@@ -521,7 +521,7 @@ Ini berbeda dari global / distributed breaker.
   perlu di-share via Redis / memcached / external store.
 - Atau: gunakan service mesh (Istio / Linkerd) yang punya distributed breaker bawaan.
 - Atau: deploy single-instance (single pod) untuk payment-api — trade-off: SPOF.
-- Demo sandbox: single-instance `payment-api:3001` → tidak ada issue.
+- Demo sandbox: single-instance `payment-api:3001` -> tidak ada issue.
 
 ### 20.2 — Scheduler single-instance, no distributed lock
 
@@ -531,8 +531,8 @@ Tidak ada distributed lock (`SELECT ... FOR UPDATE SKIP LOCKED`, Redis SETNX, ds
 **Production implication**:
 
 - Bila 2+ instance `payment-api` berjalan, semua instance akan poll `payments`
-  table setiap `SCHEDULER_INTERVAL_MS`. Multiple instance bisa pick same payment →
-  double processing → double charge (unless idempotency protects — Demo D covers this
+  table setiap `SCHEDULER_INTERVAL_MS`. Multiple instance bisa pick same payment ->
+  double processing -> double charge (unless idempotency protects — Demo D covers this
   but still wasteful).
 - Solusi production:
   - **PostgreSQL native**: `SELECT ... FOR UPDATE SKIP LOCKED LIMIT N` (PostgreSQL
@@ -541,7 +541,7 @@ Tidak ada distributed lock (`SELECT ... FOR UPDATE SKIP LOCKED`, Redis SETNX, ds
   - **External scheduler**: Quartz, BullMQ, Celery, AWS EventBridge + SQS — scheduler
     as separate service dengan worker pool.
   - **Single-instance scheduler**: K8s CronJob dengan `concurrencyPolicy: Forbid`.
-- Demo sandbox: single-instance → tidak ada issue. Catat bahwa `MAX_TOTAL_RETRIES`
+- Demo sandbox: single-instance -> tidak ada issue. Catat bahwa `MAX_TOTAL_RETRIES`
   guard di service tetap melindungi dari double-process seandainya scheduler dobel jalan.
 
 ### 20.3 — Payment retry only safe because gateway contract uses idempotency key
@@ -572,7 +572,7 @@ menjadi **source of truth**.
 - Bila pino log shipper (Loki / ELK) lag: trace via `trace_id` column di `payment_attempts`
   tetap bisa di-query via SQL — tidak hilang.
 - Bila Jaeger down / sampling miss: `payment_attempts.trace_id` tetap ada, bisa di-join
-  via SQL antara payment → attempt → trace.
+  via SQL antara payment -> attempt -> trace.
 - **Penting**: jangan pernah rely 100% pada metrics untuk reconcile financial state.
   Always have SQL-based reconciliation job (e.g. daily cron: sum charges by day, compare
   dengan payment processor report).
@@ -637,7 +637,7 @@ Berikut adaptasi yang dilakukan untuk sandbox demo, dengan rekomendasi productio
   - **NextAuth / Clerk / Auth0** untuk user auth (admin vs customer).
   - **Middleware NestJS** untuk verify JWT / session sebelum controller.
   - **Role-based access**: customer hanya bisa lihat payment miliknya; admin bisa retry.
-  - **API key** untuk service-to-service (gateway mock → payment-api).
+  - **API key** untuk service-to-service (gateway mock -> payment-api).
 
 ### B.6 — No rate limiting on /api/payments
 
@@ -709,7 +709,7 @@ sum(payments_attempt_count_total{status="succeeded"})
   / sum(payments_current_status{status="succeeded"})
 \`\`\`
 
-> Bila ingin provisioning JSON dashboard → future work (lihat TASK-15 out-of-scope note).
+> Bila ingin provisioning JSON dashboard -> future work (lihat TASK-15 out-of-scope note).
 
 ---
 
@@ -752,7 +752,7 @@ tanpa reason yang sangat jelas:
    `classifyError`, `parseRetryAfter`, `isPermanent`, `isRetryable`. Tidak ada side-effect.
 3. **Idempotency contract** — `Idempotency-Key` header generated di payment-api side
    (UUID + attempt counter), dikirim ke gateway mock. Gateway mock store replay response.
-4. **Durable retry loop** — payment state machine `processing → scheduled_for_retry → processing`
+4. **Durable retry loop** — payment state machine `processing -> scheduled_for_retry -> processing`
    tetap jalan walaupun instance restart. Source of truth = PostgreSQL `payments` table.
 5. **Audit trail** — `payment_attempts` table dengan 1 row per attempt, including
    `outcome`, `httpStatus`, `durationMs`, `breakerState`, `traceId`. Plan section 11.2
@@ -767,10 +767,10 @@ tanpa reason yang sangat jelas:
 
 | #  | Aspek                     | Plan asli (rev 1 / rev 2)                           | Implementasi sandbox                                                | Alasan adaptasi                                                                                          |
 | -- | ------------------------- | --------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| 1  | Database                  | MySQL 8 (rev 1) → PostgreSQL 16 (rev 2)            | PostgreSQL 16                                                        | Rev 2 sudah arahkan ke PostgreSQL. Sandbox ikut. Native `uuid`, `FOR UPDATE SKIP LOCKED`.                |
-| 2  | ORM driver                 | `mysql2` (rev 1) → `pg` (rev 2)                     | `pg` (node-postgres)                                                 | Konsekuensi dari #1. TypeORM 0.3 support native.                                                         |
+| 1  | Database                  | MySQL 8 (rev 1) -> PostgreSQL 16 (rev 2)            | PostgreSQL 16                                                        | Rev 2 sudah arahkan ke PostgreSQL. Sandbox ikut. Native `uuid`, `FOR UPDATE SKIP LOCKED`.                |
+| 2  | ORM driver                 | `mysql2` (rev 1) -> `pg` (rev 2)                     | `pg` (node-postgres)                                                 | Konsekuensi dari #1. TypeORM 0.3 support native.                                                         |
 | 3  | Persistence column types   | `char(36)` PK, `datetime(3)`, `decimal`             | `uuid`, `timestamp(3)`, `numeric` (PostgreSQL-native)                | Lebih efisien storage (16 vs 36 bytes untuk uuid). `numeric` arbitrary precision.                        |
-| 4  | Frontend strategy          | Single Vue dashboard (rev 1) → dual (rev 2)        | Dual: Next.js sandbox (port 3000) + Vue+PrimeVue (port 5173)         | Sandbox cloud Next.js di port 3000 untuk preview; Vue+PrimeVue untuk demo resmi. Plan rev 2 arahkan ini. |
+| 4  | Frontend strategy          | Single Vue dashboard (rev 1) -> dual (rev 2)        | Dual: Next.js sandbox (port 3000) + Vue+PrimeVue (port 5173)         | Sandbox cloud Next.js di port 3000 untuk preview; Vue+PrimeVue untuk demo resmi. Plan rev 2 arahkan ini. |
 | 5  | Scheduler deployment       | Mini-service terpisah (rev 1)                       | `@nestjs/schedule` in-process di `payment-api` (rev 2 + sandbox)    | Simplifikasi monorepo. Caveat: single-instance only — see PRODUCTION_CAVEATS.md 20.2.                    |
 | 6  | Scheduler port            | 3003 (rev 1)                                        | N/A (in-process di `payment-api:3001`)                               | Konsekuensi dari #5. Tidak ada service terpisah.                                                          |
 | 7  | `payment-api` port         | 3000 (rev 1)                                        | 3001                                                                 | Port 3000 dipakai Next.js sandbox di parent root. Avoid conflict.                                         |
@@ -778,25 +778,25 @@ tanpa reason yang sangat jelas:
 | 9  | `frontend-vue` port        | 5173 (rev 2)                                        | 5173 (Vite dev default)                                              | Sesuai plan rev 2. Tidak ada konflik.                                                                     |
 | 10 | Grafana port               | 3000 (default)                                      | 3003                                                                 | Konflik dengan Next.js sandbox di port 3000.                                                              |
 | 11 | Jaeger UI port             | 16686 (default)                                     | 16686                                                                | Tidak ada konflik di sandbox.                                                                             |
-| 12 | OTel tracing                | Full OTel SDK + OTLP export ke Jaeger (plan rev 2)  | Simplified: `AsyncLocalStorage` + `trace_id` column di `payment_attempts` | Sandbox tidak punya Jaeger receiver aktif; full OTel → future evolution. See PRODUCTION_CAVEATS.md B.4.   |
+| 12 | OTel tracing                | Full OTel SDK + OTLP export ke Jaeger (plan rev 2)  | Simplified: `AsyncLocalStorage` + `trace_id` column di `payment_attempts` | Sandbox tidak punya Jaeger receiver aktif; full OTel -> future evolution. See PRODUCTION_CAVEATS.md B.4.   |
 | 13 | Docker compose availability | Wajib (plan section 16)                            | Tersedia di `docker/docker-compose.yml` tapi sandbox env tanpa Docker binary | Production pakai `docker compose up --build`. Sandbox dev: PostgreSQL eksternal / managed.              |
 | 14 | Node version               | v20.19.0 (plan rev 1)                               | v24 (sandbox)                                                        | Lebih baru, acceptable. `engines.node >= 20` di root `package.json`.                                      |
 | 15 | Idempotency store gateway   | Tersirat persistent (plan section 9)                | In-memory Map (gateway mock)                                        | Demo only. Production: Redis atau DB table. See PRODUCTION_CAVEATS.md B.2.                               |
 | 16 | Scheduler distributed lock  | Tersirat distributed (plan section 12 + 20.2)       | Tidak ada (single-instance in-process)                              | Demo only. Production: `FOR UPDATE SKIP LOCKED` atau external scheduler. See 20.2.                       |
 | 17 | Auth on /api                | Tidak eksplisit di plan                             | Tidak ada (open API)                                                | Demo only. Production: NextAuth + middleware + rate limit. See B.5, B.6.                                  |
 | 18 | Rate limiting /api/payments | Tidak eksplisit di plan                             | Tidak ada                                                            | Demo only. Production: `@nestjs/throttler` + Redis. See B.6.                                              |
-| 19 | Grafana dashboard JSON      | Plan section 16 mention                             | Sample PromQL text only (PRODUCTION_CAVEATS.md B.11)                | Out of scope TASK-15. Provisioning JSON → future work.                                                   |
+| 19 | Grafana dashboard JSON      | Plan section 16 mention                             | Sample PromQL text only (PRODUCTION_CAVEATS.md B.11)                | Out of scope TASK-15. Provisioning JSON -> future work.                                                   |
 | 20 | Logging                     | `nestjs-pino` (plan rev 2)                          | `nestjs-pino`                                                       | Sesuai plan. Tidak ada adaptasi.                                                                          |
 | 21 | Config validation           | `@nestjs/config` + Joi (plan rev 2)                 | `@nestjs/config` + Joi                                              | Sesuai plan. Tidak ada adaptasi.                                                                          |
 | 22 | Test framework              | Jest + supertest (plan rev 2)                       | Jest + supertest + Agent Browser (UI)                               | Plan mention Jest + supertest only; Agent Browser ditambah untuk UI demo verification.                    |
 
 ## Ringkasan adaptasi kunci
 
-1. **Database**: MySQL → PostgreSQL (rev 2 sudah arahkan, ikuti).
-2. **Frontend**: single → dual (Next.js sandbox + Vue+PrimeVue).
-3. **Scheduler**: mini-service terpisah → in-process `@nestjs/schedule`.
+1. **Database**: MySQL -> PostgreSQL (rev 2 sudah arahkan, ikuti).
+2. **Frontend**: single -> dual (Next.js sandbox + Vue+PrimeVue).
+3. **Scheduler**: mini-service terpisah -> in-process `@nestjs/schedule`.
 4. **Ports**: shifted (3001/3002/5173/3003) untuk avoid conflict dengan Next.js sandbox di 3000.
-5. **Tracing**: full OTel SDK → simplified `AsyncLocalStorage` + DB column.
+5. **Tracing**: full OTel SDK -> simplified `AsyncLocalStorage` + DB column.
 6. **Docker**: wajib di plan, optional di sandbox (PostgreSQL eksternal).
 7. **Auth + rate limit + distributed lock**: tidak ada di demo, production must-have.
 
@@ -856,7 +856,7 @@ Pastikan tidak ada link ke path yang tidak ada.
 ## Acceptance criteria
 
 - [ ] `/home/z/my-project/retry-failure/README.md` ada dan memuat:
-  - [ ] Section "Quick start" dengan 4-5 perintah copy-pasteable (`corepack enable pnpm` → `pnpm install` → `docker compose up -d postgres` → `pnpm db:migrate` → `pnpm dev`).
+  - [ ] Section "Quick start" dengan 4-5 perintah copy-pasteable (`corepack enable pnpm` -> `pnpm install` -> `docker compose up -d postgres` -> `pnpm db:migrate` -> `pnpm dev`).
   - [ ] Section "Payment Retry Demo" dengan pointer ke `docs/DEMO_SCENARIOS.md`.
   - [ ] Tabel "Services & ports" dengan 8 service: payment-api 3001, gateway-mock 3002, frontend-vue 5173, Next.js sandbox 3000, postgres 5432, jaeger 16686, prometheus 9090, grafana 3003.
   - [ ] Section "Project structure" dengan tree diagram.
@@ -891,9 +891,9 @@ Pastikan tidak ada link ke path yang tidak ada.
 > **WAJIB BACA**: sebelum menjalankan command di bawah, cek kondisi lingkungan Anda via [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 1 (Pre-flight Check).
 >
 > Ringkasan keyword:
-> - `pnpm --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
-> - `docker --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → butuh external PostgreSQL atau skip DB-dependent commands.
-> - `curl -s http://localhost:3000` sibuk → KONDISI SANDBOX → payment-api pakai PORT=3001, gateway-mock pakai PORT=3002. Bebas → KONDISI LOCAL → payment-api pakai PORT=3000, gateway-mock pakai PORT=3001.
+> - `pnpm --version` ada -> KONDISI LOCAL. Tidak ada -> KONDISI SANDBOX -> jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
+> - `docker --version` ada -> KONDISI LOCAL. Tidak ada -> KONDISI SANDBOX -> butuh external PostgreSQL atau skip DB-dependent commands.
+> - `curl -s http://localhost:3000` sibuk -> KONDISI SANDBOX -> payment-api pakai PORT=3001, gateway-mock pakai PORT=3002. Bebas -> KONDISI LOCAL -> payment-api pakai PORT=3000, gateway-mock pakai PORT=3001.
 
 Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih salah satu sesuai kondisi. Untuk TASK-15 (documentation task), kebanyakan command sama kedua kondisi karena hanya manipulasi file markdown.
 
@@ -1008,7 +1008,7 @@ curl -sf http://localhost:5173/ > /dev/null && echo "frontend-vue OK"
 - [ ] Circuit breaker dapat dibuktikan melalui E2E scenario 3.
 - [ ] Permanent 4xx tidak di-retry (scenario 2).
 - [ ] `Retry-After` dihormati (scenario 5).
-- [ ] Exhausted execution cycle → `scheduled_for_retry`.
+- [ ] Exhausted execution cycle -> `scheduled_for_retry`.
 - [ ] Scheduler memproses due payment (scenario 6).
 - [ ] `MAX_TOTAL_RETRIES` mengakhiri payment sebagai `failed` (scenario 7).
 - [ ] **Idempotency menjamin `actualCharges <= 1` walaupun `calls >= 2` (scenario 4 — HERO)**.

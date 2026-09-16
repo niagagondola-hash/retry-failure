@@ -22,7 +22,7 @@ export class InvalidTransitionError extends Error {
     public readonly from: PaymentStatus,
     public readonly to: PaymentStatus,
   ) {
-    super(`Invalid status transition: ${from} → ${to}`);
+    super(`Invalid status transition: ${from} -> ${to}`);
     this.name = 'InvalidTransitionError';
   }
 }

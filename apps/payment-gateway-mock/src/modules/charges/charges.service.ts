@@ -3,13 +3,13 @@
  *
  * Flow (plan section 9 + TASK-03 spec):
  *   1. requestCount++
- *   2. If key in idempotency store → replayCount++, return stored result with `replayed: true`.
+ *   2. If key in idempotency store -> replayCount++, return stored result with `replayed: true`.
  *   3. Apply mode via mode-handler.
- *   4. If `delayMs` (always-timeout) → await sleep(delayMs).
- *   5. If `chargeCaptured` → save to idempotency store, actualChargesCount++,
+ *   4. If `delayMs` (always-timeout) -> await sleep(delayMs).
+ *   5. If `chargeCaptured` -> save to idempotency store, actualChargesCount++,
  *      enrich response body with request echo.
  *   6. Increment successCount or failureCount based on HTTP status.
- *   7. If `shouldDropResponse` → await sleep(10s) then throw
+ *   7. If `shouldDropResponse` -> await sleep(10s) then throw
  *      ServiceUnavailableException (client has already timed out).
  *   8. Return ChargeOutcome — controller maps to res.status().json().
  */

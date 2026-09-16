@@ -12,10 +12,10 @@ Verifikasi bahwa **RetryScheduler** (interval `@nestjs/schedule`) benar-benar me
 ⚠️ **Penting — Cockatiel v4 `maxAttempts` semantics**: `maxAttempts=3` artinya "maksimal 3 RETRY" (bukan total attempts). Jadi phase 1 (inline retry) menghasilkan **4 total fn() calls** = 1 initial + 3 retries. Lihat `TASK-14a-circuit-breaker.md` section 1.A untuk penjelasan detail.
 
 **Alur 4 phase**:
-1. Set gateway ke `server-error` → semua charge dapat HTTP 500
-2. `createPayment` → Cockatiel inline retry exhausts (4 attempts, semua 500) → payment masuk `scheduled_for_retry`, `totalRetryCount=0`
+1. Set gateway ke `server-error` -> semua charge dapat HTTP 500
+2. `createPayment` -> Cockatiel inline retry exhausts (4 attempts, semua 500) -> payment masuk `scheduled_for_retry`, `totalRetryCount=0`
 3. Switch gateway ke `always-success` (tanpa restart payment-api)
-4. Tunggu scheduler cycle (`SCHEDULER_INTERVAL_MS` = 5000ms) → scheduler picks payment → charge sukses → status=`succeeded`, `totalRetryCount=1`
+4. Tunggu scheduler cycle (`SCHEDULER_INTERVAL_MS` = 5000ms) -> scheduler picks payment -> charge sukses -> status=`succeeded`, `totalRetryCount=1`
 
 **Assertion utama**:
 - Phase 1: `status=scheduled_for_retry`, `totalRetryCount=0`, `nextRetryAt` NOT NULL
@@ -42,7 +42,7 @@ pnpm exec jest --config ./tests/e2e/jest-e2e.json --runInBand \
 
 ---
 
-## 3. Visualisasi Alur (Input → Database)
+## 3. Visualisasi Alur (Input -> Database)
 
 ```mermaid
 sequenceDiagram
@@ -51,7 +51,7 @@ sequenceDiagram
     participant API as payment-api :3001
     participant RB as Cockatiel retry (inline)<br/>(maxAttempts=3 = 4 total fn() calls)
     participant AX as axios (timeout 1800ms)
-    participant GW as gateway-mock :3002<br/>(server-error → always-success)
+    participant GW as gateway-mock :3002<br/>(server-error -> always-success)
     participant SCH as RetryScheduler<br/>setInterval(every SCHEDULER_INTERVAL_MS)
     participant DB as PostgreSQL
     participant TC as TraceContext
@@ -61,7 +61,7 @@ sequenceDiagram
     Note over T,SCH: === Phase 1: Initial cycle (inline retry exhausts) ===
 
     T->>API: POST /payments {amount:60000}
-    API->>TC: withTrace() → traceId=T1 (new per request)
+    API->>TC: withTrace() -> traceId=T1 (new per request)
     API->>DB: INSERT payment (status=processing, total_retry_count=0)
 
     Note over RB: Inline retry (Cockatiel) — traceId=T1
@@ -74,7 +74,7 @@ sequenceDiagram
     RB->>API: onAttempt({outcome:retryable_failure, httpStatus:500, errorCode:upstream_error})
     API->>DB: INSERT attempt #1 (trace_id=T1, outcome=retryable_failure)
 
-    Note over RB: retries=0 < maxAttempts=3 → backoff 500ms → retry
+    Note over RB: retries=0 < maxAttempts=3 -> backoff 500ms -> retry
 
     Note over RB: Attempt 2 (retries=1)
     RB->>AX: POST /v1/charges
@@ -82,7 +82,7 @@ sequenceDiagram
     RB->>API: onAttempt({outcome:retryable_failure})
     API->>DB: INSERT attempt #2 (trace_id=T1)
 
-    Note over RB: retries=1 < 3 → backoff ~1000ms → retry
+    Note over RB: retries=1 < 3 -> backoff ~1000ms -> retry
 
     Note over RB: Attempt 3 (retries=2)
     RB->>AX: POST /v1/charges
@@ -90,7 +90,7 @@ sequenceDiagram
     RB->>API: onAttempt({outcome:retryable_failure})
     API->>DB: INSERT attempt #3 (trace_id=T1)
 
-    Note over RB: retries=2 < 3 → backoff ~2000ms → retry
+    Note over RB: retries=2 < 3 -> backoff ~2000ms -> retry
 
     Note over RB: Attempt 4 (retries=3, last allowed by maxAttempts=3)
     RB->>AX: POST /v1/charges
@@ -98,8 +98,8 @@ sequenceDiagram
     RB->>API: onAttempt({outcome:retryable_failure})
     API->>DB: INSERT attempt #4 (trace_id=T1)
 
-    Note over RB: retries=3, 3 < 3 is false → exit loop, throw last error
-    API->>API: applyOutcome → scheduled_for_retry<br/>(next_retry_at = now + SCHEDULER_BASE_DELAY_MS)
+    Note over RB: retries=3, 3 < 3 is false -> exit loop, throw last error
+    API->>API: applyOutcome -> scheduled_for_retry<br/>(next_retry_at = now + SCHEDULER_BASE_DELAY_MS)
     API->>DB: UPDATE payment SET status=scheduled_for_retry, next_retry_at=now+2s
     API-->>T: 201 Created {attemptCount:4, totalRetryCount:0}
 
@@ -121,7 +121,7 @@ sequenceDiagram
     DB-->>SCH: [payment with id=P1]
     SCH->>API: paymentsService.executePayment(P1, {source:'scheduler'})
 
-    Note over API: Re-enter executePayment → withTrace() → traceId=T2 (NEW)
+    Note over API: Re-enter executePayment -> withTrace() -> traceId=T2 (NEW)
     API->>RB: charge(req)
     RB->>AX: POST /v1/charges (trace header: T2)
     AX->>GW: HTTP POST
@@ -148,12 +148,12 @@ sequenceDiagram
 Berbeda dengan skenario 3 (always-timeout) yang menghasilkan `outcome='timeout'`, skenario 6 (server-error) menghasilkan **`outcome='retryable_failure'`**. Alasannya:
 
 - Gateway mock `server-error` merespons **HTTP 500 dengan body error** (bukan tidur 5s)
-- Axios terima respons → tidak ada `ECONNABORTED` (no timeout)
+- Axios terima respons -> tidak ada `ECONNABORTED` (no timeout)
 - `errorCode` = `upstream_error` (dari body gateway)
 - `classifyOutcome()` di `payments.service.ts:281`:
   - Bukan success, bukan circuit_open, bukan permanent (500 bukan 4xx)
   - Bukan `ETIMEDOUT`/`ECONNABORTED` (errorCode = `upstream_error`, bukan axios error code)
-  - → fallback ke `RETRYABLE_FAILURE`
+  - -> fallback ke `RETRYABLE_FAILURE`
 
 Untuk perbandingan lengkap klasifikasi outcome, lihat `TASK-14a-circuit-breaker.md` section 3 "Catatan tentang perbedaan outcome: timeout vs retryable_failure".
 
@@ -171,7 +171,7 @@ Untuk perbandingan lengkap klasifikasi outcome, lihat `TASK-14a-circuit-breaker.
    ⚠️ TANPA env ini, next_retry_at akan di-set ke now+30s, test akan timeout
    karena waitForScheduledForRetry(30000) tidak cukup menunggu
 ☐ Tidak ada payment lain dengan status=scheduled_for_retry (bisa ikut terpick scheduler)
-   → bersihkan via `DELETE FROM payments WHERE status='scheduled_for_retry'` sebelum test
+   -> bersihkan via `DELETE FROM payments WHERE status='scheduled_for_retry'` sebelum test
 ☐ Tidak ada payment lain dengan status=processing (scheduler tidak pick, tapi bisa ganggu assertion)
 ```
 
@@ -242,7 +242,7 @@ Cari di `logs/e2e/payment-api-*.log`:
 
 **Yang membedakan dari skenario 1 (transient)**:
 - Skenario 1: semua attempts dalam 1 trace ID (inline retry sukses di attempt 3)
-- Skenario 6 (ini): 2 trace IDs berbeda karena inline exhausted (4 attempts) → scheduler picks up cycle baru
+- Skenario 6 (ini): 2 trace IDs berbeda karena inline exhausted (4 attempts) -> scheduler picks up cycle baru
 
 ---
 
@@ -271,7 +271,7 @@ Cari di `logs/e2e/payment-api-*.log`:
 | Gejala | Kemungkinan cause | Fix |
 |---|---|---|
 | Test timeout 90s, payment masih `scheduled_for_retry` | Scheduler tidak jalan — `@nestjs/schedule` belum terinisialisasi | Cek `app.module.ts` — `ScheduleModule.forRoot()` harus ada di imports |
-| Test timeout 90s, payment masih `scheduled_for_retry`, scheduler log jalan | `SCHEDULER_BASE_DELAY_MS` tidak diset → default 30000 → `next_retry_at` = now+30s | Set `SCHEDULER_BASE_DELAY_MS=2000` di `.env` |
+| Test timeout 90s, payment masih `scheduled_for_retry`, scheduler log jalan | `SCHEDULER_BASE_DELAY_MS` tidak diset -> default 30000 -> `next_retry_at` = now+30s | Set `SCHEDULER_BASE_DELAY_MS=2000` di `.env` |
 | `totalRetryCount=0` padahal scheduler sudah pick | Scheduler tidak increment counter setelah retry | Cek `payments.service.ts` `applyOutcome` line 178-181 — harus `totalRetryCount: nextTotal` |
 | `trace_id` sama di 5 baris (semua T1) | TraceContext pakai AsyncLocalStorage yang tidak reset antar cycle | Cek `withTrace()` di `trace-context.ts` — harus wrap dengan NEW context untuk setiap scheduler cycle |
 | `attempts.length=4` (tidak ada attempt ke-5) | Scheduler tidak mempick payment, atau `next_retry_at` di-set ke masa depan terlalu jauh | Cek `SCHEDULER_BASE_DELAY_MS` — harus cukup pendek (< 10s). Verifikasi via `SELECT next_retry_at FROM payments WHERE id=...` |
@@ -285,10 +285,10 @@ Cari di `logs/e2e/payment-api-*.log`:
 ## 8. Catatan Edge Case
 
 - **Scheduler `setInterval` interval**: `SCHEDULER_INTERVAL_MS=5000` artinya setiap 5 detik. Test butuh tidur ~7s (`interval + 2s buffer`) supaya scheduler sempat tick. Buffer penting karena `setInterval` tidak deterministik tepat 5s.
-- **`SCHEDULER_BASE_DELAY_MS`** mengatur kapan `next_retry_at` di-set setelah inline exhaust. Default code 30s — **terlalu lama untuk test**. Set ke 1-3s di env test (`SCHEDULER_BASE_DELAY_MS=2000`) supaya scheduler bisa pick cepat. Tanpa env ini, `next_retry_at = now + 30s`, scheduler tidak akan pick dalam 30s pertama → `waitForTerminalStatus(30000)` timeout.
+- **`SCHEDULER_BASE_DELAY_MS`** mengatur kapan `next_retry_at` di-set setelah inline exhaust. Default code 30s — **terlalu lama untuk test**. Set ke 1-3s di env test (`SCHEDULER_BASE_DELAY_MS=2000`) supaya scheduler bisa pick cepat. Tanpa env ini, `next_retry_at = now + 30s`, scheduler tidak akan pick dalam 30s pertama -> `waitForTerminalStatus(30000)` timeout.
 - **Trace ID per cycle**: skenario 6 adalah satu-satunya yang **assert trace ID berbeda**. Skenario 1 assert trace ID **sama** (inline retry sukses, 1 trace). Jangan tertukar.
 - **`source: 'scheduler'` vs `'api'`**: di `ExecuteOptions`. Scheduler harus pass `source: 'scheduler'` supaya audit bisa membedakan. Cek `RetrySchedulerService` line 96-98 — `paymentsService.executePayment(id, {source:'scheduler'})`.
 - **Race condition**: kalau gateway switch ke `always-success` terjadi SETELAH scheduler tick pertama, scheduler akan tetap dapat 500 dan re-schedule. Test handle ini dengan `sleep(SCHEDULER_INTERVAL_MS + 2000)` supaya minimal 1 tick terjadi setelah switch.
-- **Multiple scheduler instances** (tidak ada di test, tapi di produksi): kalau 2 instance payment-api jalan, scheduler bisa dobel-process payment yang sama → perlu distributed lock (Redis SETNX). Tidak diuji di skenario ini.
+- **Multiple scheduler instances** (tidak ada di test, tapi di produksi): kalau 2 instance payment-api jalan, scheduler bisa dobel-process payment yang sama -> perlu distributed lock (Redis SETNX). Tidak diuji di skenario ini.
 - **Total audit rows = 5** (bukan 4): 4 inline attempts (T1) + 1 scheduler attempt (T2). Ini berbeda dari doc versi sebelumnya yang menyebut 4 baris — itu salah, karena Cockatiel v4 `maxAttempts=3` = 4 total fn() calls di phase 1, bukan 3.
 - **Outcome `retryable_failure`** (bukan `timeout`): karena gateway `server-error` merespons HTTP 500 (bukan tidur 5s seperti `always-timeout`). Lihat section 3 "Catatan tentang outcome".

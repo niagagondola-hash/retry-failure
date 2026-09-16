@@ -11,7 +11,7 @@
 
 Meverifikasi **end-to-end** seluruh failure scenarios yang dijanjikan oleh plan section 14.2 (7 backend scenarios) dan section 17 (5 demonstration scenarios A–E) menggunakan kombinasi tooling:
 
-1. **Jest + supertest** untuk 7 backend API scenarios — file spec `.e2e-spec.ts` di `apps/payment-api/test/e2e/`, menguji alur lengkap `POST /api/payments` → gateway mock → Cockatiel retry → audit trail → metrics → scheduler cycle, dengan assertion via HTTP response body, DB query langsung ke PostgreSQL, dan Prometheus `/metrics` text scraping.
+1. **Jest + supertest** untuk 7 backend API scenarios — file spec `.e2e-spec.ts` di `apps/payment-api/test/e2e/`, menguji alur lengkap `POST /api/payments` -> gateway mock -> Cockatiel retry -> audit trail -> metrics -> scheduler cycle, dengan assertion via HTTP response body, DB query langsung ke PostgreSQL, dan Prometheus `/metrics` text scraping.
 2. **Agent Browser** (skill `agent-browser`) untuk 5 UI demos — dijalankan terhadap **kedua** frontend: Next.js sandbox di port 3000 (TASK-12) **dan** Vue dashboard di port 5173 (TASK-13). Setiap demo mengklik tombol Demo A–E, memverifikasi UI state (toast / status badge / attempt timeline), lalu meng-capture screenshot sebagai evidence.
 3. **Hasil**: tabel PASS/FAIL + evidence (test output, DB query snapshot, metric snapshot, screenshot) didokumentasikan di `retry-failure/docs/e2e-results.md` — sumber rujukan untuk TASK-15 (documentation) dan DoD plan section 22.
 
@@ -41,9 +41,9 @@ Meverifikasi **end-to-end** seluruh failure scenarios yang dijanjikan oleh plan 
 - **Performance / load testing** — secara eksplisit dikecualikan plan section 19 ("Hal yang Sengaja Tidak Diimplementasikan"). Tidak ada k6 / Artillery / wrk script. Single-request E2E cukup untuk membuktikan correctness; SLO numbers (p95 latency, throughput) adalah production concern, didokumentasikan di TASK-15 caveats.
 - **Distributed / multi-instance scheduler test** — plan section 20.2 eksplisit menyebut demo single-instance, tidak ada distributed lock guarantee. E2E hanya menjalankan 1 instance `payment-api` (port 3001) dengan `@nestjs/schedule` in-process scheduler.
 - **Full Grafana dashboard verification** — TASK-11 hanya menyediakan sample PromQL queries (di `docs/` caveats), tidak provisioning JSON dashboard. E2E memverifikasi metric values via `/metrics` text scraping + manual `promql` query di Prometheus (optional), **bukan** visual Grafana dashboard assertion.
-- **Jaeger trace UI verification** — plan section 22 menyebut "Trace payment dapat ditemukan di Jaeger" — TASK-11 menyimplifikasi OTel ke `AsyncLocalStorage` + `payment_attempts.trace_id` (bukan full OTel SDK). E2E memverifikasi `trace_id` kolom di `payment_attempts` konsisten lintas attempts, **bukan** visual Jaeger UI screenshot. Full OTel → future TASK.
-- **Browser compatibility matrix** — Agent Browser memakai 1 browser engine (headless Chromium via `agent-browser` skill). Tidak ada cross-browser test (Firefox/Safari/Edge). Production browser matrix → TASK-15.
-- **Accessibility (a11y) audit** — Agent Browser snapshot berfokus business state (toast, status badge), bukan axe-core a11y scan. A11y audit → future work, tidak di plan rev 2.
+- **Jaeger trace UI verification** — plan section 22 menyebut "Trace payment dapat ditemukan di Jaeger" — TASK-11 menyimplifikasi OTel ke `AsyncLocalStorage` + `payment_attempts.trace_id` (bukan full OTel SDK). E2E memverifikasi `trace_id` kolom di `payment_attempts` konsisten lintas attempts, **bukan** visual Jaeger UI screenshot. Full OTel -> future TASK.
+- **Browser compatibility matrix** — Agent Browser memakai 1 browser engine (headless Chromium via `agent-browser` skill). Tidak ada cross-browser test (Firefox/Safari/Edge). Production browser matrix -> TASK-15.
+- **Accessibility (a11y) audit** — Agent Browser snapshot berfokus business state (toast, status badge), bukan axe-core a11y scan. A11y audit -> future work, tidak di plan rev 2.
 - **Mutation testing** — TIDAK menjalankan Stryker / mutator. Coverage 100% adalah unit test concern (TASK-04..11), bukan E2E.
 - **Database performance / index tuning** — E2E tidak mengukur query plan. DB query hanya untuk assertion state, bukan EXPLAIN ANALYZE.
 
@@ -64,7 +64,7 @@ Meverifikasi **end-to-end** seluruh failure scenarios yang dijanjikan oleh plan 
    -- harus return 0
    ```
    Bila ada: tunggu sampai terminal (success / failed / scheduled_for_retry), atau cleanup manual via `DELETE FROM payment_attempts WHERE payment_id IN (SELECT id FROM payments WHERE status='processing'); DELETE FROM payments WHERE status='processing';`.
-5. **Circuit breaker dimulai dari state CLOSED** — verifikasi via `curl -s http://localhost:3001/api/metrics | grep circuit_breaker_state`. Bila sudah OPEN (dari run sebelumnya yang crash): tunggu `BREAKER_COOLDOWN_MS` (10s) + 1 successful payment untuk HALF_OPEN → CLOSED.
+5. **Circuit breaker dimulai dari state CLOSED** — verifikasi via `curl -s http://localhost:3001/api/metrics | grep circuit_breaker_state`. Bila sudah OPEN (dari run sebelumnya yang crash): tunggu `BREAKER_COOLDOWN_MS` (10s) + 1 successful payment untuk HALF_OPEN -> CLOSED.
 6. **Environment variables di `.env`** (sudah diset di TASK-01 + TASK-10):
    ```
    SCHEDULER_INTERVAL_MS=5000   # production-like, bisa diturunkan ke 1000 untuk test env bila perlu
@@ -83,7 +83,7 @@ Meverifikasi **end-to-end** seluruh failure scenarios yang dijanjikan oleh plan 
 
 > **Test runner**: Jest 29 dengan preset `ts-jest`. HTTP client: `axios` (lebih mudah multipart / header manipulation daripada supertest murni untuk E2E cross-service). supertest dipakai bila ingin assert HTTP response shape via supertest's chainable API (optional — axios cukup).
 >
-> **Pattern umum**: `beforeAll` reset gateway mock ke `always-success` + clear DB. `beforeEach` set gateway mode sesuai scenario + record timestamp mulai. Test: `POST /api/payments` → poll `GET /api/payments/:id` sampai terminal status (timeout 60s) → assert `status` + `attemptCount` + audit rows + metrics. `afterEach` reset gateway ke `always-success` + optional DB cleanup.
+> **Pattern umum**: `beforeAll` reset gateway mock ke `always-success` + clear DB. `beforeEach` set gateway mode sesuai scenario + record timestamp mulai. Test: `POST /api/payments` -> poll `GET /api/payments/:id` sampai terminal status (timeout 60s) -> assert `status` + `attemptCount` + audit rows + metrics. `afterEach` reset gateway ke `always-success` + optional DB cleanup.
 
 ### Scenario 1 — Transient failure (`fail-first-n=2`)
 
@@ -101,7 +101,7 @@ Content-Type: application/json
 1. `POST /api/payments` body `{ "orderId": "E2E-S1-<uuid>", "amount": 50000, "currency": "IDR" }`.
 2. Polling `GET /api/payments/:id` setiap 200ms sampai `status` ∈ {`succeeded`, `failed`} atau timeout 30s.
 3. Fetch `GET /api/payments/:id` untuk full payload `{ payment, attempts }`.
-4. Fetch `GET /api/metrics` → parse `retry_attempts_total{outcome="failure"}` dan `payments_current_status{status="succeeded"}`.
+4. Fetch `GET /api/metrics` -> parse `retry_attempts_total{outcome="failure"}` dan `payments_current_status{status="succeeded"}`.
 
 **Assertions**:
 - [ ] `payment.status === 'succeeded'`.
@@ -163,17 +163,17 @@ PUT http://localhost:3002/admin/config
 PUT http://localhost:3002/admin/config
 { "mode": "always-timeout", "timeoutMs": 5000 }
 ```
-(`GATEWAY_TIMEOUT_MS=2000` di payment-api → gateway 5s pasti timeout di client.)
+(`GATEWAY_TIMEOUT_MS=2000` di payment-api -> gateway 5s pasti timeout di client.)
 
 **Flow**:
 1. Loop 3 kali `POST /api/payments` (orderId beda: `E2E-S3-1`, `E2E-S3-2`, `E2E-S3-3`).
-2. Setiap POST: tunggu terminal status (semua harus jadi `scheduled_for_retry` karena Cockatiel exhaust attempts tanpa success, dan breaker transition CLOSED → OPEN setelah failure ke-3).
-3. Verifikasi breaker state via `GET /api/metrics` → `circuit_breaker_state{service="payment-gateway"} === 1` (OPEN).
-4. POST 4th payment `E2E-S3-4` → ekspektasi **first attempt langsung `circuit_open`** (breaker short-circuit tanpa call gateway) + status payment `scheduled_for_retry`.
-5. Reset gateway ke `always-success`, tunggu `BREAKER_COOLDOWN_MS` (10s), lalu trigger 1 successful payment untuk HALF_OPEN → CLOSED.
+2. Setiap POST: tunggu terminal status (semua harus jadi `scheduled_for_retry` karena Cockatiel exhaust attempts tanpa success, dan breaker transition CLOSED -> OPEN setelah failure ke-3).
+3. Verifikasi breaker state via `GET /api/metrics` -> `circuit_breaker_state{service="payment-gateway"} === 1` (OPEN).
+4. POST 4th payment `E2E-S3-4` -> ekspektasi **first attempt langsung `circuit_open`** (breaker short-circuit tanpa call gateway) + status payment `scheduled_for_retry`.
+5. Reset gateway ke `always-success`, tunggu `BREAKER_COOLDOWN_MS` (10s), lalu trigger 1 successful payment untuk HALF_OPEN -> CLOSED.
 
 **Assertions**:
-- [ ] Payment #1: `attemptCount === 3` (3 timeout dalam satu Cockatiel cycle → exhaust `RETRY_MAX_ATTEMPTS=3`), `status === 'scheduled_for_retry'`, `totalRetryCount === 0`.
+- [ ] Payment #1: `attemptCount === 3` (3 timeout dalam satu Cockatiel cycle -> exhaust `RETRY_MAX_ATTEMPTS=3`), `status === 'scheduled_for_retry'`, `totalRetryCount === 0`.
 - [ ] Payment #2: `attemptCount === 3`, `status === 'scheduled_for_retry'`, `totalRetryCount === 0`.
 - [ ] Payment #3: `attemptCount === 3`, `status === 'scheduled_for_retry'`, `totalRetryCount === 0`.
 - [ ] Setelah 3rd payment selesai: `circuit_breaker_state{service="payment-gateway"} === 1` (OPEN).
@@ -183,8 +183,8 @@ PUT http://localhost:3002/admin/config
 **Evidence**:
 - Test output untuk 4 payment.
 - DB query: `SELECT id, order_id, status, attempt_count, total_retry_count FROM payments WHERE order_id LIKE 'E2E-S3-%' ORDER BY created_at;`.
-- Metric snapshot `circuit_breaker_state` sebelum (CLOSED=0) → setelah 3 payments (OPEN=1) → setelah 4th (OPEN=1, masih) → setelah reset (CLOSED=0).
-- Audit rows untuk payment #4: `SELECT attempt_number, outcome, http_status FROM payment_attempts WHERE payment_id = '<id-payment-4>';` → outcome `circuit_open` pada attempt #1.
+- Metric snapshot `circuit_breaker_state` sebelum (CLOSED=0) -> setelah 3 payments (OPEN=1) -> setelah 4th (OPEN=1, masih) -> setelah reset (CLOSED=0).
+- Audit rows untuk payment #4: `SELECT attempt_number, outcome, http_status FROM payment_attempts WHERE payment_id = '<id-payment-4>';` -> outcome `circuit_open` pada attempt #1.
 
 > **Reset breaker**: setelah scenario ini, breaker WAJIB di-reset ke CLOSED sebelum scenario selanjutnya jalan — gunakan helper `resetBreaker()` yang: (a) PUT gateway `always-success`, (b) `sleep(BREAKER_COOLDOWN_MS + 1000)`, (c) POST 1 successful payment. Verifikasi metric `circuit_breaker_state === 0`.
 
@@ -204,10 +204,10 @@ PUT http://localhost:3002/admin/config
 
 **Flow**:
 1. `POST /api/payments` body `{ "orderId": "E2E-S4-HERO-<uuid>", "amount": 100000, "currency": "IDR" }`.
-2. Cockatiel cycle: attempt #1 → gateway charge succeeds (charge tercatat di gateway idempotency store) → response dropped (client-side timeout) → retry → attempt #2 → gateway detect `Idempotency-Key` exists → replay existing response (no new charge) → success.
+2. Cockatiel cycle: attempt #1 -> gateway charge succeeds (charge tercatat di gateway idempotency store) -> response dropped (client-side timeout) -> retry -> attempt #2 -> gateway detect `Idempotency-Key` exists -> replay existing response (no new charge) -> success.
 3. Polling terminal status (timeout 60s karena retry cycle panjang).
 4. Fetch `GET /api/payments/:id` untuk verify `attempts` array.
-5. Fetch `GET http://localhost:3002/admin/stats` → bandingkan `actualCharges` vs `totalRequests`.
+5. Fetch `GET http://localhost:3002/admin/stats` -> bandingkan `actualCharges` vs `totalRequests`.
 
 **Assertions**:
 - [ ] `payment.status === 'succeeded'`.
@@ -273,20 +273,20 @@ PUT http://localhost:3002/admin/config
 1. PUT gateway `server-error`.
 2. Record `t0 = Date.now()`.
 3. `POST /api/payments` body `{ "orderId": "E2E-S6-<uuid>", "amount": 60000, "currency": "IDR" }`.
-4. Polling (timeout 30s). Expected: status jadi `scheduled_for_retry` (Cockatiel exhaust 3 attempts → `scheduled_for_retry` + `next_retry_at = now + backoff`).
+4. Polling (timeout 30s). Expected: status jadi `scheduled_for_retry` (Cockatiel exhaust 3 attempts -> `scheduled_for_retry` + `next_retry_at = now + backoff`).
 5. Verify `payment.totalRetryCount === 0` (scheduler belum jalan).
 6. Verify `payment.nextRetryAt` di-set (future timestamp).
 7. PUT gateway `always-success` (switch mode mid-run).
 8. Wait `<= SCHEDULER_INTERVAL_MS + buffer` (5000ms + 2000ms = 7s, atau kurangi `SCHEDULER_INTERVAL_MS=1000` di test env).
 9. Verify payment-api stdout log: line `scheduler_poll` + `payment_picked` untuk payment id tsb.
-10. Polling ulang (timeout 30s). Expected: `scheduled_for_retry → processing → succeeded`.
+10. Polling ulang (timeout 30s). Expected: `scheduled_for_retry -> processing -> succeeded`.
 11. Verify `payment.totalRetryCount === 1` (scheduler cycle ke-1).
 
 **Assertions**:
 - [ ] Setelah step 4: `status === 'scheduled_for_retry'`, `totalRetryCount === 0`, `nextRetryAt !== null`.
 - [ ] `nextRetryAt - createdAt >= 1000ms` (minimal backoff).
 - [ ] Setelah step 8 (scheduler cycle): `totalRetryCount === 1`.
-- [ ] Setelah step 10: `status === 'succeeded'`, `attemptCount >= 1` (dalam scheduler cycle, Cockatiel reset → 1 success attempt di cycle baru).
+- [ ] Setelah step 10: `status === 'succeeded'`, `attemptCount >= 1` (dalam scheduler cycle, Cockatiel reset -> 1 success attempt di cycle baru).
 - [ ] Trace ID **berbeda** antara initial cycle (3 attempts `server-error`) dan scheduler cycle (1 success attempt) — trace ID di-generate per execution cycle, NOT per payment.
 - [ ] Audit row dari scheduler cycle: `attempts[N].source === 'scheduler'` (bila kolom `source` ada di `payment_attempts` — bila tidak, infer via log line `scheduler_poll`).
 
@@ -336,7 +336,7 @@ PUT http://localhost:3002/admin/config
 - Payment API log snapshot: `grep -E "scheduler_poll|payment_picked|payment_finish|max_total_retries" payment-api.log | grep <paymentId> | head -n 30;`.
 - Metric snapshot delta: `payments_current_status{status="failed"}` bertambah 1, `retry_attempts_total{outcome="failure"}` bertambah banyak.
 
-> **Timeout tuning**: scenario 7 duration bisa 60-90s dengan `SCHEDULER_INTERVAL_MS=5000`. Bila test terlalu lambat, override env `SCHEDULER_INTERVAL_MS=1000` + `MAX_TOTAL_RETRIES=3` di test env (bukan production env) → duration turun ke ~15-25s. Document caveat di `e2e-results.md`.
+> **Timeout tuning**: scenario 7 duration bisa 60-90s dengan `SCHEDULER_INTERVAL_MS=5000`. Bila test terlalu lambat, override env `SCHEDULER_INTERVAL_MS=1000` + `MAX_TOTAL_RETRIES=3` di test env (bukan production env) -> duration turun ke ~15-25s. Document caveat di `e2e-results.md`.
 
 ---
 
@@ -358,13 +358,13 @@ PUT http://localhost:3002/admin/config
 3. Click button labeled **"Demo A: Retry menyelamatkan transient failure"**.
 4. Wait sampai status terminal (max 30s) — observer toast / status badge.
 5. Assert UI state:
-   - Payment muncul di list dengan status `processing` → `succeeded`.
+   - Payment muncul di list dengan status `processing` -> `succeeded`.
    - Payment detail: 3 attempts di timeline (2 failed + 1 succeeded).
    - Toast "PASSED" muncul.
 6. Screenshot: save ke `docs/e2e-evidence/demo-A-vue-<timestamp>.png`.
 
 **Backend assertion (cross-check via curl)**:
-- `GET /api/payments?orderId=E2E-DEMO-A-*` → payment dengan `attemptCount=3`, `status=succeeded`.
+- `GET /api/payments?orderId=E2E-DEMO-A-*` -> payment dengan `attemptCount=3`, `status=succeeded`.
 
 **Expected**: 5 attempts × 2 frontends = 10 payment records, semua `status=succeeded`, `attemptCount=3`.
 
@@ -420,9 +420,9 @@ PUT http://localhost:3002/admin/config
 6. Screenshot.
 
 **Backend cross-check**:
-- `GET /api/payments/<id>` → `attemptCount >= 2`.
-- `GET http://localhost:3002/admin/stats` → `actualCharges === 1`.
-- `GET /api/metrics` → `gateway_idempotent_replays_total` bertambah ≥ 1.
+- `GET /api/payments/<id>` -> `attemptCount >= 2`.
+- `GET http://localhost:3002/admin/stats` -> `actualCharges === 1`.
+- `GET /api/metrics` -> `gateway_idempotent_replays_total` bertambah ≥ 1.
 
 > **HERO**: Demo D adalah hero scenario. Bila FAIL di salah satu frontend, document root cause + plan follow-up di `e2e-results.md`.
 
@@ -444,7 +444,7 @@ PUT http://localhost:3002/admin/config
 
 **Backend cross-check**:
 - `SELECT created_at FROM payment_attempts WHERE payment_id='<id>' ORDER BY attempt_number;` — delta timestamp >= 10000ms.
-- `GET /api/metrics` → `payment_gateway_requests_total{outcome="failure",http_status="429"}` bertambah ≥ 1.
+- `GET /api/metrics` -> `payment_gateway_requests_total{outcome="failure",http_status="429"}` bertambah ≥ 1.
 
 ---
 
@@ -459,7 +459,7 @@ PUT http://localhost:3002/admin/config
 │   │   ├── payments.ts          # createPayment(body), getPayment(id), waitForTerminal(id, timeoutMs=60000)
 │   │   ├── metrics.ts           # getMetric(name) — GET /api/metrics + parse Prometheus text
 │   │   ├── db.ts                # queryAttempts(paymentId), queryPayment(paymentId) — pg client direct
-│   │   └── breaker.ts           # resetBreaker() — wait cooldown + 1 successful payment → CLOSED
+│   │   └── breaker.ts           # resetBreaker() — wait cooldown + 1 successful payment -> CLOSED
 │   ├── payments.transient.e2e-spec.ts           # Scenario 1
 │   ├── payments.permanent.e2e-spec.ts           # Scenario 2
 │   ├── payments.circuit-breaker.e2e-spec.ts     # Scenario 3
@@ -700,7 +700,7 @@ export async function resetBreaker(): Promise<void> {
   await resetGatewayToHealthy();
   // 2. Tunggu cooldown (BREAKER_COOLDOWN_MS=10000 + buffer 1000)
   await new Promise((r) => setTimeout(r, 11000));
-  // 3. Trigger 1 successful payment untuk HALF_OPEN → CLOSED
+  // 3. Trigger 1 successful payment untuk HALF_OPEN -> CLOSED
   const { payment } = await createPayment({ orderId: `BREAKER-RESET-${Date.now()}`, amount: 1000, currency: 'IDR' });
   await waitForTerminalStatus(payment.id, 30000);
   // 4. Verify CLOSED
@@ -792,7 +792,7 @@ describe('Scenario 3 — Circuit breaker (always-timeout, threshold=3)', () => {
     await resetBreaker(); // bersihkan state untuk scenario berikutnya
   });
 
-  it('3 payments → all scheduled_for_retry + breaker OPEN', async () => {
+  it('3 payments -> all scheduled_for_retry + breaker OPEN', async () => {
     const ids: string[] = [];
     for (let i = 1; i <= 3; i++) {
       const { payment } = await createPayment({ orderId: `E2E-S3-${i}-${Date.now()}`, amount: 10000, currency: 'IDR' });
@@ -807,7 +807,7 @@ describe('Scenario 3 — Circuit breaker (always-timeout, threshold=3)', () => {
     expect(breakerState).toBe(1); // 0=CLOSED, 1=OPEN, 2=HALF_OPEN
   }, 120000);
 
-  it('4th payment → circuit_open in first attempt + scheduled_for_retry', async () => {
+  it('4th payment -> circuit_open in first attempt + scheduled_for_retry', async () => {
     const { payment } = await createPayment({ orderId: `E2E-S3-4-${Date.now()}`, amount: 10000, currency: 'IDR' });
     const finalPayment = await waitForScheduledForRetry(payment.id, 30000);
     expect(finalPayment.status).toBe('scheduled_for_retry');
@@ -886,7 +886,7 @@ import { setGatewayMode } from './helpers/gateway';
 import { createPayment, waitForScheduledForRetry, waitForTerminalStatus } from './helpers/payments';
 import { queryAttempts, queryPayment } from './helpers/db';
 
-describe('Scenario 6 — Durable scheduler retry (server-error → always-success)', () => {
+describe('Scenario 6 — Durable scheduler retry (server-error -> always-success)', () => {
   const orderId = `E2E-S6-${Date.now()}`;
   const SCHEDULER_INTERVAL_MS = parseInt(process.env.SCHEDULER_INTERVAL_MS ?? '5000', 10);
 
@@ -898,8 +898,8 @@ describe('Scenario 6 — Durable scheduler retry (server-error → always-succes
     await setGatewayMode('always-success');
   });
 
-  it('payment scheduled_for_retry → scheduler picks → succeeded', async () => {
-    // Phase 1: initial Cockatiel cycle exhaust → scheduled_for_retry
+  it('payment scheduled_for_retry -> scheduler picks -> succeeded', async () => {
+    // Phase 1: initial Cockatiel cycle exhaust -> scheduled_for_retry
     const { payment } = await createPayment({ orderId, amount: 60000, currency: 'IDR' });
     const scheduledPayment = await waitForScheduledForRetry(payment.id, 30000);
     expect(scheduledPayment.status).toBe('scheduled_for_retry');
@@ -1083,7 +1083,7 @@ Format template:
 - [ ] `docs/e2e-results.md` berisi tabel dengan kolom: scenario, status (PASS/FAIL), evidence (link test output + DB query snapshot + metric snapshot), notes.
 - [ ] **Scenario 4 (hero) PASS**: `actualCharges === 1` via `/admin/stats`, `replays >= 1` via metric `gateway_idempotent_replays_total`, `status === succeeded`, `attemptCount >= 2`, `attempts[1].replayed === true`.
 - [ ] **Scenario 5 PASS**: `delay_before_next_ms >= retryAfterSeconds × 1000` (verified via delta `created_at` antar attempts, atau via metadata field bila ada).
-- [ ] **Scenario 6 PASS**: scheduler memproses due payment end-to-end — `scheduled_for_retry → processing → succeeded`, `totalRetryCount === 1` setelah 1 scheduler cycle, trace ID berbeda antar cycle.
+- [ ] **Scenario 6 PASS**: scheduler memproses due payment end-to-end — `scheduled_for_retry -> processing -> succeeded`, `totalRetryCount === 1` setelah 1 scheduler cycle, trace ID berbeda antar cycle.
 - [ ] **Scenario 7 PASS**: `totalRetryCount >= MAX_TOTAL_RETRIES (5)` sebelum `status === failed`, `failureReason` mengandung `max_total_retries_exceeded` (atau sinonim), `nextRetryAt === null`, scheduler tidak pick lagi setelah `failed`.
 - [ ] UI demos A-E semua PASS di **kedua** frontend (Next.js sandbox port 3000 + Vue dashboard port 5173) — total 10 PASS.
 - [ ] Bila ada FAIL: root cause note + plan follow-up (TASK-15 atau future task) terdokumentasi di `e2e-results.md`.
@@ -1091,8 +1091,8 @@ Format template:
 - [ ] **No console errors** di Agent Browser snapshot — verify via DevTools console log capture (Agent Browser skill output).
 - [ ] `apps/payment-api/package.json` memuat script `test:e2e` yang berjalan via `pnpm test:e2e`.
 - [ ] Semua screenshot Agent Browser tersimpan di `docs/e2e-evidence/` dengan naming convention `demo-{A-E}-{nextjs|vue}-<timestamp>.png`.
-- [ ] Circuit breaker di-reset ke CLOSED di akhir run (verify via `curl -s http://localhost:3001/api/metrics | grep circuit_breaker_state` → `circuit_breaker_state{service="payment-gateway"} 0`).
-- [ ] Tidak ada orphaned `processing` payments di DB setelah run (verify via `SELECT count(*) FROM payments WHERE status='processing'` → 0).
+- [ ] Circuit breaker di-reset ke CLOSED di akhir run (verify via `curl -s http://localhost:3001/api/metrics | grep circuit_breaker_state` -> `circuit_breaker_state{service="payment-gateway"} 0`).
+- [ ] Tidak ada orphaned `processing` payments di DB setelah run (verify via `SELECT count(*) FROM payments WHERE status='processing'` -> 0).
 
 ---
 
@@ -1103,9 +1103,9 @@ Format template:
 > **WAJIB BACA**: sebelum menjalankan command di bawah, cek kondisi lingkungan Anda via [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 1 (Pre-flight Check).
 >
 > Ringkasan keyword:
-> - `pnpm --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
-> - `docker --version` ada → KONDISI LOCAL. Tidak ada → KONDISI SANDBOX → butuh external PostgreSQL atau skip DB-dependent commands.
-> - `curl -s http://localhost:3000` sibuk → KONDISI SANDBOX → payment-api pakai PORT=3001, gateway-mock pakai PORT=3002. Bebas → KONDISI LOCAL → payment-api pakai PORT=3000, gateway-mock pakai PORT=3001.
+> - `pnpm --version` ada -> KONDISI LOCAL. Tidak ada -> KONDISI SANDBOX -> jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.
+> - `docker --version` ada -> KONDISI LOCAL. Tidak ada -> KONDISI SANDBOX -> butuh external PostgreSQL atau skip DB-dependent commands.
+> - `curl -s http://localhost:3000` sibuk -> KONDISI SANDBOX -> payment-api pakai PORT=3001, gateway-mock pakai PORT=3002. Bebas -> KONDISI LOCAL -> payment-api pakai PORT=3000, gateway-mock pakai PORT=3001.
 
 Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih salah satu sesuai kondisi.
 
@@ -1274,7 +1274,7 @@ echo "  [x] Exponential backoff + jitter terkonfigurasi (config-driven, scenario
 echo "  [x] Circuit breaker dapat dibuktikan melalui E2E (scenario 3)"
 echo "  [x] Permanent 4xx tidak di-retry (scenario 2)"
 echo "  [x] Retry-After dihormati (scenario 5)"
-echo "  [x] Exhausted execution cycle → scheduled_for_retry (scenario 1, 6)"
+echo "  [x] Exhausted execution cycle -> scheduled_for_retry (scenario 1, 6)"
 echo "  [x] Scheduler memproses due payment (scenario 6)"
 echo "  [x] MAX_TOTAL_RETRIES mengakhiri payment menjadi failed (scenario 7)"
 echo "  [x] Idempotency menjamin actualCharges <= 1 (scenario 4 — HERO)"
@@ -1297,7 +1297,7 @@ echo "  [ ] README menjelaskan failure scenarios + business impact (TASK-15)"
 ### Use Agent Browser for UI scenarios (Demo A-E); pure API scenarios (1, 2, 5, 6, 7) cukup Jest + supertest + curl + DB inspection
 
 - **Pure API scenarios** (1, 2, 5, 6, 7): Jest + supertest (atau axios langsung) + DB query via `pg` + curl ke `/api/metrics` sudah cukup. Tidak perlu UI.
-- **UI scenarios (Demo A-E)**: WAJIB via Agent Browser — tujuan demo adalah membuktikan UI/UX flow berfungsi end-to-end (button click → status badge update → toast → timeline render). Screenshot diperlukan sebagai evidence visual.
+- **UI scenarios (Demo A-E)**: WAJIB via Agent Browser — tujuan demo adalah membuktikan UI/UX flow berfungsi end-to-end (button click -> status badge update -> toast -> timeline render). Screenshot diperlukan sebagai evidence visual.
 - **Hybrid** (scenario 4 hero): backend assertion via Jest (most stringent — `actualCharges=1` via `/admin/stats`), UI assertion via Agent Browser (toast "PASSED" + attempt timeline dengan `replayed: true` badge). Keduanya wajib PASS.
 
 ### Hero scenario 4 MUST pass — bila tidak, plan section 22 DoD fails
@@ -1316,14 +1316,14 @@ echo "  [ ] README menjelaskan failure scenarios + business impact (TASK-15)"
 - Scenario 7 (exhaustion) butuh 5 scheduler cycles — DB reset akan memutus tracking.
 - **Solution**: reset DB hanya di `beforeAll` (setup.ts) + `afterAll`. Isolation antar spec file via unique `orderId` prefix (`E2E-S1-`, `E2E-S2-`, dst).
 
-### If breaker OPEN blocks scenario 1: reset with mode=always-success + wait cooldown + 1 successful payment → HALF_OPEN → CLOSED
+### If breaker OPEN blocks scenario 1: reset with mode=always-success + wait cooldown + 1 successful payment -> HALF_OPEN -> CLOSED
 
 - Setelah scenario 3 (circuit breaker) berjalan, breaker state kemungkinan OPEN.
 - Scenario 1 (transient) butuh breaker CLOSED — bila OPEN, attempts pertama langsung `circuit_open` bukan `retryable_failure`, assertion fail.
 - **Reset procedure** (helper `resetBreaker()`):
   1. PUT gateway `always-success`.
   2. `sleep(BREAKER_COOLDOWN_MS + 1000)` = 11s.
-  3. POST 1 successful payment → trigger HALF_OPEN → success → CLOSED.
+  3. POST 1 successful payment -> trigger HALF_OPEN -> success -> CLOSED.
   4. Verify via `getMetric('circuit_breaker_state', { service: 'payment-gateway' }) === 0`.
 - **Panggil `resetBreaker()` di `beforeAll`** setiap spec yang butuh breaker CLOSED (scenario 1, 2, 4, 5, 6, 7). Scenario 3 sengaja TIDAK reset di `beforeAll` karena butuh start dari CLOSED lalu transitions ke OPEN.
 
@@ -1336,7 +1336,7 @@ echo "  [ ] README menjelaskan failure scenarios + business impact (TASK-15)"
 
 ### Optional: test env tuning untuk faster E2E
 
-- Production env: `SCHEDULER_INTERVAL_MS=5000`, `MAX_TOTAL_RETRIES=5` → scenario 6+7 total ~90s.
+- Production env: `SCHEDULER_INTERVAL_MS=5000`, `MAX_TOTAL_RETRIES=5` -> scenario 6+7 total ~90s.
 - Test env override (di `.env.test` atau `process.env` di `setup.ts`):
   ```
   SCHEDULER_INTERVAL_MS=1000
