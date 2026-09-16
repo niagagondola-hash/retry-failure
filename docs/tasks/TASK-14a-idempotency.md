@@ -32,6 +32,8 @@ cd apps/payment-api
 mkdir -p ../logs/e2e
 
 pnpm test:e2e:idempotency 2>&1 | tee ../logs/e2e/S4-idempotency-$(date +%s).log
+
+pnpm test:e2e:idempotency 2>&1 | Tee-Object -FilePath "..\logs\e2e\S4-idempotency-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
 ```
 
 **Atau tanpa named script**:

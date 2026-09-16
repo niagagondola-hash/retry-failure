@@ -73,7 +73,9 @@ describe('Scenario 7 — Total retry exhaustion (MAX_TOTAL_RETRIES=5)', () => {
 
   it('payment eventually failed after totalRetryCount >= MAX_TOTAL_RETRIES', async () => {
     const payment = await createPayment({ orderId, amount: 30000, currency: 'IDR' });
-    const finalPayment = await waitForFailed(payment.id, 180000);
+    // waitForFailed default 240s — enough for 6 scheduler cycles with SCHEDULER_BASE_DELAY_MS=2000
+    // (6 × 2s delay + 6 × ~3s execution = ~30s) OR with default 30s delay (6 × 30s = 180s+).
+    const finalPayment = await waitForFailed(payment.id, 240000);
 
     expect(finalPayment.status).toBe('failed');
     expect(finalPayment.totalRetryCount).toBeGreaterThanOrEqual(MAX_TOTAL_RETRIES);
@@ -88,5 +90,5 @@ describe('Scenario 7 — Total retry exhaustion (MAX_TOTAL_RETRIES=5)', () => {
     await new Promise((r) => setTimeout(r, SCHEDULER_INTERVAL_MS + 2000));
     const attemptsAfter = await queryAttempts(payment.id);
     expect(attemptsAfter.length).toBe(attemptsBefore);
-  }, 240000);
+  }, 300000);  // 5 min Jest timeout — safety margin for waitForFailed 240s + sleep 7s
 });

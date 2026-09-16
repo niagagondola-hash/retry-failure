@@ -70,7 +70,7 @@ export async function waitForScheduledForRetry(id: string, timeoutMs = 30000): P
   throw new Error(`Payment ${id} did not reach scheduled_for_retry within ${timeoutMs}ms`);
 }
 
-export async function waitForFailed(id: string, timeoutMs = 120000): Promise<PaymentView> {
+export async function waitForFailed(id: string, timeoutMs = 240000): Promise<PaymentView> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     const { payment } = await getPayment(id);
