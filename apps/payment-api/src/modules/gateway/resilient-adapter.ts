@@ -2,9 +2,11 @@ import { Injectable } from '@nestjs/common';
 import {
   executeWithResilience,
   getBreakerState,
+  classifyError,
   type ResilienceConfig,
   type ResilienceOutcome,
   type BreakerState,
+  type ClassifiableInput,
 } from '@retry-failure/resilience';
 import { MetricsService } from '../observability/metrics.service';
 import { PaymentGatewayPort, AttemptObservable } from './port';
@@ -68,7 +70,18 @@ export class ResilientPaymentGateway implements PaymentGatewayPort, AttemptObser
         }
 
         if (innerResult.status === 'failed') {
-          throw new GatewayChargeError(innerResult);
+          // PLAN1 section 5.3: classify error before deciding to throw.
+          //   - Permanent (4xx selain 429/408): return result, DON'T throw.
+          //     Cockatiel handleAll retries all thrown errors, so returning
+          //     prevents retry. applyOutcome() will detect permanent failure
+          //     and transition to FAILED.
+          //   - Retryable (5xx, 429, timeout, network): throw GatewayChargeError
+          //     so Cockatiel retries.
+          const classification = classifyChargeResult(innerResult);
+          if (!classification.retryable) {
+            return innerResult;  // permanent — no retry
+          }
+          throw new GatewayChargeError(innerResult);  // retryable — throw for retry
         }
 
         return innerResult;
@@ -149,4 +162,37 @@ export class GatewayChargeError extends Error {
     super(result.errorMessage ?? 'gateway charge failed');
     this.name = 'GatewayChargeError';
   }
+}
+
+/**
+ * Classify a ChargeResult using the resilience package's classifyError().
+ * Converts ChargeResult -> ClassifiableInput, then returns classification.
+ *
+ * PLAN1 section 5.3:
+ *   - 5xx, 429, timeout, ECONNREFUSED, ECONNRESET -> retryable: true
+ *   - 4xx selain 429 -> permanent (retryable: false)
+ *
+ * Used by fn body to decide: throw (retry) vs return (no retry).
+ */
+function classifyChargeResult(result: ChargeResult) {
+  // Network error (no HTTP status) — classify by errorCode
+  if (result.httpStatus === undefined) {
+    const input: ClassifiableInput = {
+      kind: 'network',
+      code: result.errorCode ?? 'UNKNOWN',
+      message: result.errorMessage ?? 'unknown error',
+    };
+    return classifyError(input);
+  }
+
+  // HTTP response — classify by status code + body
+  const input: ClassifiableInput = {
+    kind: 'http',
+    status: result.httpStatus,
+    body: {
+      error_code: result.errorCode,
+      message: result.errorMessage,
+    },
+  };
+  return classifyError(input);
 }
