@@ -57,10 +57,25 @@ export function buildRetryPolicy(config: ResilienceConfig): RetryPolicy {
     let retryAfterMs: number | undefined;
 
     if (result && 'error' in result && result.error) {
-      // Classify error untuk extract retryAfterMs
-      const input = toClassifiableInput(result.error);
-      const classification = classifyError(input);
-      retryAfterMs = classification.retryAfterMs ?? undefined;
+      const err = result.error as Record<string, unknown> | null;
+
+      // Check if error wraps a ChargeResult (e.g., GatewayChargeError from resilient-adapter.ts).
+      // GatewayChargeError has `.result` property containing ChargeResult with retryAfterMs.
+      // This is the primary path for Retry-After extraction in this project.
+      if (err && typeof err === 'object' && 'result' in err) {
+        const chargeResult = err.result as { retryAfterMs?: number } | undefined;
+        if (chargeResult && typeof chargeResult.retryAfterMs === 'number') {
+          retryAfterMs = chargeResult.retryAfterMs;
+        }
+      }
+
+      // Fallback: try classifyError for raw AxiosError shape (e.response.status)
+      // This handles cases where error is not wrapped in GatewayChargeError.
+      if (retryAfterMs === undefined) {
+        const input = toClassifiableInput(err);
+        const classification = classifyError(input);
+        retryAfterMs = classification.retryAfterMs ?? undefined;
+      }
     }
 
     // Delay = max(exponential, retryAfterMs) supaya Retry-After selalu dihormati
