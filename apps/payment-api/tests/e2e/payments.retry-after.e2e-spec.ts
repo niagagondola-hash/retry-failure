@@ -101,14 +101,12 @@ describe('Scenario 5 - Retry-After (rate-limited, retryAfterSeconds=3)', () => {
     // Verify delayBeforeNextMs in audit (first attempt should have 3000ms).
     // Note: pg may return delay_before_next_ms as string with comma (e.g., "3,000").
     // We strip commas before Number() conversion to handle this.
-    console.log('dbAttempts', dbAttempts);
     const withDelay = dbAttempts.filter((a) => {
       if (a.delay_before_next_ms === null || a.delay_before_next_ms === undefined) return false;
       const cleaned = String(a.delay_before_next_ms).replace(/,/g, '');
       const parsed = Number(cleaned);
       return !isNaN(parsed) && parsed >= 3000;
     });
-    console.log('withDelay', withDelay);
     expect(withDelay.length).toBeGreaterThanOrEqual(1);
   }, 30000); // 30s Jest timeout — enough for 2 attempts (~3s) + buffer
 });

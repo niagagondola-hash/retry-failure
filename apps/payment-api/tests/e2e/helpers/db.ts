@@ -3,9 +3,7 @@ import { pgClient, ensureDbConnected } from './setup';
 export async function queryAttempts(paymentId: string): Promise<Array<Record<string, unknown>>> {
   await ensureDbConnected();
   const { rows } = await pgClient.query(
-    `SELECT 
-      attempt_number, outcome, http_status, trace_id, gateway_reference, replayed, duration_ms, created_at,
-      delay_before_next_ms
+    `SELECT attempt_number, outcome, http_status, trace_id, gateway_reference, replayed, duration_ms, delay_before_next_ms, created_at
      FROM payment_attempts WHERE payment_id = $1 ORDER BY attempt_number ASC`,
     [paymentId]
   );
