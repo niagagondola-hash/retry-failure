@@ -62,7 +62,7 @@ describe('Scenario 5 - Retry-After (rate-limited, retryAfterSeconds=3)', () => {
 
   it('should respect Retry-After header (delay >= 3000ms between attempts)', async () => {
     const payment = await createPayment({ orderId, amount: 25000, currency: 'IDR' });
-    const { attempts } = await waitForTerminalStatus(payment.id, 60000);
+    const { attempts } = await waitForTerminalStatus(payment.id, 120000);
 
     // Verify attempts got 429
     const rateLimitedAttempts = attempts.filter((a) => a.httpStatus === 429);

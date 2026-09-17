@@ -16,6 +16,7 @@ import {
   circuitBreaker,
   handleAll,
   ExponentialBackoff,
+  DelegateBackoff,
   ConsecutiveBreaker,
   TimeoutStrategy,
   type RetryPolicy,
@@ -23,28 +24,96 @@ import {
   type CircuitBreakerPolicy,
 } from './cockatiel-adapter';
 import type { ResilienceConfig } from './types';
+import { classifyError, type ClassifiableInput } from '../errors/index';
 
 /**
- * Build retry policy dengan ExponentialBackoff + decorrelated jitter.
+ * Build retry policy dengan custom backoff yang menghormati Retry-After header.
+ *
+ * Plan section 6: gateway bisa balas 429 + Retry-After header. Cockatiel
+ * ExponentialBackoff default tidak baca header ini. Kita pakai DelegateBackoff
+ * yang:
+ *   1. Extract error dari context.result (FailureReason)
+ *   2. Classify error untuk dapat retryAfterMs
+ *   3. Jika retryAfterMs ada -> delay = max(exponential, retryAfterMs)
+ *   4. Jika tidak -> delay = exponential (default behavior)
  *
  * Plan section 15: RETRY_MAX_ATTEMPTS, RETRY_BASE_DELAY_MS, RETRY_MAX_DELAY_MS,
  * RETRY_JITTER_RATIO. Jitter dari decorrelatedJitterGenerator (Cockatiel default).
  *
  * `handleAll` means retry on any thrown error. Filter retryable-only
- * dilakukan di composition.ts via onFailure callback (classifier dari TASK-04).
+ * dilakukan di resilient-adapter.ts (return untuk permanent, throw untuk retryable).
  */
 export function buildRetryPolicy(config: ResilienceConfig): RetryPolicy {
-  const backoff = new ExponentialBackoff({
-    initialDelay: config.retryBaseDelayMs,
-    maxDelay: config.retryMaxDelayMs,
-    exponent: 2,
-    // Cockatiel default: decorrelatedJitterGenerator. Tidak ada option ratio.
-    // Jitter di-handle Cockatiel internal (decorrelated jitter adalah best practice per AWS + Polly).
+  // Custom backoff: DelegateBackoff yang baca retryAfterMs dari error context.
+  // Context shape: { attempt, result: { error: unknown } | { value: unknown } }
+  // State: { exponential: number } untuk track exponential backoff across retries.
+  const customBackoff = new DelegateBackoff((context: any, state?: { exponential: number }) => {
+    // Calculate exponential backoff (mirroring ExponentialBackoff behavior)
+    const baseExponential = state?.exponential ?? config.retryBaseDelayMs;
+    const nextExponential = Math.min(baseExponential * 2, config.retryMaxDelayMs);
+
+    // Extract error from context.result (FailureReason)
+    const result = context?.result as { error?: unknown } | { value?: unknown } | undefined;
+    let retryAfterMs: number | undefined;
+
+    if (result && 'error' in result && result.error) {
+      // Classify error untuk extract retryAfterMs
+      const input = toClassifiableInput(result.error);
+      const classification = classifyError(input);
+      retryAfterMs = classification.retryAfterMs ?? undefined;
+    }
+
+    // Delay = max(exponential, retryAfterMs) supaya Retry-After selalu dihormati
+    const delay = retryAfterMs !== undefined
+      ? Math.max(nextExponential, retryAfterMs)
+      : nextExponential;
+
+    return {
+      delay,
+      state: { exponential: nextExponential },
+    };
   });
+
   return retry(handleAll, {
     maxAttempts: config.retryMaxAttempts,
-    backoff,
+    backoff: customBackoff,
   });
+}
+
+/**
+ * Convert unknown error to ClassifiableInput for classifier.
+ * Mirrors logic in composition.ts toClassifiableInput.
+ */
+function toClassifiableInput(err: unknown): ClassifiableInput {
+  if (err === null || err === undefined) {
+    return { kind: 'network', code: 'UNKNOWN', message: 'unknown error' };
+  }
+
+  const e = err as Record<string, unknown>;
+  const response = e.response as { status?: number; data?: unknown; headers?: Record<string, string | string[] | undefined> } | undefined;
+
+  if (response?.status) {
+    return {
+      kind: 'http',
+      status: response.status,
+      body: response.data,
+      headers: response.headers,
+    };
+  }
+
+  if (typeof e.code === 'string' && typeof e.message === 'string') {
+    return {
+      kind: 'network',
+      code: e.code,
+      message: e.message,
+    };
+  }
+
+  return {
+    kind: 'network',
+    code: 'UNKNOWN',
+    message: String(e.message ?? err),
+  };
 }
 
 /**
