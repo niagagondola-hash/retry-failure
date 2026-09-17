@@ -345,3 +345,288 @@ Tidak boleh ada `[retry] sleeping 500ms` (default backoff) — kalau ada, berart
 - **Retry-After value lain** (mis. `Retry-After: Wed, 21 Oct 2025 07:28:00 GMT` — HTTP date format) **tidak diuji** di skenario ini. Hanya numeric seconds. Kalau mau uji date format, buat skenario tambahan.
 
 - **Mode `rate-limited` di gateway mock punya `retryAfterSeconds` parameter** — kalau tidak diset, default-nya mungkin 1s atau 0. Selalu pass explicit `retryAfterSeconds: 3` di `setGatewayMode`.
+
+---
+
+## 9. Bug History (Semua Bug yang Ditemukan + Fixed)
+
+Selama development test S5, ditemukan **5 bug** yang menyebabkan test fail. Semua sudah diperbaiki.
+
+### Bug 1: Cockatiel ExponentialBackoff tidak baca Retry-After header
+
+**Gejala**: Delta antar attempt hanya ~500ms (default backoff), bukan 3000ms (Retry-After).
+
+**Root cause**: 
+- `classifier.ts` extract `retryAfterMs=3000` dari header ✓
+- `composition.ts` extract `retryAfterMs` dari error ✓
+- **TAPI** `buildRetryPolicy()` pakai `ExponentialBackoff` Cockatiel (500ms, 1000ms, 2000ms) — tidak pernah baca `retryAfterMs`
+- Cockatiel `ExponentialBackoff` tidak punya mechanism untuk override delay per-attempt berdasarkan response header
+
+**Fix**: Ganti `ExponentialBackoff` ke `DelegateBackoff` yang baca `context.result.error` untuk extract `retryAfterMs`.
+
+**File**: `packages/resilience/src/policies/policies.ts`
+
+**PLAN1 compliance**: Section 6 line 333 — "Untuk kebutuhan dynamic delay, gunakan adapter/backoff mechanism yang sesuai Cockatiel, tanpa mengubah domain semantics." `DelegateBackoff` adalah built-in Cockatiel, bukan custom implementation.
+
+---
+
+### Bug 2: DelegateBackoff error shape mismatch (GatewayChargeError vs AxiosError)
+
+**Gejala**: DelegateBackoff sudah diimplement, tapi delta antar attempt masih ~500ms (Retry-After masih tidak dihormati).
+
+**Root cause**:
+- `resilient-adapter.ts` fn body: `throw new GatewayChargeError(innerResult)` — error punya `.result` property (ChargeResult)
+- DelegateBackoff function: `toClassifiableInput(result.error)` expect AxiosError shape (`.response.status`)
+- `GatewayChargeError` TIDAK punya `.response` — punya `.result` (ChargeResult)
+- Falls through ke generic `{ kind:'network', code:'UNKNOWN' }` → `classifyError` return NO `retryAfterMs`
+
+**Fix**: Tambah check untuk `GatewayChargeError` shape di DelegateBackoff function:
+```typescript
+// Check if error punya .result property (GatewayChargeError shape)
+if (err && typeof err === 'object' && 'result' in err) {
+  const chargeResult = err.result as { retryAfterMs?: number } | undefined;
+  if (chargeResult && typeof chargeResult.retryAfterMs === 'number') {
+    retryAfterMs = chargeResult.retryAfterMs;
+  }
+}
+// Fallback: try classifyError for raw AxiosError shape (e.response.status)
+if (retryAfterMs === undefined) {
+  const input = toClassifiableInput(err);
+  const classification = classifyError(input);
+  retryAfterMs = classification.retryAfterMs ?? undefined;
+}
+```
+
+**File**: `packages/resilience/src/policies/policies.ts`
+
+---
+
+### Bug 3: queryAttempts helper tidak select delay_before_next_ms
+
+**Gejala**: `console.log(dbAttempts)` menunjukkan object tanpa field `delay_before_next_ms`. Assertion `withDelay.length >= 1` fail (Received: 0).
+
+**Root cause**: Helper `queryAttempts` di `helpers/db.ts` SELECT hanya 8 kolom, skip `delay_before_next_ms`:
+```sql
+SELECT attempt_number, outcome, http_status, trace_id, gateway_reference,
+       replayed, duration_ms, created_at  -- ← no delay_before_next_ms!
+```
+
+**Fix**: Tambah `delay_before_next_ms` ke SELECT:
+```sql
+SELECT attempt_number, outcome, http_status, trace_id, gateway_reference,
+       replayed, duration_ms, delay_before_next_ms, created_at
+```
+
+**File**: `apps/payment-api/tests/e2e/helpers/db.ts`
+
+---
+
+### Bug 4: pg return numbers sebagai string dengan comma
+
+**Gejala**: `delay_before_next_ms = "3,000"` (string dengan comma). `Number("3,000")` = `NaN` → filter return empty → assertion fail. `http_status = "429"` (string), `429 === "429"` → false.
+
+**Root cause**: PostgreSQL client (`pg`) return values sebagai string dengan locale formatting (comma separator untuk angka besar).
+
+**Fix**: Strip comma sebelum `Number()` conversion + gunakan `Number()` coercion untuk `http_status`:
+```typescript
+// delay_before_next_ms: "3,000" → "3000" → 3000
+const cleaned = String(a.delay_before_next_ms).replace(/,/g, '');
+const parsed = Number(cleaned);
+return !isNaN(parsed) && parsed >= 3000;
+
+// http_status: "429" → Number("429") = 429 === 429
+Number(a.http_status) === 429
+```
+
+**File**: `apps/payment-api/tests/e2e/payments.retry-after.e2e-spec.ts`
+
+---
+
+### Bug 5: Test tunggu terminal status (60s timeout)
+
+**Gejala**: `waitForTerminalStatus(payment.id, 60000)` timeout. Payment butuh 77s untuk reach `succeeded` (bukan `failed`).
+
+**Root cause**:
+- Test tunggu terminal status (succeeded/failed) — butuh 6 scheduler cycles (60s+)
+- Circuit breaker OPEN setelah 3 consecutive failures (12 failures total dari 3 cycles × 4 attempts)
+- Breaker HALF_OPEN → payment akhirnya SUCCEEDED (bukan FAILED)
+- Test timeout 60s < actual 77s → fail
+
+**Fix**: Refactor test strategy — poll DB direct untuk 2 attempts, bukan tunggu terminal status:
+```typescript
+// SEBELUM: waitForTerminalStatus (60s timeout, circuit breaker interfere)
+const { attempts } = await waitForTerminalStatus(payment.id, 60000);
+
+// SESUDAH: poll DB untuk 2 attempts (5s, no circuit breaker interference)
+while (Date.now() - pollStart < 15000) {
+  dbAttempts = await queryAttempts(payment.id);
+  if (dbAttempts.length >= 2) break;
+  await new Promise((r) => setTimeout(r, 200));
+}
+```
+
+**File**: `apps/payment-api/tests/e2e/payments.retry-after.e2e-spec.ts`
+
+---
+
+## 10. Algoritma Test Case — Sebelum dan Sesudah Perubahan
+
+### 10.1 Algoritma SEBELUM Perubahan (buggy version)
+
+```
+function test_retry_after_v1():
+  beforeAll:
+    1. ensureDbConnected()
+    2. cleanDb()
+    3. resetBreaker()
+    4. setGatewayMode('rate-limited', {retryAfterSeconds:3})
+
+  test_body:
+    1. payment = createPayment({orderId, amount:25000, currency:'IDR'})
+    2. { payment: finalPayment, attempts } = waitForTerminalStatus(payment.id, 60000)
+       # Polling loop: GET /payments/:id sampai status=succeeded/failed atau timeout 60s
+    3. assert attempts.filter(httpStatus=429).length >= 1
+    4. dbAttempts = queryAttempts(payment.id)
+    5. assert dbAttempts.length >= 2
+    6. assert delta(created_at[1] - created_at[0]) >= 2500ms
+    7. assert attempts.filter(delayBeforeNextMs >= 3000).length >= 1
+```
+
+**Masalah dengan algoritma SEBELUM**:
+
+1. **waitForTerminalStatus tunggu terminal status** (60s timeout)
+   - Butuh 6 scheduler cycles (60s+ dengan MAX_TOTAL_RETRIES=5)
+   - Circuit breaker OPEN setelah 3 consecutive failures (12 failures total)
+   - Breaker HALF_OPEN → payment akhirnya SUCCEEDED (bukan FAILED)
+   - Test timeout 60s < actual 77s → FAIL
+
+2. **attempts dari HTTP API response TIDAK punya field delayBeforeNextMs**
+   - HTTP API (GET /payments/:id) return AttemptView dengan delayBeforeNextMs
+   - TAPI kalau audit tidak record field ini → null
+
+3. **dbAttempts dari queryAttempts() TIDAK select delay_before_next_ms column**
+   - Helper queryAttempts SELECT hanya 8 kolom, skip delay_before_next_ms
+   - Assertion `attempt.delay_before_next_ms === undefined` → filter return empty
+
+4. **pg return numbers sebagai string dengan comma formatting**
+   - delay_before_next_ms = "3,000" (string, comma separator)
+   - Number("3,000") = NaN → filter return empty → assertion fail
+   - http_status = "429" (string) vs 429 (number) === false
+
+5. **Cockatiel ExponentialBackoff tidak baca Retry-After header**
+   - delay aktual antar attempt hanya ~500ms (default backoff)
+   - bukan 3000ms (Retry-After yang diharapkan)
+   - delta < 2500ms → assertion fail
+
+---
+
+### 10.2 Algoritma SESUDAH Perubahan (fixed version)
+
+```
+function test_retry_after_v2():
+  beforeAll:
+    1. ensureDbConnected()
+    2. cleanDb()                      # hapus payments lama (scheduler interference)
+    3. resetBreaker()
+    4. setGatewayMode('rate-limited', {retryAfterSeconds:3})
+
+  test_body:
+    1. payment = createPayment({orderId, amount:25000, currency:'IDR'})
+       # payment processing start, Cockatiel retry loop dimulai
+
+    2. # Poll DB directly untuk 2 attempts (BUKAN tunggu terminal status)
+       # Alasan: test fokus pada delay timing, bukan outcome terminal
+       # Avoid circuit breaker interference + timeout issues
+       pollTimeout = 15000
+       while elapsed < pollTimeout:
+         dbAttempts = queryAttempts(payment.id)  # SELECT dengan delay_before_next_ms
+         if dbAttempts.length >= 2: break
+         sleep(200)
+
+    3. assert dbAttempts.length >= 2
+
+    4. # Verify attempts got 429 (rate-limited)
+       # Note: pg return http_status sebagai string, gunakan Number() coercion
+       rateLimitedAttempts = dbAttempts.filter(Number(a.http_status) === 429)
+       assert rateLimitedAttempts.length >= 1
+
+    5. # Verify delay between attempts via DB timestamps
+       t0 = new Date(dbAttempts[0].created_at).getTime()
+       t1 = new Date(dbAttempts[1].created_at).getTime()
+       delta = t1 - t0
+       assert delta >= 2500  # 3s dengan 500ms tolerance
+
+    6. # Verify delayBeforeNextMs in audit
+       # Note: pg return delay_before_next_ms sebagai string dengan comma "3,000"
+       # Strip comma sebelum Number conversion
+       withDelay = dbAttempts.filter((a) => {
+         if (a.delay_before_next_ms === null) return false
+         cleaned = String(a.delay_before_next_ms).replace(/,/g, '')
+         parsed = Number(cleaned)
+         return !isNaN(parsed) && parsed >= 3000
+       })
+       assert withDelay.length >= 1
+```
+
+**Perbaikan dalam algoritma SESUDAH**:
+
+1. **Poll DB directly untuk 2 attempts** (bukan tunggu terminal status)
+   - Test cepat (~5s, bukan 60s+)
+   - Tidak terkena circuit breaker interference
+   - Tidak butuh MAX_TOTAL_RETRIES specific
+   - Fokus pada timing verification
+
+2. **queryAttempts helper select delay_before_next_ms column**
+   - Assertion dapat akses field ini
+   - Fix di `helpers/db.ts`
+
+3. **Parse string dengan comma sebelum Number conversion**
+   - "3,000" → "3000" → 3000 >= 3000 ✓
+   - http_status "429" → Number("429") = 429 === 429 ✓
+
+4. **DelegateBackoff di policies.ts menghormati Retry-After header**
+   - delay aktual ~3000ms (bukan 500ms default backoff)
+   - delta >= 2500ms ✓
+   - Fix di `packages/resilience/src/policies/policies.ts` + `cockatiel-adapter.ts`
+
+---
+
+### 10.3 Perbandingan Sebelum vs Sesudah
+
+| Aspek | SEBELUM (v1) | SESUDAH (v2) |
+|---|---|---|
+| **Strategi** | Tunggu terminal status (succeeded/failed) | Poll DB untuk 2 attempts |
+| **Timeout** | 60s (waitForTerminalStatus) | 15s (poll loop) + 30s (Jest) |
+| **Actual time** | 77s (FAIL: > 60s) | ~5s (PASS) |
+| **Circuit breaker** | Interfere (OPEN di cycle 4) | Tidak peduli |
+| **MAX_TOTAL_RETRIES** | Harus set 2 (still fail) | Bebas (any value) |
+| **delay_before_next_ms** | undefined (queryAttempts skip column) | 3000 (column selected + comma parsed) |
+| **http_status** | "429" string vs 429 number (fail) | Number("429") === 429 (pass) |
+| **Retry-After delay** | ~500ms (ExponentialBackoff default) | ~3000ms (DelegateBackoff) |
+| **Delta assertion** | ~500ms < 2500ms (FAIL) | ~3000ms >= 2500ms (PASS) |
+| **Fokus test** | Terminal status + delay | Delay timing saja |
+
+---
+
+### 10.4 Apakah Section Ini Pengulangan Diagram?
+
+**Tidak**. Section 3 (mermaid) dan section 10 (algoritma) berbeda fokus:
+
+| Aspek | Section 3: Mermaid Diagram | Section 10: Algoritma Walkthrough |
+|---|---|---|
+| **Yang dijelaskan** | Sistem yang sedang dites (payment-api, gateway-mock, DB) | Test code yang memverifikasi sistem |
+| **Aktivitas** | Cockatiel retry decision, Retry-After parsing, audit insert | createPayment, polling, assert, query DB |
+| **Tujuan** | Memahami **apa yang terjadi** di sistem | Memahami **bagaimana test memverifikasi** sistem |
+| **Audience** | Orang yang ingin paham flow payment | Orang yang ingin paham struktur test code |
+
+**Bagian yang tidak ada di diagram tapi ada di algoritma**:
+- Kenapa `cleanDb()` di beforeAll (mencegah scheduler interference)
+- Kenapa poll DB untuk 2 attempts (bukan tunggu terminal status)
+- Kenapa parse string dengan comma (pg locale formatting)
+- Kenapa `Number()` coercion untuk http_status
+- Timing aktual per-step (diagram hanya urutan, algoritma berisi durasi)
+
+**Kesimpulan**: Diagram dan algoritma saling melengkapi. Diagram untuk **pemahaman konseptual**, algoritma untuk **pemahaman implementasi test**. Untuk maintenance di masa depan, baca keduanya.
+
+---
+
