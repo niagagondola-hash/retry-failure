@@ -1,7 +1,7 @@
 /**
  * Runtime mutable mock configuration + counters (plan section 8.3).
  *
- * Singleton — registered as `@Injectable()` in module providers, default scope
+ * Singleton - registered as `@Injectable()` in module providers, default scope
  * (request-scoped would reset state on every request, which defeats the purpose).
  *
  * Mutations are applied via `update()` from PUT /admin/config. Hot reload not
@@ -60,7 +60,7 @@ export const DEFAULT_CONFIG: MockConfig = {
 
 /**
  * In-memory runtime state. Persists for the lifetime of the process.
- * Restart resets all state — acceptable for demo (see TASK-15 caveats).
+ * Restart resets all state - acceptable for demo (see TASK-15 caveats).
  */
 export class MockState {
   config: MockConfig = { ...DEFAULT_CONFIG };

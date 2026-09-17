@@ -1,7 +1,7 @@
-# TASK-12 — Next.js Preview Sandbox (parent root, port 3000)
+# TASK-12 - Next.js Preview Sandbox (parent root, port 3000)
 
 > **Task ID**: 9
-> **Depends on**: 6-b (TASK-09 API Routes — `GET /payments`, `GET /payments/:id`, `POST /payments`, `POST /payments/:id/retry`, `GET /metrics`) + 6-b implicitly juga bergantung pada gateway mock (TASK-03 `/admin/config`) dan observability registry (TASK-11 untuk `/metrics` real values).
+> **Depends on**: 6-b (TASK-09 API Routes - `GET /payments`, `GET /payments/:id`, `POST /payments`, `POST /payments/:id/retry`, `GET /metrics`) + 6-b implicitly juga bergantung pada gateway mock (TASK-03 `/admin/config`) dan observability registry (TASK-11 untuk `/metrics` real values).
 > **Estimated effort**: M (~3-4 jam)
 > **Plan reference**: Section 17 (Frontend Dashboard Strategy, rev 2) + Section 17.1 (Next.js Preview Sandbox) + Section 18 (Demonstration Scenarios A–E)
 
@@ -9,45 +9,45 @@
 
 ## Goal
 
-Membangun **Next.js dashboard kompak** di parent root `/home/z/my-project/src/app/page.tsx` (overwrite existing demo scaffold) sebagai **sandbox preview** untuk plan Cockatiel Retry/Failure. Dashboard ini adalah **subset fungsionalitas** dari dashboard resmi (Vue+PrimeVue — TASK-13) — cukup untuk **verifikasi visual** dari behavior backend tanpa membuka full Docker stack.
+Membangun **Next.js dashboard kompak** di parent root `/home/z/my-project/src/app/page.tsx` (overwrite existing demo scaffold) sebagai **sandbox preview** untuk plan Cockatiel Retry/Failure. Dashboard ini adalah **subset fungsionalitas** dari dashboard resmi (Vue+PrimeVue - TASK-13) - cukup untuk **verifikasi visual** dari behavior backend tanpa membuka full Docker stack.
 
 Tujuan utama:
 
-1. **Gateway mode selector** — form kecil untuk PUT `/admin/config` ke gateway mock (port 3002 via `XTransformPort`). Pilih mode (`healthy` | `client-error` | `fail-first-n` | `always-timeout` | `rate-limited` | `response-disappear`) + parameter (`n`, `probability`, `retryAfterSeconds`, `timeoutMs`).
-2. **Create payment form** — `POST /api/payments` (port 3001 via `XTransformPort`) dengan input `orderId`, `amount`, `currency`. Setelah submit, payment langsung muncul di list (refetch invalidate).
-3. **Payment list** — `GET /api/payments` dengan polling 3 detik (`refetchInterval: 3000`). Klik row -> buka drawer detail.
-4. **Payment detail drawer** — menampilkan field payment + attempt history (urut attemptNumber ASC). Tombol manual retry (`POST /api/payments/:id/retry`) — disabled bila status `succeeded`.
-5. **Metrics snapshot** — poll `GET /metrics` (Prometheus text format) tiap 5 detik, parse dengan simple regex per line, render 7 metric cards dengan current value.
-6. **Circuit breaker card** — baca metric `payment_circuit_breaker_state` (gauge 0=closed, 1=half_open, 2=open) + `payment_gateway_requests_total{result="circuit_open"}` untuk menampilkan real-time state. Polling 5 detik.
-7. **Demo scenario runner** — 5 tombol (Demo A–E) yang menjalankan end-to-end scenario: reset gateway mode -> PUT target mode -> POST new payment dengan unique `orderId` prefix -> poll `GET /api/payments/:id` tiap 1 detik sampai terminal status (timeout 60 detik) -> toast hasil dengan assertions (succeeded? failed? attempts? actualCharges?).
+1. **Gateway mode selector** - form kecil untuk PUT `/admin/config` ke gateway mock (port 3002 via `XTransformPort`). Pilih mode (`healthy` | `client-error` | `fail-first-n` | `always-timeout` | `rate-limited` | `response-disappear`) + parameter (`n`, `probability`, `retryAfterSeconds`, `timeoutMs`).
+2. **Create payment form** - `POST /api/payments` (port 3001 via `XTransformPort`) dengan input `orderId`, `amount`, `currency`. Setelah submit, payment langsung muncul di list (refetch invalidate).
+3. **Payment list** - `GET /api/payments` dengan polling 3 detik (`refetchInterval: 3000`). Klik row -> buka drawer detail.
+4. **Payment detail drawer** - menampilkan field payment + attempt history (urut attemptNumber ASC). Tombol manual retry (`POST /api/payments/:id/retry`) - disabled bila status `succeeded`.
+5. **Metrics snapshot** - poll `GET /metrics` (Prometheus text format) tiap 5 detik, parse dengan simple regex per line, render 7 metric cards dengan current value.
+6. **Circuit breaker card** - baca metric `payment_circuit_breaker_state` (gauge 0=closed, 1=half_open, 2=open) + `payment_gateway_requests_total{result="circuit_open"}` untuk menampilkan real-time state. Polling 5 detik.
+7. **Demo scenario runner** - 5 tombol (Demo A–E) yang menjalankan end-to-end scenario: reset gateway mode -> PUT target mode -> POST new payment dengan unique `orderId` prefix -> poll `GET /api/payments/:id` tiap 1 detik sampai terminal status (timeout 60 detik) -> toast hasil dengan assertions (succeeded? failed? attempts? actualCharges?).
 
 Setelah task ini selesai:
 
-- **TASK-13** (Vue+PrimeVue dashboard) dapat mengonsumsi data dari API yang sama. TASK-12 bukan prerequisite TASK-13 — keduanya parallel di Batch 6.
+- **TASK-13** (Vue+PrimeVue dashboard) dapat mengonsumsi data dari API yang sama. TASK-12 bukan prerequisite TASK-13 - keduanya parallel di Batch 6.
 - **TASK-14** (E2E scenarios via Agent Browser) dapat diverifikasi dengan navigate ke `http://localhost:3000` dan klik tombol Demo A–E. TASK-12 menyediakan UI; TASK-14 formalisasi verifikasi end-to-end.
 
 ## Scope
 
 **In scope**:
 
-- `src/app/page.tsx` — **overwrite existing** demo content (saat ini adalah Next.js scaffold demo Z.ai). Replace dengan dashboard Cockatiel.
-- `src/components/payments/gateway-mode-selector.tsx` — form Select + Input untuk update gateway config.
-- `src/components/payments/create-payment-form.tsx` — form input `orderId`/`amount`/`currency` + submit button.
-- `src/components/payments/payment-list.tsx` — list/table dengan polling auto-refresh.
-- `src/components/payments/payment-detail.tsx` — drawer (vaul) yang menampilkan detail + attempt history.
-- `src/components/payments/attempt-history.tsx` — sub-komponen timeline attempts (di dalam drawer).
-- `src/components/payments/circuit-breaker-card.tsx` — card menampilkan breaker state (closed/half_open/open) dengan polling metrics.
-- `src/components/payments/metrics-snapshot.tsx` — 7 metric cards hasil parse Prometheus text.
-- `src/components/payments/demo-scenario-runner.tsx` — 5 tombol A–E yang menjalankan end-to-end scenario.
-- `src/hooks/payments.ts` — TanStack Query hooks (`useCreatePayment`, `usePayments`, `usePaymentDetail`, `useManualRetry`, `useGatewayConfig`, `useUpdateGatewayConfig`, `useMetricsSnapshot`).
-- `src/lib/payments/api-client.ts` — browser fetch wrappers (`apiGet`, `apiPost`, `apiPut`) yang selalu menyertakan `?XTransformPort=NNNN` ke relative path.
+- `src/app/page.tsx` - **overwrite existing** demo content (saat ini adalah Next.js scaffold demo Z.ai). Replace dengan dashboard Cockatiel.
+- `src/components/payments/gateway-mode-selector.tsx` - form Select + Input untuk update gateway config.
+- `src/components/payments/create-payment-form.tsx` - form input `orderId`/`amount`/`currency` + submit button.
+- `src/components/payments/payment-list.tsx` - list/table dengan polling auto-refresh.
+- `src/components/payments/payment-detail.tsx` - drawer (vaul) yang menampilkan detail + attempt history.
+- `src/components/payments/attempt-history.tsx` - sub-komponen timeline attempts (di dalam drawer).
+- `src/components/payments/circuit-breaker-card.tsx` - card menampilkan breaker state (closed/half_open/open) dengan polling metrics.
+- `src/components/payments/metrics-snapshot.tsx` - 7 metric cards hasil parse Prometheus text.
+- `src/components/payments/demo-scenario-runner.tsx` - 5 tombol A–E yang menjalankan end-to-end scenario.
+- `src/hooks/payments.ts` - TanStack Query hooks (`useCreatePayment`, `usePayments`, `usePaymentDetail`, `useManualRetry`, `useGatewayConfig`, `useUpdateGatewayConfig`, `useMetricsSnapshot`).
+- `src/lib/payments/api-client.ts` - browser fetch wrappers (`apiGet`, `apiPost`, `apiPut`) yang selalu menyertakan `?XTransformPort=NNNN` ke relative path.
 
 **Out of scope**:
 
 - **Full dashboard** (advanced filter + sort + pagination + charts) -> **TASK-13** Vue+PrimeVue. TASK-12 = preview ringkas, bukan production UI.
 - **Authentication / RBAC** -> tidak dipakai di plan rev 2. Semua endpoint terbuka (production caveat di TASK-15).
 - **Real-time push** (WebSocket / SSE) -> tidak dipakai. Pakai polling 3 detik (payments) + 5 detik (metrics). Real-time push -> future work, tidak di plan rev 2.
-- **Production design system** -> pakai existing shadcn/ui components di `src/components/ui/*` (sudah ter-install dari scaffold). Tidak perlu custom theme — pakai default `bg-background`, `text-foreground`, `bg-muted`, `bg-primary`, dst.
+- **Production design system** -> pakai existing shadcn/ui components di `src/components/ui/*` (sudah ter-install dari scaffold). Tidak perlu custom theme - pakai default `bg-background`, `text-foreground`, `bg-muted`, `bg-primary`, dst.
 - **Server-side rendering untuk initial data** -> opsional. Bisa SSR dengan `fetch` di `page.tsx` server component, tapi untuk sandbox simplicity, **client-side only** (`'use client'` + TanStack Query) lebih mudah. Document trade-off di Notes.
 - **Custom API proxy routes** di `src/app/api/*` -> alternatif pattern (Next.js route handler proxy ke backend) lebih clean karena tidak expose `XTransformPort` ke client code. Tapi untuk demo simplicity, **direct fetch dengan `XTransformPort` di query string** diterima. Document both options di Implementation steps.
 - **Idempotency-Key client-side** -> service yang generate `payment.id` + derive key (lihat TASK-09 Notes). Client hanya kirim `{ orderId, amount, currency }`.
@@ -61,7 +61,7 @@ Dikutip dari `upload/PLAN1_Cockatiel_Retry_Failure_Scenario.md` section 17.1:
 
 - **Tujuan**: Visualisasi cepat di sandbox cloud yang hanya mempermit satu port (3000).
 - **Stack**: Next.js 16 (App Router) + shadcn/ui + TanStack Query.
-- **Scope**: Subset fungsionalitas — gateway mode selector, create payment, list, detail drawer, metrics snapshot. Cukup untuk verifikasi visual.
+- **Scope**: Subset fungsionalitas - gateway mode selector, create payment, list, detail drawer, metrics snapshot. Cukup untuk verifikasi visual.
 - **Konsumen**: Hanya dipakai bila environment sandbox Next.js aktif. Bukan bagian resmi demo bila dijalankan dengan full Docker stack.
 - **Implementasi**: 1 task (TASK-12).
 
@@ -71,7 +71,7 @@ Dikutip dari `upload/PLAN1_Cockatiel_Retry_Failure_Scenario.md` section 17.1:
 - Bila user menjalankan full Docker stack (Postgres + payment-api + gateway-mock + frontend-vue + Prometheus + Grafana), TASK-12 tidak perlu dijalankan. Next.js sandbox opsional.
 - Tapi bila sandbox cloud hanya permit port 3000 (single-port env), Next.js preview adalah satu-satunya cara untuk visual verify backend behavior tanpa SSH-tunnel ke port lain.
 
-## Caddy rule — `XTransformPort` pattern
+## Caddy rule - `XTransformPort` pattern
 
 Caddy di sandbox mempermit single port (default `:81` di `Caddyfile`). Semua cross-service request dari Next.js client WAJIB pakai relative path + query `?XTransformPort=NNNN`:
 
@@ -105,7 +105,7 @@ Next.js (port 3000)
 1. **NEVER hardcode `http://localhost:3001` atau `http://localhost:3002` di client code**. Selalu gunakan relative path (`/api/payments`, `/admin/config`) + `?XTransformPort=NNNN`.
 2. **`XTransformPort` ditambahkan di `api-client.ts`** (centralized), bukan di setiap hook. Hook hanya menerima `endpoint` arg tanpa port.
 3. **Bila ingin hide `XTransformPort` dari client code** (production pattern), buat Next.js API route proxy di `src/app/api/[...path]/route.ts` yang meneruskan ke `http://localhost:NNNN`. Untuk sandbox simplicity, direct fetch dengan `XTransformPort` di query string diterima. Document both options di Implementation steps.
-4. **`/api/payments` prefix** — Next.js default `src/app/api/*` route sudah ada (`src/app/api/route.ts` existing scaffold). Untuk hindari konflik, semua fetch ke payment-api pakai prefix `/api/payments?XTransformPort=3001` (Next.js route `/api/payments` belum ada, jadi Caddy akan handle). Bila Next.js punya route `/api/payments` sendiri, Caddy rule `@transform_port_query` akan short-circuit karena query param `XTransformPort` ada — tidak akan match Next.js route. **Verifikasi**: jalankan `bun run dev` + `curl -i 'http://localhost:3000/api/payments?XTransformPort=3001'` — harus return JSON dari payment-api, bukan 404 Next.js.
+4. **`/api/payments` prefix** - Next.js default `src/app/api/*` route sudah ada (`src/app/api/route.ts` existing scaffold). Untuk hindari konflik, semua fetch ke payment-api pakai prefix `/api/payments?XTransformPort=3001` (Next.js route `/api/payments` belum ada, jadi Caddy akan handle). Bila Next.js punya route `/api/payments` sendiri, Caddy rule `@transform_port_query` akan short-circuit karena query param `XTransformPort` ada - tidak akan match Next.js route. **Verifikasi**: jalankan `bun run dev` + `curl -i 'http://localhost:3000/api/payments?XTransformPort=3001'` - harus return JSON dari payment-api, bukan 404 Next.js.
 
 ## Layout diagram (ASCII art)
 
@@ -171,7 +171,7 @@ Next.js (port 3000)
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Sticky footer trick** — `min-h-screen flex flex-col` pada root, lalu `<footer className="mt-auto">`. Bila konten pendek, footer tetap di bawah viewport (tidak floating gap).
+**Sticky footer trick** - `min-h-screen flex flex-col` pada root, lalu `<footer className="mt-auto">`. Bila konten pendek, footer tetap di bawah viewport (tidak floating gap).
 
 ## Files to create/modify
 
@@ -179,8 +179,8 @@ Semua path absolut di parent root `/home/z/my-project/`:
 
 ### Create baru
 
-- `/home/z/my-project/src/lib/payments/api-client.ts` — browser fetch helpers (`apiGet`, `apiPost`, `apiPut`, `apiDelete` opsional).
-- `/home/z/my-project/src/hooks/payments.ts` — TanStack Query hooks (7 hooks).
+- `/home/z/my-project/src/lib/payments/api-client.ts` - browser fetch helpers (`apiGet`, `apiPost`, `apiPut`, `apiDelete` opsional).
+- `/home/z/my-project/src/hooks/payments.ts` - TanStack Query hooks (7 hooks).
 - `/home/z/my-project/src/components/payments/gateway-mode-selector.tsx`
 - `/home/z/my-project/src/components/payments/create-payment-form.tsx`
 - `/home/z/my-project/src/components/payments/payment-list.tsx`
@@ -189,23 +189,23 @@ Semua path absolut di parent root `/home/z/my-project/`:
 - `/home/z/my-project/src/components/payments/circuit-breaker-card.tsx`
 - `/home/z/my-project/src/components/payments/metrics-snapshot.tsx`
 - `/home/z/my-project/src/components/payments/demo-scenario-runner.tsx`
-- `/home/z/my-project/src/app/providers.tsx` (opsional — bila ingin centralize QueryClientProvider; alternatif: wrap inline di `page.tsx`).
+- `/home/z/my-project/src/app/providers.tsx` (opsional - bila ingin centralize QueryClientProvider; alternatif: wrap inline di `page.tsx`).
 
 ### Modify
 
-- `/home/z/my-project/src/app/page.tsx` — **overwrite existing** Z.ai scaffold demo dengan dashboard Cockatiel. `'use client'` directive di top of file.
-- `/home/z/my-project/src/app/layout.tsx` — **minimal modify**: bila pilih pattern `providers.tsx`, wrap `{children}` dengan `<Providers>`. Bila pilih pattern inline di `page.tsx`, layout.tsx tidak perlu diubah. Implementer pilih salah satu.
+- `/home/z/my-project/src/app/page.tsx` - **overwrite existing** Z.ai scaffold demo dengan dashboard Cockatiel. `'use client'` directive di top of file.
+- `/home/z/my-project/src/app/layout.tsx` - **minimal modify**: bila pilih pattern `providers.tsx`, wrap `{children}` dengan `<Providers>`. Bila pilih pattern inline di `page.tsx`, layout.tsx tidak perlu diubah. Implementer pilih salah satu.
 
 ### Tidak diubah
 
-- `/home/z/my-project/src/app/api/route.ts` — existing Next.js route handler. Bila ingin hide `XTransformPort` via Next.js proxy, tambahkan route baru `/api/payments/[...path]/route.ts` (out of scope untuk sandbox simplicity — direct fetch dengan `XTransformPort` diterima).
-- `/home/z/my-project/src/components/ui/*` — existing shadcn/ui components. Tidak perlu modifikasi.
-- `/home/z/my-project/src/lib/utils.ts` — existing `cn()` helper (digunakan oleh semua komponen shadcn/ui).
-- `/home/z/my-project/src/hooks/use-toast.ts`, `src/hooks/use-mobile.ts` — existing hooks (boleh reuse bila perlu).
+- `/home/z/my-project/src/app/api/route.ts` - existing Next.js route handler. Bila ingin hide `XTransformPort` via Next.js proxy, tambahkan route baru `/api/payments/[...path]/route.ts` (out of scope untuk sandbox simplicity - direct fetch dengan `XTransformPort` diterima).
+- `/home/z/my-project/src/components/ui/*` - existing shadcn/ui components. Tidak perlu modifikasi.
+- `/home/z/my-project/src/lib/utils.ts` - existing `cn()` helper (digunakan oleh semua komponen shadcn/ui).
+- `/home/z/my-project/src/hooks/use-toast.ts`, `src/hooks/use-mobile.ts` - existing hooks (boleh reuse bila perlu).
 
 ## Implementation steps
 
-### 1. `src/lib/payments/api-client.ts` — browser fetch wrappers
+### 1. `src/lib/payments/api-client.ts` - browser fetch wrappers
 
 ```ts
 'use client';
@@ -248,7 +248,7 @@ async function request<T>(
   });
 
   if (!res.ok) {
-    // Coba parse error body — NestJS default exception filter:
+    // Coba parse error body - NestJS default exception filter:
     // { statusCode, message, error } atau { statusCode, message: string[], error }
     let detail: unknown;
     try {
@@ -378,7 +378,7 @@ export interface GatewayConfig {
 
 > **Catatan**: bila ingin hide `XTransformPort` dari client (production pattern), buat Next.js route handler di `src/app/api/proxy/[...path]/route.ts` yang meneruskan request ke `http://localhost:${searchParams.port}/${path}`. Untuk sandbox simplicity, direct fetch dengan `XTransformPort` di query string diterima. Document pilihan di Notes.
 
-### 2. `src/hooks/payments.ts` — TanStack Query hooks
+### 2. `src/hooks/payments.ts` - TanStack Query hooks
 
 ```ts
 'use client';
@@ -403,7 +403,7 @@ export const qk = {
 
 // === Payments queries ===
 
-/** GET /api/payments — auto-refresh tiap 3 detik. */
+/** GET /api/payments - auto-refresh tiap 3 detik. */
 export function usePayments(status?: PaymentStatus) {
   return useQuery({
     queryKey: qk.payments(status),
@@ -413,7 +413,7 @@ export function usePayments(status?: PaymentStatus) {
   });
 }
 
-/** GET /api/payments/:id — auto-refresh tiap 3 detik (untuk drawer). */
+/** GET /api/payments/:id - auto-refresh tiap 3 detik (untuk drawer). */
 export function usePaymentDetail(id: string | null) {
   return useQuery({
     queryKey: qk.paymentDetail(id ?? ''),
@@ -425,7 +425,7 @@ export function usePaymentDetail(id: string | null) {
 
 // === Payments mutations ===
 
-/** POST /api/payments — invalidate list on success. */
+/** POST /api/payments - invalidate list on success. */
 export function useCreatePayment() {
   const qc = useQueryClient();
   return useMutation({
@@ -436,7 +436,7 @@ export function useCreatePayment() {
   });
 }
 
-/** POST /api/payments/:id/retry — invalidate detail + list. */
+/** POST /api/payments/:id/retry - invalidate detail + list. */
 export function useManualRetry() {
   const qc = useQueryClient();
   return useMutation({
@@ -450,7 +450,7 @@ export function useManualRetry() {
 
 // === Gateway config ===
 
-/** GET /admin/config (gateway mock) — no polling (manual refresh via refetch). */
+/** GET /admin/config (gateway mock) - no polling (manual refresh via refetch). */
 export function useGatewayConfig() {
   return useQuery({
     queryKey: qk.gatewayConfig,
@@ -459,7 +459,7 @@ export function useGatewayConfig() {
   });
 }
 
-/** PUT /admin/config — invalidate config on success. */
+/** PUT /admin/config - invalidate config on success. */
 export function useUpdateGatewayConfig() {
   const qc = useQueryClient();
   return useMutation({
@@ -472,7 +472,7 @@ export function useUpdateGatewayConfig() {
 
 // === Metrics ===
 
-/** GET /api/metrics — auto-refresh tiap 5 detik. */
+/** GET /api/metrics - auto-refresh tiap 5 detik. */
 export function useMetricsSnapshot() {
   return useQuery({
     queryKey: qk.metrics,
@@ -484,7 +484,7 @@ export function useMetricsSnapshot() {
 
 // === Health ===
 
-/** GET /api/health — auto-refresh tiap 10 detik. */
+/** GET /api/health - auto-refresh tiap 10 detik. */
 export function useHealth() {
   return useQuery({
     queryKey: qk.health,
@@ -537,7 +537,7 @@ function parsePrometheusText(text: string): MetricSnapshot[] {
 }
 ```
 
-### 3. `src/components/payments/gateway-mode-selector.tsx` — gateway config form
+### 3. `src/components/payments/gateway-mode-selector.tsx` - gateway config form
 
 ```tsx
 'use client';
@@ -662,7 +662,7 @@ export function GatewayModeSelector() {
 }
 ```
 
-### 4. `src/components/payments/create-payment-form.tsx` — form input payment
+### 4. `src/components/payments/create-payment-form.tsx` - form input payment
 
 ```tsx
 'use client';
@@ -756,7 +756,7 @@ export function CreatePaymentForm() {
 }
 ```
 
-### 5. `src/components/payments/payment-list.tsx` — polling list
+### 5. `src/components/payments/payment-list.tsx` - polling list
 
 ```tsx
 'use client';
@@ -835,7 +835,7 @@ export function PaymentList({ onSelect }: { onSelect: (id: string) => void }) {
 }
 ```
 
-### 6. `src/components/payments/payment-detail.tsx` — drawer (vaul)
+### 6. `src/components/payments/payment-detail.tsx` - drawer (vaul)
 
 ```tsx
 'use client';
@@ -918,11 +918,11 @@ export function PaymentDetail({
                   ● {payment.status}
                 </Badge>
               } />
-              <Field label="gatewayReference" value={payment.gatewayReference ?? '—'} mono />
+              <Field label="gatewayReference" value={payment.gatewayReference ?? '-'} mono />
               <Field label="attemptCount" value={String(payment.attemptCount)} />
               <Field label="totalRetryCount" value={String(payment.totalRetryCount)} />
-              <Field label="nextRetryAt" value={payment.nextRetryAt ? new Date(payment.nextRetryAt).toLocaleString() : '—'} />
-              <Field label="failureReason" value={payment.failureReason ?? '—'} mono />
+              <Field label="nextRetryAt" value={payment.nextRetryAt ? new Date(payment.nextRetryAt).toLocaleString() : '-'} />
+              <Field label="failureReason" value={payment.failureReason ?? '-'} mono />
               <Field label="createdAt" value={new Date(payment.createdAt).toLocaleString()} />
               <Field label="updatedAt" value={new Date(payment.updatedAt).toLocaleString()} />
             </div>
@@ -960,7 +960,7 @@ function Field({ label, value, mono }: { label: string; value: React.ReactNode; 
 }
 ```
 
-### 7. `src/components/payments/attempt-history.tsx` — timeline attempts
+### 7. `src/components/payments/attempt-history.tsx` - timeline attempts
 
 ```tsx
 'use client';
@@ -1015,7 +1015,7 @@ export function AttemptHistory({ attempts }: { attempts: AttemptView[] }) {
 }
 ```
 
-### 8. `src/components/payments/circuit-breaker-card.tsx` — real-time breaker state
+### 8. `src/components/payments/circuit-breaker-card.tsx` - real-time breaker state
 
 ```tsx
 'use client';
@@ -1046,7 +1046,7 @@ export function CircuitBreakerCard() {
   const opens = metrics
     ?.filter((m) => m.name === 'payment_circuit_breaker_state_transitions_total' && m.labels.to === 'open')
     .reduce((acc, m) => acc + m.value, 0);
-  // ... dst (closes, half_opens) — implementasi serupa.
+  // ... dst (closes, half_opens) - implementasi serupa.
 
   const { label, color } = breakerStateLabel(breakerState);
 
@@ -1068,7 +1068,7 @@ export function CircuitBreakerCard() {
               <span className="text-muted-foreground">Opens</span>
               <span className="font-mono tabular-nums">{opens ?? 0}</span>
             </div>
-            {/* closes, half_opens — impl serupa, omitted untuk brevity */}
+            {/* closes, half_opens - impl serupa, omitted untuk brevity */}
           </>
         )}
       </CardContent>
@@ -1077,7 +1077,7 @@ export function CircuitBreakerCard() {
 }
 ```
 
-### 9. `src/components/payments/metrics-snapshot.tsx` — 7 metric cards
+### 9. `src/components/payments/metrics-snapshot.tsx` - 7 metric cards
 
 ```tsx
 'use client';
@@ -1116,7 +1116,7 @@ export function MetricsSnapshot() {
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
             {METRIC_DEFS.map((def, i) => {
               const matched = matchMetric(metrics, def.name, def.filter);
-              const value = matched ? (def.format ? def.format(matched.value) : formatNumber(matched.value)) : '—';
+              const value = matched ? (def.format ? def.format(matched.value) : formatNumber(matched.value)) : '-';
               return (
                 <div key={i} className="bg-muted/40 rounded-md p-3">
                   <div className="text-xs text-muted-foreground">{def.label}</div>
@@ -1157,7 +1157,7 @@ function formatNumber(v: number): string {
 
 > **Catatan**: nama metric `payment_*` di atas harus match dengan TASK-11 registry. Bila TASK-11 belum finalisasi nama metric, sesuaikan `METRIC_DEFS` setelah TASK-11 selesai. Verifikasi dengan `curl 'http://localhost:3000/api/metrics?XTransformPort=3001'` dan lihat output Prometheus text.
 
-### 10. `src/components/payments/demo-scenario-runner.tsx` — 5 buttons A–E
+### 10. `src/components/payments/demo-scenario-runner.tsx` - 5 buttons A–E
 
 ```tsx
 'use client';
@@ -1179,35 +1179,35 @@ const DEMOS: Record<DemoKey, {
   description: string;
 }> = {
   A: {
-    label: 'Demo A — transient retry',
+    label: 'Demo A - transient retry',
     mode: 'fail-first-n',
     partial: { n: 2 },
     expectedStatus: 'succeeded',
     description: 'fail-first-n=2 -> 2 failed attempts -> 3rd succeeds -> payment.status=succeeded',
   },
   B: {
-    label: 'Demo B — permanent failure',
+    label: 'Demo B - permanent failure',
     mode: 'client-error',
     partial: {},
     expectedStatus: 'failed',
     description: 'client-error -> 400 invalid_card -> not retried -> payment.status=failed',
   },
   C: {
-    label: 'Demo C — circuit breaker',
+    label: 'Demo C - circuit breaker',
     mode: 'always-timeout',
     partial: { timeoutMs: 2000 },
     expectedStatus: 'scheduled_for_retry',
     description: 'always-timeout -> 3 timeouts -> breaker OPEN -> new payment = circuit_open -> scheduled_for_retry',
   },
   D: {
-    label: 'Demo D — idempotency hero',
+    label: 'Demo D - idempotency hero',
     mode: 'response-disappear',
     partial: {},
     expectedStatus: 'succeeded',
     description: 'charge succeed + response lost -> API retry -> gateway replay -> actualCharges=1 (calls>=2). Verify via attempt history.',
   },
   E: {
-    label: 'Demo E — Retry-After',
+    label: 'Demo E - Retry-After',
     mode: 'rate-limited',
     partial: { retryAfterSeconds: 5 },
     expectedStatus: 'scheduled_for_retry',
@@ -1252,18 +1252,18 @@ export function DemoScenarioRunner() {
       const attempts = await paymentApi.detail(payment.id);
 
       if (passed) {
-        toast.success(`${demo.label} — PASSED`, {
+        toast.success(`${demo.label} - PASSED`, {
           id: toastId,
           description: `status=${final.status} (expected ${demo.expectedStatus}) · attempts=${attempts.attempts.length}`,
         });
       } else {
-        toast.error(`${demo.label} — FAILED assertion`, {
+        toast.error(`${demo.label} - FAILED assertion`, {
           id: toastId,
           description: `expected=${demo.expectedStatus}, got=${final.status} · attempts=${attempts.attempts.length}`,
         });
       }
     } catch (err: any) {
-      toast.error(`${demo.label} — ERROR`, {
+      toast.error(`${demo.label} - ERROR`, {
         id: toastId,
         description: err?.message ?? String(err),
       });
@@ -1302,7 +1302,7 @@ function sleep(ms: number): Promise<void> {
 }
 ```
 
-### 11. `src/app/page.tsx` — rewrite root dashboard
+### 11. `src/app/page.tsx` - rewrite root dashboard
 
 ```tsx
 'use client';
@@ -1320,7 +1320,7 @@ import { MetricsSnapshot } from '@/components/payments/metrics-snapshot';
 import { DemoScenarioRunner } from '@/components/payments/demo-scenario-runner';
 import { useGatewayConfig, useMetricsSnapshot } from '@/hooks/payments';
 
-// Single QueryClient instance (sandbox simplicity — tidak perlu providers.tsx).
+// Single QueryClient instance (sandbox simplicity - tidak perlu providers.tsx).
 // Catatan: bila ingin SSR-safe, pindahkan ke src/app/providers.tsx dengan useState
 // pattern (lihat Notes).
 const queryClient = new QueryClient({
@@ -1361,7 +1361,7 @@ function DashboardShell() {
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="outline">
-              Gateway: <span className="ml-1 font-mono">{gwConfig?.mode ?? '—'}</span>
+              Gateway: <span className="ml-1 font-mono">{gwConfig?.mode ?? '-'}</span>
             </Badge>
             <Badge variant="outline" className={breakerColor}>
               Breaker: ● {breakerLabel}
@@ -1400,13 +1400,13 @@ function DashboardShell() {
 }
 ```
 
-### 12. Sonner Toaster — install bila belum
+### 12. Sonner Toaster - install bila belum
 
 Sonner sudah ter-install di `package.json` (`"sonner": "^2.0.6"`). Existing layout.tsx memakai `@/components/ui/toaster` (Radix toast), bukan sonner. Untuk TASK-12:
 
-- **Tambahkan `<Toaster />` dari `sonner`** di `page.tsx` (lihat step 11) — import: `import { Toaster } from 'sonner'`.
+- **Tambahkan `<Toaster />` dari `sonner`** di `page.tsx` (lihat step 11) - import: `import { Toaster } from 'sonner'`.
 - Tidak perlu modifikasi `layout.tsx` bila `Toaster` di-render di dalam `page.tsx` (sebagai child dari `DashboardShell`).
-- Bila ingin global toast (semua page), tambahkan `<Toaster />` dari sonner di `layout.tsx` setelah `<Toaster />` existing (Radix). Implementer pilih — sandbox simplicity -> inline di `page.tsx` cukup.
+- Bila ingin global toast (semua page), tambahkan `<Toaster />` dari sonner di `layout.tsx` setelah `<Toaster />` existing (Radix). Implementer pilih - sandbox simplicity -> inline di `page.tsx` cukup.
 
 ### 13. Verifikasi XTransformPort pattern
 
@@ -1428,7 +1428,7 @@ curl -i 'http://localhost:81/admin/config?XTransformPort=3002'
 Bila Next.js dev server di port 3000 dan Caddy di port 81, browser fetch ke `/api/payments?XTransformPort=3001` akan **relatif ke origin Next.js (port 3000)**, bukan Caddy (port 81). Maka Next.js akan menerima request `/api/payments?XTransformPort=3001` dan (karena Next.js tidak punya route handler `/api/payments`) akan return 404. **Solusi**: 
 
 - **Opsi A**: Next.js dev server dijalankan **di belakang Caddy** (Caddy `:81` reverse_proxy ke Next.js `:3000` bila tidak ada `XTransformPort`). User akses dashboard via `http://localhost:81/`. Maka fetch relatif `/api/payments?XTransformPort=3001` akan masuk Caddy -> match `@transform_port_query` -> reverse_proxy ke `localhost:3001`. ✅ Pattern ini yang direkomendasikan.
-- **Opsi B**: Next.js route handler proxy di `src/app/api/[...path]/route.ts` yang membaca `XTransformPort` query param + meneruskan ke `http://localhost:${port}/${path}`. Pattern ini hide `XTransformPort` dari client code (client hanya fetch `/api/payments`, Next.js tambahkan `XTransformPort` di server side). Out of scope untuk sandbox simplicity — document di Notes.
+- **Opsi B**: Next.js route handler proxy di `src/app/api/[...path]/route.ts` yang membaca `XTransformPort` query param + meneruskan ke `http://localhost:${port}/${path}`. Pattern ini hide `XTransformPort` dari client code (client hanya fetch `/api/payments`, Next.js tambahkan `XTransformPort` di server side). Out of scope untuk sandbox simplicity - document di Notes.
 
 **Implementasi TASK-12** mengikuti **Opsi A** (akses dashboard via `http://localhost:81/`, Next.js sendiri listen di 3000 tapi tidak langsung diakses user). Caddy `:81` adalah single entry point.
 
@@ -1436,27 +1436,27 @@ Bila Next.js dev server di port 3000 dan Caddy di port 81, browser fetch ke `/ap
 
 ## Acceptance criteria
 
-- [ ] `/` (via Caddy `:81`) renders dashboard tanpa hydration error — cek `dev.log` tidak ada `Warning: Text content did not match` atau `Hydration failed`.
+- [ ] `/` (via Caddy `:81`) renders dashboard tanpa hydration error - cek `dev.log` tidak ada `Warning: Text content did not match` atau `Hydration failed`.
 - [ ] **Gateway mode selector**: pilih `client-error` -> klik Save -> toast "Gateway config updated" -> header pill "Gateway: client-error" ter-update (auto refetch via `useGatewayConfig` invalidation).
 - [ ] **Create payment form**: isi `orderId=TEST-001`, `amount=150000`, `currency=IDR` -> klik Create -> toast "Payment created" -> payment muncul di list dalam < 3 detik (polling), dengan `status=succeeded` atau `failed` tergantung gateway mode saat itu.
 - [ ] **Payment list auto-refresh**: dengan gateway mode `healthy`, create payment -> setelah 1-2 detik, status di list harus berubah dari `processing` -> `succeeded`. Verifikasi dengan watch list: setiap 3 detik, kolom `updated` berubah timestamp.
 - [ ] **Click payment row** -> drawer slide-up (vaul) -> menampilkan field payment (orderId, amount, status, attemptCount, dst.) + attempt history timeline.
 - [ ] **Manual retry button on failed payment**: klik -> status berubah `processing` (toast "Retry triggered") -> setelah polling 3 detik, status berubah ke terminal (`succeeded` atau `failed` tergantung gateway mode). Drawer auto-update.
 - [ ] **Manual retry on succeeded payment**: button disabled (label "Retry disabled (succeeded)"). Bila somehow bisa di-klik (mis. race condition), toast "Cannot retry succeeded payment (terminal state)" muncul.
-- [ ] **Demo A button** (transient retry): klik -> toast loading "Running Demo A…" -> setelah ~5-10 detik, toast success "Demo A — PASSED" dengan `status=succeeded, attempts=3`. Bila gagal assertion, toast error dengan expected vs actual.
-- [ ] **Demo B button** (permanent failure): klik -> toast success "Demo B — PASSED" dengan `status=failed, attempts=1` (permanent error tidak di-retry).
-- [ ] **Demo C button** (circuit breaker): klik -> toast success "Demo C — PASSED" dengan `status=scheduled_for_retry`. Verifikasi circuit breaker card menampilkan state `open` selama demo berjalan.
-- [ ] **Demo D button** (idempotency hero): klik -> toast success "Demo D — PASSED" dengan `status=succeeded`. Buka drawer payment -> attempt history harus menunjukkan `calls>=2` tapi `actualCharges=1` (verifikasi via `gatewayReference` sama pada multiple attempts — idempotency replay). **Catatan**: assertion `actualCharges` memerlukan gateway mock endpoint khusus untuk inspect internal idempotency store — bila belum ada di TASK-03, skip assertion ini dan document sebagai caveat.
-- [ ] **Demo E button** (Retry-After): klik -> toast success "Demo E — PASSED" dengan `status=scheduled_for_retry` dan `nextRetryAt` ~ `now + retryAfterSeconds`.
-- [ ] **Circuit breaker card** menampilkan real-time state — saat Demo C berjalan, breaker pill berubah dari `closed` (green) -> `open` (red). Polling 5 detik.
-- [ ] **Metrics snapshot** menampilkan 7 metric cards dengan values yang berubah setiap 5 detik (polling). Bila TASK-11 belum finalisasi nama metric, cards mungkin menampilkan `—` — document caveat.
+- [ ] **Demo A button** (transient retry): klik -> toast loading "Running Demo A…" -> setelah ~5-10 detik, toast success "Demo A - PASSED" dengan `status=succeeded, attempts=3`. Bila gagal assertion, toast error dengan expected vs actual.
+- [ ] **Demo B button** (permanent failure): klik -> toast success "Demo B - PASSED" dengan `status=failed, attempts=1` (permanent error tidak di-retry).
+- [ ] **Demo C button** (circuit breaker): klik -> toast success "Demo C - PASSED" dengan `status=scheduled_for_retry`. Verifikasi circuit breaker card menampilkan state `open` selama demo berjalan.
+- [ ] **Demo D button** (idempotency hero): klik -> toast success "Demo D - PASSED" dengan `status=succeeded`. Buka drawer payment -> attempt history harus menunjukkan `calls>=2` tapi `actualCharges=1` (verifikasi via `gatewayReference` sama pada multiple attempts - idempotency replay). **Catatan**: assertion `actualCharges` memerlukan gateway mock endpoint khusus untuk inspect internal idempotency store - bila belum ada di TASK-03, skip assertion ini dan document sebagai caveat.
+- [ ] **Demo E button** (Retry-After): klik -> toast success "Demo E - PASSED" dengan `status=scheduled_for_retry` dan `nextRetryAt` ~ `now + retryAfterSeconds`.
+- [ ] **Circuit breaker card** menampilkan real-time state - saat Demo C berjalan, breaker pill berubah dari `closed` (green) -> `open` (red). Polling 5 detik.
+- [ ] **Metrics snapshot** menampilkan 7 metric cards dengan values yang berubah setiap 5 detik (polling). Bila TASK-11 belum finalisasi nama metric, cards mungkin menampilkan `-` - document caveat.
 - [ ] **Mobile responsive**: resize browser < 768px -> layout 1 column; 768-1024px -> 2 columns; > 1024px -> 3 columns. Header + footer tetap full-width.
-- [ ] **Sticky footer**: bila konten pendek (mis. hanya 1 payment), footer tetap di bawah viewport (tidak floating gap di tengah). Verifikasi dengan resize window sangat pendek — footer tidak overlap dengan konten.
+- [ ] **Sticky footer**: bila konten pendek (mis. hanya 1 payment), footer tetap di bawah viewport (tidak floating gap di tengah). Verifikasi dengan resize window sangat pendek - footer tidak overlap dengan konten.
 - [ ] **Sticky header**: scroll down -> header tetap terlihat (z-50, backdrop-blur).
-- [ ] `bun run lint` clean — tidak ada error ESLint (warning boleh untuk `any` types di hooks).
-- [ ] `bunx tsc --noEmit` clean — tidak ada TypeScript error.
-- [ ] **Manual quick verification via curl** (lihat Useful commands) — semua endpoint return 200 OK dengan `?XTransformPort=3001` atau `=3002`.
-- [ ] **Agent Browser verification** (TASK-14 akan formalisasi) — untuk sandbox preview, jalankan minimal: navigate ke `http://localhost:81/`, screenshot dashboard, klik Demo A, tunggu toast, screenshot result. Tidak perlu full E2E matrix — itu TASK-14.
+- [ ] `bun run lint` clean - tidak ada error ESLint (warning boleh untuk `any` types di hooks).
+- [ ] `bunx tsc --noEmit` clean - tidak ada TypeScript error.
+- [ ] **Manual quick verification via curl** (lihat Useful commands) - semua endpoint return 200 OK dengan `?XTransformPort=3001` atau `=3002`.
+- [ ] **Agent Browser verification** (TASK-14 akan formalisasi) - untuk sandbox preview, jalankan minimal: navigate ke `http://localhost:81/`, screenshot dashboard, klik Demo A, tunggu toast, screenshot result. Tidak perlu full E2E matrix - itu TASK-14.
 
 ## Useful commands (run after completing this task)
 
@@ -1478,7 +1478,7 @@ Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih s
 
 ```bash
 # 1. Start backend services (di terminal terpisah)
-#    a. PostgreSQL (bila belum running — sandbox mungkin pakai in-memory atau managed)
+#    a. PostgreSQL (bila belum running - sandbox mungkin pakai in-memory atau managed)
 # KONDISI LOCAL (Docker tersedia):
 docker compose -f /home/z/my-project/retry-failure/docker-compose.yml up -d postgres
 sleep 3
@@ -1520,7 +1520,7 @@ cd /home/z/my-project && bun run dev  # bila prefer bun (install via npm i -g bu
 cd /home/z/my-project && bun run dev  # hanya bila belum jalan
 # Expected: preview panel otomatis refresh dengan dashboard Next.js
 
-# 3. Lint + typecheck (dual runtime — pilih salah satu)
+# 3. Lint + typecheck (dual runtime - pilih salah satu)
 # KONDISI LOCAL:
 pnpm lint && pnpm typecheck
 # ATAU bila prefer bun:
@@ -1530,7 +1530,7 @@ bun run lint && bunx tsc --noEmit
 bun run lint
 bunx tsc --noEmit
 
-# 4. Tail dev log — sama kedua kondisi (dev.log ada di parent root)
+# 4. Tail dev log - sama kedua kondisi (dev.log ada di parent root)
 tail -n 100 /home/z/my-project/dev.log
 
 # 5. Manual quick verification via curl (dari shell lain)
@@ -1540,7 +1540,7 @@ curl -s http://localhost:3001/admin/config | jq .   # gateway-mock di 3001
 curl -s http://localhost:3000/api/payments | jq .   # payment-api di 3000
 curl -s http://localhost:3000/api/metrics | head -n 30
 
-# KONDISI SANDBOX (via Caddy dengan XTransformPort — Next.js preview di port 3000):
+# KONDISI SANDBOX (via Caddy dengan XTransformPort - Next.js preview di port 3000):
 curl -s "http://localhost:3000/api/health?XTransformPort=3001" | jq .      # -> payment-api:3001
 curl -s "http://localhost:3000/admin/config?XTransformPort=3002" | jq .   # -> gateway-mock:3002
 curl -s "http://localhost:3000/api/payments?XTransformPort=3001" | jq .   # -> payment-api:3001
@@ -1574,14 +1574,14 @@ curl -s -X PUT "http://localhost:3000/admin/config?XTransformPort=3002" \
 # KONDISI LOCAL:
 #    a. Buka http://localhost:3000/ di browser (akses langsung Next.js dev server).
 #    b. Dashboard harus render tanpa hydration warning (cek DevTools console).
-#    c. Klik tombol "Demo A — transient retry" -> tunggu toast hasil.
+#    c. Klik tombol "Demo A - transient retry" -> tunggu toast hasil.
 #    d. Click row di Payment List -> drawer slide-up -> lihat attempt history.
 
 # KONDISI SANDBOX (preview panel):
 #    a. Buka preview panel yang sudah otomatis expose port 3000.
 #    b. Klik "Open in New Tab" button untuk full-screen view di browser tab terpisah.
 #    c. Dashboard harus render tanpa hydration warning (cek DevTools console).
-#    d. Klik tombol "Demo A — transient retry" -> tunggu toast hasil.
+#    d. Klik tombol "Demo A - transient retry" -> tunggu toast hasil.
 #    e. Cross-service fetch via ?XTransformPort query param otomatis oleh Caddy
 #       yang fronting port 3000 (lihat SANDBOX_NOTES.md section 2.12).
 
@@ -1591,7 +1591,7 @@ curl -s -X PUT "http://localhost:3000/admin/config?XTransformPort=3002" \
 #      -> TASK-14 akan automate via Agent Browser + assertions.
 #    - Agent Browser adalah tool sandbox; di KONDISI LOCAL bisa buka browser manual.
 
-# 8. Cleanup bila perlu — sama kedua kondisi (ganti URL bila perlu)
+# 8. Cleanup bila perlu - sama kedua kondisi (ganti URL bila perlu)
 #    a. Reset gateway config ke healthy
 # KONDISI LOCAL:
 curl -X PUT http://localhost:3001/admin/config \
@@ -1610,25 +1610,25 @@ tail -n 200 /home/z/my-project/dev.log | rg "error|Error|ERROR" -i
 
 ## Notes
 
-### Server-side fetch untuk initial data — optional
+### Server-side fetch untuk initial data - optional
 
 Pattern SSR (server component fetch initial data di `page.tsx` tanpa `'use client'`) memberikan:
 
-- ✅ Faster First Contentful Paint (FCP) — data sudah ada saat HTML di-render.
+- ✅ Faster First Contentful Paint (FCP) - data sudah ada saat HTML di-render.
 - ✅ SEO-friendly (tidak relevant untuk sandbox, tapi best practice).
 - ❌ Kompleksitas tinggi: butuh `dehydrate`/`hydrate` TanStack Query + `HydrationBoundary`.
-- ❌ `XTransformPort` fetch dari server Next.js bisa langsung ke `http://localhost:3001` (tidak perlu Caddy). Tapi ini berarti client hydration butuh data yang konsisten — race condition bila data berubah antara server-fetch dan client-mount.
+- ❌ `XTransformPort` fetch dari server Next.js bisa langsung ke `http://localhost:3001` (tidak perlu Caddy). Tapi ini berarti client hydration butuh data yang konsisten - race condition bila data berubah antara server-fetch dan client-mount.
 
-**Decision untuk TASK-12**: pure client-side (`'use client'` + TanStack Query). Lebih sederhana, cukup untuk sandbox preview. SSR pattern -> TASK-13 (Vue+PrimeVue tidak butuh SSR, tapi production dashboard Next.js bisa pakai SSR — future work).
+**Decision untuk TASK-12**: pure client-side (`'use client'` + TanStack Query). Lebih sederhana, cukup untuk sandbox preview. SSR pattern -> TASK-13 (Vue+PrimeVue tidak butuh SSR, tapi production dashboard Next.js bisa pakai SSR - future work).
 
-### NO absolute URLs in client code — enforced
+### NO absolute URLs in client code - enforced
 
 Aturan ini di-enforce secara kode di `api-client.ts`: semua helper (`paymentApi`, `gatewayApi`) menerima `path` relatif (mis. `/api/payments`, `/admin/config`) dan menambahkan `?XTransformPort=NNNN` di internal. Tidak ada `http://localhost:3001` atau `http://localhost:3002` di source code client. Bila perlu berbeda port (mis. lokal dev tanpa Caddy), ubah `PAYMENT_API_PORT` / `GATEWAY_MOCK_PORT` constant di `api-client.ts` (atau pindah ke env var `NEXT_PUBLIC_PAYMENT_API_PORT`).
 
-### Polling intervals — 3s payments / 5s metrics / 10s health
+### Polling intervals - 3s payments / 5s metrics / 10s health
 
 - **Payments** (`usePayments`, `usePaymentDetail`): 3 detik. Cukup cepat untuk melihat status berubah (`processing` -> `succeeded`) tapi tidak overload backend. Total request rate: 1 list + 1 detail (drawer) = 2 req / 3s = ~0.67 req/s. Sangat ringan.
-- **Metrics** (`useMetricsSnapshot`, `CircuitBreakerCard`): 5 detik. Metrics tidak berubah tiap detik — 5 detik cukup. Total: 2 req / 5s = 0.4 req/s.
+- **Metrics** (`useMetricsSnapshot`, `CircuitBreakerCard`): 5 detik. Metrics tidak berubah tiap detik - 5 detik cukup. Total: 2 req / 5s = 0.4 req/s.
 - **Health** (`useHealth` opsional): 10 detik. Backend jarang berubah status.
 - **Gateway config** (`useGatewayConfig`): no polling (manual refetch via invalidation setelah PUT).
 
@@ -1646,10 +1646,10 @@ Pattern Tailwind:
 </div>
 ```
 
-- `min-h-screen` — root div minimal selebar viewport.
-- `flex flex-col` — children stack vertical.
-- `main flex-1` — main mengambil sisa space yang tersisa, mendorong footer ke bawah.
-- `footer mt-auto` — bila main kurang dari viewport, `mt-auto` mendorong footer ke bawah (karena flexbox column).
+- `min-h-screen` - root div minimal selebar viewport.
+- `flex flex-col` - children stack vertical.
+- `main flex-1` - main mengambil sisa space yang tersisa, mendorong footer ke bawah.
+- `footer mt-auto` - bila main kurang dari viewport, `mt-auto` mendorong footer ke bawah (karena flexbox column).
 - Hasil: footer tetap di bawah viewport bila konten pendek; scroll natural bila konten panjang.
 
 ### Toast feedback via sonner untuk semua mutations
@@ -1670,29 +1670,29 @@ Sonner dipilih (bukan Radix toast existing di `src/components/ui/toaster.tsx`) k
 - Mendukung `richColors` (green/red/yellow background).
 - Sudah ter-install di `package.json` (`"sonner": "^2.0.6"`).
 
-> Bila ingin konsisten dengan existing Radix toast, tidak masalah — tapi sonner lebih cepat untuk demo sandbox.
+> Bila ingin konsisten dengan existing Radix toast, tidak masalah - tapi sonner lebih cepat untuk demo sandbox.
 
-### Color restriction — NO indigo/blue primary
+### Color restriction - NO indigo/blue primary
 
 Project rules melarang indigo/blue sebagai warna primary (lihat README rev 2 catatan warna). Dashboard TASK-12 memakai:
 
 - **Tailwind built-in neutral palette**: `bg-background`, `text-foreground`, `bg-muted`, `bg-muted/50`, `border` (default border color).
 - **Primary button**: `bg-primary text-primary-foreground` (default shadcn/ui = neutral/foreground hitam-putih, bukan indigo).
 - **Status pills** (subtle, bukan primary): `bg-yellow-100 text-yellow-900`, `bg-green-100 text-green-900`, `bg-red-100 text-red-900`, `bg-blue-100 text-blue-900`.
-  - ⚠️ `bg-blue-100` untuk `scheduled_for_retry` adalah exception — bukan indigo primary, tapi light blue subtle. Bila project rules sangat strict (no blue sama sekali), ganti ke `bg-cyan-100 text-cyan-900` atau `bg-sky-100 text-sky-900`. **Decision untuk TASK-12**: pakai `bg-blue-100 text-blue-900` karena `scheduled_for_retry` perlu visual distinction yang jelas dari `processing` (yellow) dan `succeeded` (green). Document di TASK-15 bila production butuh palette berbeda.
+  - ⚠️ `bg-blue-100` untuk `scheduled_for_retry` adalah exception - bukan indigo primary, tapi light blue subtle. Bila project rules sangat strict (no blue sama sekali), ganti ke `bg-cyan-100 text-cyan-900` atau `bg-sky-100 text-sky-900`. **Decision untuk TASK-12**: pakai `bg-blue-100 text-blue-900` karena `scheduled_for_retry` perlu visual distinction yang jelas dari `processing` (yellow) dan `succeeded` (green). Document di TASK-15 bila production butuh palette berbeda.
 - **Destructive**: `bg-destructive/10 text-destructive` untuk error message highlight.
 - **TIDAK ADA** `bg-indigo-*`, `text-indigo-*`, `bg-blue-600`, atau warna primary yang dominan indigo/blue.
 
 ### Setelah task ini selesai
 
-- **TASK-13 (Vue+PrimeVue dashboard)** dapat dimulai secara paralel (sudah ada di Batch 6). TASK-12 dan TASK-13 independen — keduanya konsumsi API yang sama.
+- **TASK-13 (Vue+PrimeVue dashboard)** dapat dimulai secara paralel (sudah ada di Batch 6). TASK-12 dan TASK-13 independen - keduanya konsumsi API yang sama.
 - **TASK-14 (E2E scenarios via Agent Browser)** dapat diverifikasi dengan navigate ke `http://localhost:81/` (atau `:3000` bila tanpa Caddy) + klik Demo A–E. TASK-12 menyediakan UI; TASK-14 formalisasi assertions end-to-end (matrix 5 demo × multi-viewport × multi-assertion).
-- **TASK-15 (documentation)** dapat me-reference TASK-12 sebagai "sandbox preview mode" di README + demo guide. Bila user menjalankan full Docker stack, TASK-12 opsional — official demo pakai TASK-13.
+- **TASK-15 (documentation)** dapat me-reference TASK-12 sebagai "sandbox preview mode" di README + demo guide. Bila user menjalankan full Docker stack, TASK-12 opsional - official demo pakai TASK-13.
 
 ### Production caveat (document di TASK-15)
 
-- **Tidak ada auth** — siapapun dengan akses ke `http://localhost:81/` dapat create payment + trigger retry + change gateway mode. Untuk production, tambahkan NextAuth (sudah ter-install: `"next-auth": "^4.24.11"`) dengan admin role guard di `page.tsx` server component.
-- **Tidak ada rate limiting** — Demo A–E bisa di-spam. Untuk production, tambahkan server-side rate limit (mis. Upstash Ratelimit) di Next.js route handler atau di Caddy.
-- **`XTransformPort` exposed di client** — bila user inspects Network tab, mereka bisa lihat `?XTransformPort=3001` dan langsung call backend dari outside (bila port terbuka). Untuk production, hide via Next.js route handler proxy (Opsi B di step 13). Untuk sandbox, acceptable.
-- **Single QueryClient instance di module level** — bila HMR (Hot Module Replacement) terjadi, QueryClient di-recreate (cache hilang). Untuk production, gunakan `useState(() => new QueryClient())` di root component agar stabil across HMR. Sandbox simplicity — module-level instance diterima.
-- **Polling tidak pause saat tab inactive** — bila user pindah tab, polling tetap jalan (battery drain + request waste). Untuk production, tambahkan `refetchIntervalInBackground: false` (TanStack Query default sudah false) — verifikasi.
+- **Tidak ada auth** - siapapun dengan akses ke `http://localhost:81/` dapat create payment + trigger retry + change gateway mode. Untuk production, tambahkan NextAuth (sudah ter-install: `"next-auth": "^4.24.11"`) dengan admin role guard di `page.tsx` server component.
+- **Tidak ada rate limiting** - Demo A–E bisa di-spam. Untuk production, tambahkan server-side rate limit (mis. Upstash Ratelimit) di Next.js route handler atau di Caddy.
+- **`XTransformPort` exposed di client** - bila user inspects Network tab, mereka bisa lihat `?XTransformPort=3001` dan langsung call backend dari outside (bila port terbuka). Untuk production, hide via Next.js route handler proxy (Opsi B di step 13). Untuk sandbox, acceptable.
+- **Single QueryClient instance di module level** - bila HMR (Hot Module Replacement) terjadi, QueryClient di-recreate (cache hilang). Untuk production, gunakan `useState(() => new QueryClient())` di root component agar stabil across HMR. Sandbox simplicity - module-level instance diterima.
+- **Polling tidak pause saat tab inactive** - bila user pindah tab, polling tetap jalan (battery drain + request waste). Untuk production, tambahkan `refetchIntervalInBackground: false` (TanStack Query default sudah false) - verifikasi.

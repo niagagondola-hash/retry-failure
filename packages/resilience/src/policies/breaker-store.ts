@@ -1,11 +1,11 @@
 /**
- * Breaker store — singleton circuit breaker per dependency name (plan section 5.2).
+ * Breaker store - singleton circuit breaker per dependency name (plan section 5.2).
  *
  * Circuit breaker harus long-lived per-dependency, bukan dibuat baru per request.
  * State OPEN harus bertahan lintas request agar berfungsi.
  *
  * Singleton ini di-cache di module-level Map. Bila NestJS hot reload, state reset
- * (acceptable untuk dev; production butuh external state store — TASK-15 caveats).
+ * (acceptable untuk dev; production butuh external state store - TASK-15 caveats).
  */
 
 import { buildBreakerPolicy } from './policies';
@@ -47,7 +47,7 @@ export function getBreakerState(dependencyName: string): BreakerState {
 }
 
 /**
- * Reset all breaker state — test-only helper. TIDAK dipakai di production code.
+ * Reset all breaker state - test-only helper. TIDAK dipakai di production code.
  */
 export function resetBreakerStore(): void {
   breakerCache.clear();

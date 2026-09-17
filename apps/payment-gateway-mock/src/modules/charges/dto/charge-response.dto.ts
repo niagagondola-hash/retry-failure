@@ -1,7 +1,7 @@
 /**
  * Response shapes returned by POST /v1/charges.
  *
- * These are documentation only — NestJS will JSON-serialize whatever the
+ * These are documentation only - NestJS will JSON-serialize whatever the
  * controller returns. Keeping them as interfaces (not classes) avoids
  * class-transformer plainToClass ceremony for responses.
  */

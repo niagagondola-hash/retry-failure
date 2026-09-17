@@ -1,13 +1,13 @@
 /**
  * Cockatiel policy builders (plan section 5.1).
  *
- * Pure factory functions — create fresh policy instances per execution cycle,
+ * Pure factory functions - create fresh policy instances per execution cycle,
  * EXCEPT breaker (singleton via breaker-store.ts).
  *
  * Composition order (plan section 5.1):
  *   CircuitBreaker (outermost) -> Retry -> Timeout -> HTTP call (innermost)
  *
- * Wrapper order memengaruhi semantics — verifikasi via tests (TASK-14 scenario 3).
+ * Wrapper order memengaruhi semantics - verifikasi via tests (TASK-14 scenario 3).
  */
 
 import {

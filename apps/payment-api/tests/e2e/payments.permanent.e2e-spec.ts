@@ -1,5 +1,5 @@
 /**
- * SCENARIO 2 — Permanent Failure (client-error)
+ * SCENARIO 2 - Permanent Failure (client-error)
  * ==============================================
  *
  * Goal:
@@ -42,7 +42,7 @@ import { createPayment, waitForTerminalStatus } from './helpers/payments';
 import { queryAttempts } from './helpers/db';
 import { resetGatewayToHealthy, ensureDbConnected, cleanDb, closeDb } from './helpers/setup';
 
-describe('Scenario 2 — Permanent failure (client-error)', () => {
+describe('Scenario 2 - Permanent failure (client-error)', () => {
   const orderId = `E2E-S2-${Date.now()}`;
 
   beforeAll(async () => {

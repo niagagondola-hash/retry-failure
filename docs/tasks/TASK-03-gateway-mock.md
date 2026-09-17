@@ -1,4 +1,4 @@
-# TASK-03 — Payment Gateway Mock (NestJS app, port 3002)
+# TASK-03 - Payment Gateway Mock (NestJS app, port 3002)
 
 > **Task ID**: 2-b
 > **Depends on**: 1 (scaffolding)
@@ -39,23 +39,23 @@ Membangun `payment-gateway-mock` sebagai NestJS app terpisah di `apps/payment-ga
 
 ## Files to create
 
-- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/main.ts` — bootstrap port 3002, CORS, Swagger optional.
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/main.ts` - bootstrap port 3002, CORS, Swagger optional.
 - `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/app.module.ts`
 - `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/modules/charges/charges.module.ts`
-- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/modules/charges/charges.controller.ts` — POST /v1/charges
-- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/modules/charges/charges.service.ts` — apply mode + idempotency
-- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/modules/charges/dto/charge-request.dto.ts` — class-validator
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/modules/charges/charges.controller.ts` - POST /v1/charges
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/modules/charges/charges.service.ts` - apply mode + idempotency
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/modules/charges/dto/charge-request.dto.ts` - class-validator
 - `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/modules/charges/dto/charge-response.dto.ts`
 - `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/modules/admin/admin.module.ts`
-- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/modules/admin/admin.controller.ts` — GET/PUT /admin/config, GET /admin/stats
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/modules/admin/admin.controller.ts` - GET/PUT /admin/config, GET /admin/stats
 - `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/modules/admin/admin.service.ts`
 - `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/modules/admin/dto/mock-config.dto.ts`
 - `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/modules/metrics/metrics.module.ts`
-- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/modules/metrics/metrics.controller.ts` — GET /metrics
-- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/modules/metrics/metrics.service.ts` — prom-client registry
-- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/shared/state/mock-state.ts` — runtime config singleton
-- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/shared/idempotency/idempotency-store.ts` — in-memory store
-- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/shared/modes/mode-handler.ts` — switch per mode
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/modules/metrics/metrics.controller.ts` - GET /metrics
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/modules/metrics/metrics.service.ts` - prom-client registry
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/shared/state/mock-state.ts` - runtime config singleton
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/shared/idempotency/idempotency-store.ts` - in-memory store
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/shared/modes/mode-handler.ts` - switch per mode
 - `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/shared/modes/index.ts`
 
 ## Implementation steps
@@ -76,7 +76,7 @@ Membangun `payment-gateway-mock` sebagai NestJS app terpisah di `apps/payment-ga
      - `always-success`: return 200 + `{ gateway_reference, replayed: false }`.
      - `fail-first-n`: counter per `Idempotency-Key`. Bila belum ada di idempotency store & counter < n -> 500; bila >= n -> 200 + save to store.
      - `server-error`: selalu 500.
-     - `always-timeout`: `await sleep(timeoutMs)` (default 5000ms) lalu return 503 — client akan timeout duluan karena `GATEWAY_TIMEOUT_MS=2000`.
+     - `always-timeout`: `await sleep(timeoutMs)` (default 5000ms) lalu return 503 - client akan timeout duluan karena `GATEWAY_TIMEOUT_MS=2000`.
      - `client-error`: 400 `{ error_code: 'invalid_card', message: 'Card number invalid' }`.
      - `random`: `Math.random() < probability` ? 200 : 500.
      - `succeed-but-drop-response`: save to idempotency store (actual charge happens) -> `shouldDropResponse: true` (don't send response, client will timeout). Next call with same key -> replay.
@@ -113,7 +113,7 @@ Membangun `payment-gateway-mock` sebagai NestJS app terpisah di `apps/payment-ga
      }
      // 5. Bila shouldDropResponse (succeed-but-drop-response): charge already saved, but don't return response
      if (result.shouldDropResponse) {
-       // simulate dropped response — hang then abort (but charge already captured)
+       // simulate dropped response - hang then abort (but charge already captured)
        await sleep(10000); // long enough for client timeout
        throw new ServiceUnavailableException('response dropped (simulated)');
      }
@@ -144,9 +144,9 @@ Membangun `payment-gateway-mock` sebagai NestJS app terpisah di `apps/payment-ga
 
 ## Acceptance criteria
 
-> **PENTING — curl command wajib pakai `-H 'Content-Type: application/json'` untuk PUT/POST yang kirim JSON body.** Tanpa header ini, curl default pakai `application/x-www-form-urlencoded` -> NestJS parse body sebagai form, bukan JSON -> DTO kosong -> silent failure (config tidak berubah, no error). Sudah diverifikasi di sandbox.
+> **PENTING - curl command wajib pakai `-H 'Content-Type: application/json'` untuk PUT/POST yang kirim JSON body.** Tanpa header ini, curl default pakai `application/x-www-form-urlencoded` -> NestJS parse body sebagai form, bukan JSON -> DTO kosong -> silent failure (config tidak berubah, no error). Sudah diverifikasi di sandbox.
 >
-> **PENTING — Mode TIDAK auto-reset antar test.** Setiap test mode-specific butuh PUT mode dulu. Bila ragu, jalankan pre-step reset di bawah sebelum test.
+> **PENTING - Mode TIDAK auto-reset antar test.** Setiap test mode-specific butuh PUT mode dulu. Bila ragu, jalankan pre-step reset di bawah sebelum test.
 >
 > **Pre-step reset (jalankan sebelum setiap test bila ragu)**:
 > ```bash
@@ -197,7 +197,7 @@ tail -n 20 /tmp/gateway-mock.log
 #   GW_PORT="${GW_PORT:-3001}"  # default 3001 LOCAL; set GW_PORT=3002 untuk SANDBOX
 #   PORT=$GW_PORT pnpm start:dev
 
-# 2. Test endpoints — deteksi port gateway mock via env
+# 2. Test endpoints - deteksi port gateway mock via env
 GW_PORT="${GW_PORT:-3001}"  # default 3001 LOCAL; export GW_PORT=3002 untuk SANDBOX
 curl -s http://localhost:$GW_PORT/admin/config | jq .
 curl -s -X PUT http://localhost:$GW_PORT/admin/config \
@@ -236,17 +236,17 @@ curl -s http://localhost:$GW_PORT/metrics
 
 # 7. Test via Caddy dari Next.js sandbox (port 3000)
 # Hanya relevan di KONDISI SANDBOX (Next.js preview di port 3000).
-# Di KONDISI LOCAL, skip command ini — Next.js tidak berjalan otomatis di port 3000.
+# Di KONDISI LOCAL, skip command ini - Next.js tidak berjalan otomatis di port 3000.
 # Asumsi Next.js dev sudah jalan (SANDBOX); ini akan dipakai di TASK-12.
 curl -s "http://localhost:3000/admin/config?XTransformPort=3002" | jq .
 # Note: XTransformPort=3002 sesuai port gateway-mock di SANDBOX.
 
-# 8. Lint & typecheck — sama kedua kondisi
+# 8. Lint & typecheck - sama kedua kondisi
 cd /home/z/my-project/retry-failure
 pnpm --filter payment-gateway-mock lint
 pnpm --filter payment-gateway-mock typecheck
 
-# 9. Cleanup — sama kedua kondisi
+# 9. Cleanup - sama kedua kondisi
 pkill -f "nest start" 2>/dev/null
 ```
 
@@ -254,7 +254,7 @@ pkill -f "nest start" 2>/dev/null
 
 - **Idempotency-Key uniqueness**: plan section 9 menyebut key = `payment.id`. Mock hanya menyimpan successful charges; failures tidak disimpan.
 - **Counter untuk `fail-first-n`**: gunakan `Map<idempotencyKey, attemptCount>`. Replays tidak mengkonsumsi counter (karena replay langsung sukses tanpa apply mode).
-- **`succeed-but-drop-response`**: implementasinya — simpan charge ke idempotency store (sukses), tapi **jangan kirim response** (delay lalu abort/throw). Client akan timeout -> retry -> kena replay.
+- **`succeed-but-drop-response`**: implementasinya - simpan charge ke idempotency store (sukses), tapi **jangan kirim response** (delay lalu abort/throw). Client akan timeout -> retry -> kena replay.
 - **CORS**: enable `origin: '*'` agar Vue frontend (port 5173) bisa fetch langsung.
 - **No persistence**: state in-memory. Restart service = reset config + counters + idempotency store. Acceptable untuk demo; catat di TASK-15.
 - **NestJS HTTP status control**: bila perlu set custom status + headers (mis. 429 + Retry-After), inject `@Res() res: Response` di controller dan panggil `res.status(429).set('Retry-After', '10').json({...})`. Setelah `res.send()` dipanggil, NestJS tidak akan melakukan handling tambahan.

@@ -1,4 +1,4 @@
-# TASK-07 — Payments Domain Service + State Machine
+# TASK-07 - Payments Domain Service + State Machine
 
 > **Task ID**: 5
 > **Depends on**: 2-a (TASK-02 database / `PaymentRepository`) + 4 (TASK-06 gateway adapter)
@@ -19,28 +19,28 @@ create (processing)  ──►  execute  ──►  terminal: succeeded | failed
 
 Service ini bertanggung jawab atas:
 
-1. **State machine** — transisi status payment (`processing -> succeeded | failed | scheduled_for_retry`) hanya melalui jalur valid yang didefinisikan di `VALID_TRANSITIONS` map.
-2. **Idempotency invariant** (plan section 9.1) — memastikan `actualCharges <= 1` per payment walau `HTTP calls >= 2`. Invariant dipegang oleh gateway mock + `Idempotency-Key = payment.id` (stabil lintas Cockatiel retries, scheduler cycles, dan manual retries). Helper `assertInvariant()` disediakan untuk testing & log.
-3. **Durable retry counter** (plan section 7.1) — memisahkan dua counter yang TIDAK boleh dicampur:
+1. **State machine** - transisi status payment (`processing -> succeeded | failed | scheduled_for_retry`) hanya melalui jalur valid yang didefinisikan di `VALID_TRANSITIONS` map.
+2. **Idempotency invariant** (plan section 9.1) - memastikan `actualCharges <= 1` per payment walau `HTTP calls >= 2`. Invariant dipegang oleh gateway mock + `Idempotency-Key = payment.id` (stabil lintas Cockatiel retries, scheduler cycles, dan manual retries). Helper `assertInvariant()` disediakan untuk testing & log.
+3. **Durable retry counter** (plan section 7.1) - memisahkan dua counter yang TIDAK boleh dicampur:
    - `attempt_count` = jumlah attempt Cockatiel dalam **satu execution cycle** (direset ke 0 tiap cycle baru).
    - `total_retry_count` = jumlah **scheduler cycles** (durable retry); di-increment hanya saat scheduler (TASK-10) atau manual retry memulai cycle baru.
    - `MAX_TOTAL_RETRIES = 5` = limit atas `total_retry_count`. Bila terlampaui -> status berubah menjadi `failed` + `failureReason = 'max_total_retries_exceeded'`.
-4. **Audit port contract** — interface `AuditPort` (`recordAttempt`, `listAttempts`) yang di-satisfy oleh `PrismaAuditService` di TASK-08. Service ini hanya berinteraksi dengan port, bukan impl konkret.
-5. **Trace ID per execution cycle** — di-generate via `crypto.randomUUID()` di setiap pemanggilan `executePayment()`, diteruskan ke `AuditPort.recordAttempt` (kolom `trace_id`) dan ke logger. Full OpenTelemetry SDK di TASK-11 (opsional, tidak blocking).
+4. **Audit port contract** - interface `AuditPort` (`recordAttempt`, `listAttempts`) yang di-satisfy oleh `PrismaAuditService` di TASK-08. Service ini hanya berinteraksi dengan port, bukan impl konkret.
+5. **Trace ID per execution cycle** - di-generate via `crypto.randomUUID()` di setiap pemanggilan `executePayment()`, diteruskan ke `AuditPort.recordAttempt` (kolom `trace_id`) dan ke logger. Full OpenTelemetry SDK di TASK-11 (opsional, tidak blocking).
 
-Setelah task ini selesai, TASK-08 (audit impl) dan TASK-09 (controllers) dapat dimulai secara paralel — keduanya hanya mengkonsumsi `PaymentsService` + `AuditPort` yang sudah didefinisikan di sini.
+Setelah task ini selesai, TASK-08 (audit impl) dan TASK-09 (controllers) dapat dimulai secara paralel - keduanya hanya mengkonsumsi `PaymentsService` + `AuditPort` yang sudah didefinisikan di sini.
 
 ## Scope
 
 **In scope**:
 
-- `apps/payment-api/src/modules/payments/state-machine.ts` — `VALID_TRANSITIONS` map + `assertCanTransition(from, to)` + `isTerminal(status)`.
-- `apps/payment-api/src/modules/payments/idempotency.ts` — re-export `deriveIdempotencyKey` dari TASK-06 + `assertInvariant(actualCharges, httpCalls)` helper untuk testing/log.
-- `apps/payment-api/src/modules/payments/audit/audit-port.ts` — interface `AuditPort`, `RecordAttemptInput`, `AttemptView`, dan token `AUDIT_PORT`.
-- `apps/payment-api/src/modules/payments/payments.service.ts` — `@Injectable()` class dengan methods: `createPayment`, `executePayment`, `manualRetry`, `getById`, `list`.
-- `apps/payment-api/src/modules/payments/payments.module.ts` — NestJS module: providers `PaymentsService` + `PaymentRepository` + binding `AUDIT_PORT` ke placeholder (impl konkre diganti TASK-08).
-- `apps/payment-api/src/modules/payments/dto/create-payment.dto.ts` — DTO dengan `class-validator` decorators.
-- `apps/payment-api/src/modules/payments/index.ts` — barrel export.
+- `apps/payment-api/src/modules/payments/state-machine.ts` - `VALID_TRANSITIONS` map + `assertCanTransition(from, to)` + `isTerminal(status)`.
+- `apps/payment-api/src/modules/payments/idempotency.ts` - re-export `deriveIdempotencyKey` dari TASK-06 + `assertInvariant(actualCharges, httpCalls)` helper untuk testing/log.
+- `apps/payment-api/src/modules/payments/audit/audit-port.ts` - interface `AuditPort`, `RecordAttemptInput`, `AttemptView`, dan token `AUDIT_PORT`.
+- `apps/payment-api/src/modules/payments/payments.service.ts` - `@Injectable()` class dengan methods: `createPayment`, `executePayment`, `manualRetry`, `getById`, `list`.
+- `apps/payment-api/src/modules/payments/payments.module.ts` - NestJS module: providers `PaymentsService` + `PaymentRepository` + binding `AUDIT_PORT` ke placeholder (impl konkre diganti TASK-08).
+- `apps/payment-api/src/modules/payments/dto/create-payment.dto.ts` - DTO dengan `class-validator` decorators.
+- `apps/payment-api/src/modules/payments/index.ts` - barrel export.
 - Jest unit tests di `apps/payment-api/test/modules/payments/` (mock `PaymentRepository` + `PaymentGatewayPort` + `AuditPort`).
 
 **Out of scope**:
@@ -87,11 +87,11 @@ Success (ChargeResult.status='succeeded')  ────────────�
 | `processing`               | `failed`                   | Permanent failure OR `totalRetryCount > MAX`       | Set `failureReason`; terminal. Permanent = `httpStatus` 4xx selain 429, atau `errorCode='invalid_card'`.   |
 | `processing`               | `scheduled_for_retry`      | Retry exhausted OR `errorCode === 'circuit_open'`   | Set `next_retry_at = now + delay`; increment `total_retry_count` (kecuali cycle pertama, lihat catatan).   |
 | `scheduled_for_retry`      | `processing`              | Scheduler picks due row (TASK-10) OR `manualRetry` | Reset `attempt_count = 0`; **jangan** reset `total_retry_count`. Atomic via `updateMany WHERE status=...`.  |
-| `succeeded`                | (none)                     | —                                                  | Terminal. `assertCanTransition('succeeded', *)` throws.                                                    |
+| `succeeded`                | (none)                     | -                                                  | Terminal. `assertCanTransition('succeeded', *)` throws.                                                    |
 | `failed`                   | `processing`               | `manualRetry` only (admin override)                | Reset `attempt_count = 0`; tidak reset `total_retry_count` (counter jujur).                              |
-| `failed`                   | (lainnya)                  | —                                                  | Selain `manualRetry`, transisi dari `failed` ditolak.                                                       |
+| `failed`                   | (lainnya)                  | -                                                  | Selain `manualRetry`, transisi dari `failed` ditolak.                                                       |
 
-> **Catatan penambahan `total_retry_count`**: counter di-increment **saat transisi `processing -> scheduled_for_retry`** (yaitu ketika satu execution cycle gagal dan dijadwalkan ulang). Saat `scheduled_for_retry -> processing` (start of new cycle), counter **tidak** di-increment (sudah dihitung di cycle sebelumnya). Bila `total_retry_count + 1 > MAX_TOTAL_RETRIES` saat hendak transisi ke `scheduled_for_retry`, maka service **tidak** menjadwalkan retry — langsung transisi `processing -> failed` dengan `failureReason='max_total_retries_exceeded'`.
+> **Catatan penambahan `total_retry_count`**: counter di-increment **saat transisi `processing -> scheduled_for_retry`** (yaitu ketika satu execution cycle gagal dan dijadwalkan ulang). Saat `scheduled_for_retry -> processing` (start of new cycle), counter **tidak** di-increment (sudah dihitung di cycle sebelumnya). Bila `total_retry_count + 1 > MAX_TOTAL_RETRIES` saat hendak transisi ke `scheduled_for_retry`, maka service **tidak** menjadwalkan retry - langsung transisi `processing -> failed` dengan `failureReason='max_total_retries_exceeded'`.
 
 ## Idempotency invariant (plan section 9.1)
 
@@ -104,9 +104,9 @@ walaupun
 
 Invariant dipegang oleh lapisan berikut (bukan oleh service ini secara langsung):
 
-1. **Gateway mock** (TASK-03) — in-memory `Map<Idempotency-Key, ChargeResult>`. Bila key sama dipakai ulang, gateway mengembalikan `replayed: true` dengan hasil original (tidak melakukan charge kedua kali).
-2. **HTTP adapter** (TASK-06) — selalu mengirim header `Idempotency-Key: <payment.id>` (via `deriveIdempotencyKey(paymentId)` yang return `paymentId` as-is).
-3. **`PaymentsService`** — menggunakan `payment.id` yang sama (UUID stabil) sebagai key untuk seluruh attempt dalam satu execution cycle **dan** lintas scheduler cycles **dan** lintas manual retries. Tidak ada transformasi.
+1. **Gateway mock** (TASK-03) - in-memory `Map<Idempotency-Key, ChargeResult>`. Bila key sama dipakai ulang, gateway mengembalikan `replayed: true` dengan hasil original (tidak melakukan charge kedua kali).
+2. **HTTP adapter** (TASK-06) - selalu mengirim header `Idempotency-Key: <payment.id>` (via `deriveIdempotencyKey(paymentId)` yang return `paymentId` as-is).
+3. **`PaymentsService`** - menggunakan `payment.id` yang sama (UUID stabil) sebagai key untuk seluruh attempt dalam satu execution cycle **dan** lintas scheduler cycles **dan** lintas manual retries. Tidak ada transformasi.
 
 Helper di `idempotency.ts`:
 
@@ -114,7 +114,7 @@ Helper di `idempotency.ts`:
 /**
  * Verifikasi invariant plan section 9.1.
  * Dipanggil di test (assertion) dan di log debug (observability).
- * TIDAK meng-throw — caller yang memutuskan apa yang dilakukan bila violated.
+ * TIDAK meng-throw - caller yang memutuskan apa yang dilakukan bila violated.
  *
  * @returns true jika invariant terpenuhi (actualCharges <= 1).
  */
@@ -123,7 +123,7 @@ export function assertInvariant(actualCharges: number, httpCalls: number): boole
 }
 ```
 
-> Invariant yang sebenarnya diuji di E2E scenario 4 (`succeed-but-drop-response`) — TASK-14. Di task ini hanya disediakan helper; service tidak meng-enforce (tidak bisa, karena tidak tahu `actualCharges` — itu gateway-side truth yang dilihat via `replayed: true`).
+> Invariant yang sebenarnya diuji di E2E scenario 4 (`succeed-but-drop-response`) - TASK-14. Di task ini hanya disediakan helper; service tidak meng-enforce (tidak bisa, karena tidak tahu `actualCharges` - itu gateway-side truth yang dilihat via `replayed: true`).
 
 ## Durable retry counter (plan section 7.1)
 
@@ -134,13 +134,13 @@ MAX_TOTAL_RETRIES  = 5   ── scheduler, lintas execution cycles
 
 | Counter              | Lingkup                   | Kapan di-reset         | Kapan di-increment                                            | Di mana disimpan        |
 | -------------------- | ------------------------- | ----------------------- | ------------------------------------------------------------- | ----------------------- |
-| `attempt_count`      | Satu execution cycle      | Start tiap cycle (`executePayment`) | Tidak (di-update oleh callback `onAttempt` — nilai akhir = `attempts` Cockatiel) | `payments.attempt_count` |
+| `attempt_count`      | Satu execution cycle      | Start tiap cycle (`executePayment`) | Tidak (di-update oleh callback `onAttempt` - nilai akhir = `attempts` Cockatiel) | `payments.attempt_count` |
 | `total_retry_count`  | Lintas scheduler cycles   | **Tidak pernah** di-reset (kecuali `manualRetry` tidak reset juga) | Saat transisi `processing -> scheduled_for_retry` (cycle gagal) | `payments.total_retry_count` |
 
 **Lima aturan penting yang TIDAK boleh dilanggar**:
 
 1. Cockatiel retry **TIDAK** menambah `total_retry_count`. Cockatiel hanya menambah `attempt_count` dalam cycle yang sama.
-2. Scheduler cycle (TASK-10) **di-increment** `total_retry_count` saat memulai cycle baru dari `scheduled_for_retry` (setelah transisi sukses `scheduled_for_retry -> processing`). Tidak — koreksi: counter di-increment **saat transisi `processing -> scheduled_for_retry`**, yaitu saat cycle gagal dan dijadwalkan ulang. Saat scheduler baru saja start cycle, counter tidak di-increment lagi (sudah dihitung).
+2. Scheduler cycle (TASK-10) **di-increment** `total_retry_count` saat memulai cycle baru dari `scheduled_for_retry` (setelah transisi sukses `scheduled_for_retry -> processing`). Tidak - koreksi: counter di-increment **saat transisi `processing -> scheduled_for_retry`**, yaitu saat cycle gagal dan dijadwalkan ulang. Saat scheduler baru saja start cycle, counter tidak di-increment lagi (sudah dihitung).
 3. `manualRetry()` **TIDAK** mereset `total_retry_count`. Counter jujur menggambarkan berapa kali payment ini sudah dijadwalkan ulang.
 4. Bila `total_retry_count + 1 > MAX_TOTAL_RETRIES` (default 5) -> service tidak menjadwalkan retry, langsung transisi `processing -> failed` + `failureReason = 'max_total_retries_exceeded'`.
 5. `attempt_count` di-reset ke 0 di awal setiap `executePayment()` call (karena Cockatiel mulai dari attempt #1 lagi di setiap cycle baru).
@@ -160,7 +160,7 @@ MAX_TOTAL_RETRIES  = 5   ── scheduler, lintas execution cycles
 
 ## Implementation steps
 
-### 1. `audit/audit-port.ts` — interface (impl di TASK-08)
+### 1. `audit/audit-port.ts` - interface (impl di TASK-08)
 
 ```ts
 import type { AttemptOutcome } from '../../../database/entities/enums';
@@ -173,7 +173,7 @@ export const AUDIT_PORT = Symbol('AUDIT_PORT');
 
 /**
  * Payload untuk menulis satu row payment_attempts (plan section 11.2).
- * Semua kolom yang TIDAK optional WAJIB diisi — task-08 schema NOT NULL.
+ * Semua kolom yang TIDAK optional WAJIB diisi - task-08 schema NOT NULL.
  */
 export interface RecordAttemptInput {
   paymentId: string;
@@ -218,14 +218,14 @@ export interface AttemptView {
  * Service memanggil recordAttempt per-attempt via onAttempt callback (TASK-06).
  */
 export interface AuditPort {
-  /** Persist satu attempt row. TIDAK boleh throw — wrap internal error di try/catch. */
+  /** Persist satu attempt row. TIDAK boleh throw - wrap internal error di try/catch. */
   recordAttempt(input: RecordAttemptInput): Promise<void>;
   /** List attempts untuk satu payment, urut by attempt_number ASC. */
   listAttempts(paymentId: string): Promise<AttemptView[]>;
 }
 
 /**
- * Default placeholder — di-inject bila TASK-08 belum di-wire.
+ * Default placeholder - di-inject bila TASK-08 belum di-wire.
  * Berguna untuk menjalankan service di test / dev tanpa DB.
  */
 export class NoopAuditService implements AuditPort {
@@ -238,7 +238,7 @@ export class NoopAuditService implements AuditPort {
 }
 ```
 
-### 2. `state-machine.ts` — valid transition map
+### 2. `state-machine.ts` - valid transition map
 
 ```ts
 import { PaymentStatus } from '../../database/entities/enums';
@@ -260,7 +260,7 @@ export const VALID_TRANSITIONS: Readonly<Record<PaymentStatus, readonly PaymentS
   [PaymentStatus.FAILED]: [
     PaymentStatus.PROCESSING, // manualRetry only (admin override)
   ],
-  [PaymentStatus.SUCCEEDED]: [], // terminal — no transitions
+  [PaymentStatus.SUCCEEDED]: [], // terminal - no transitions
 };
 
 export class InvalidTransitionError extends Error {
@@ -289,11 +289,11 @@ export function assertCanTransition(from: PaymentStatus, to: PaymentStatus): voi
 }
 ```
 
-### 3. `idempotency.ts` — re-export + invariant helper
+### 3. `idempotency.ts` - re-export + invariant helper
 
 ```ts
 /**
- * Re-export deriveIdempotencyKey dari TASK-06 — service tidak boleh
+ * Re-export deriveIdempotencyKey dari TASK-06 - service tidak boleh
  * re-implement (single source of truth).
  */
 export { deriveIdempotencyKey } from '../gateway/idempotency-key';
@@ -304,7 +304,7 @@ export { deriveIdempotencyKey } from '../gateway/idempotency-key';
  * @returns true bila invariant terpenuhi.
  *
  * Catatan: service TIDAK memanggil ini di runtime (tidak punya visibilitas
- * actualCharges — itu gateway-side truth via replayed:true). Helper disediakan
+ * actualCharges - itu gateway-side truth via replayed:true). Helper disediakan
  * untuk:
  *   - test assertion di TASK-14 scenario 4 (succeed-but-drop-response),
  *   - observability hook di TASK-11 bila ingin log warning saat violated.
@@ -314,7 +314,7 @@ export function assertInvariant(actualCharges: number, httpCalls: number): boole
 }
 ```
 
-### 4. `dto/create-payment.dto.ts` — class-validator
+### 4. `dto/create-payment.dto.ts` - class-validator
 
 ```ts
 import { IsString, IsNumber, MinLength, MaxLength, IsPositive, Max, Length, IsIn } from 'class-validator';
@@ -344,7 +344,7 @@ export class CreatePaymentDto {
 }
 ```
 
-### 5. `payments.service.ts` — orchestration
+### 5. `payments.service.ts` - orchestration
 
 ```ts
 import { Injectable, Inject, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
@@ -406,7 +406,7 @@ export class PaymentsService {
 
   /**
    * POST /payments flow (plan section 10.2):
-   *   1. validate (DTO via controller — TASK-09)
+   *   1. validate (DTO via controller - TASK-09)
    *   2. create row status=processing
    *   3. executePayment(source='api')
    *   4. return view (terminal atau processing-bila-async-decided-future)
@@ -426,7 +426,7 @@ export class PaymentsService {
     });
     this.logger.log({ paymentId: payment.id, orderId: payment.orderId }, 'payment created');
 
-    // Execute synchronously — controller (TASK-09) blocking HTTP request sampai terminal.
+    // Execute synchronously - controller (TASK-09) blocking HTTP request sampai terminal.
     const updated = await this.executePayment(payment.id, { source: 'api' });
     return this.toView(updated);
   }
@@ -468,7 +468,7 @@ export class PaymentsService {
     const traceId = randomUUID();
     const idempotencyKey = deriveIdempotencyKey(paymentId);
 
-    // Wire audit callback — per-attempt write via gateway adapter hook (option A).
+    // Wire audit callback - per-attempt write via gateway adapter hook (option A).
     // Lihat Notes untuk trade-off option A vs B.
     this.attachAuditCallback(traceId, idempotencyKey);
 
@@ -482,7 +482,7 @@ export class PaymentsService {
         currency: payment.currency,
       });
     } catch (err) {
-      // Seharusnya tidak terjadi — adapter mengembalikan ChargeResult bahkan untuk error.
+      // Seharusnya tidak terjadi - adapter mengembalikan ChargeResult bahkan untuk error.
       // Tapi bila throw (mis. programming error), tangkap sebagai unexpected failure.
       this.logger.error({ paymentId, err }, 'gateway.charge threw unexpectedly');
       result = {
@@ -525,7 +525,7 @@ export class PaymentsService {
       return (await this.payments.findById(paymentId))!;
     }
 
-    // 3. Circuit open -> scheduled_for_retry (tidak increment counter — circuit bukan cycle gagal baru)
+    // 3. Circuit open -> scheduled_for_retry (tidak increment counter - circuit bukan cycle gagal baru)
     //    Catatan: sebenarnya circuit_open juga mengindikasikan cycle gagal; keputusan:
     //    di-increment totalRetryCount juga (cycle gagal karena breaker).
     //    Bila totalRetryCount + 1 > MAX -> failed.
@@ -555,16 +555,16 @@ export class PaymentsService {
       return (await this.payments.findById(paymentId))!;
     }
 
-    // 5. Fallback — seharusnya tidak tercapai. Treat sebagai failed untuk safety.
+    // 5. Fallback - seharusnya tidak tercapai. Treat sebagai failed untuk safety.
     await this.atomicTransition(paymentId, PaymentStatus.FAILED, {
       failureReason: result.errorMessage ?? 'unknown_charge_result',
     });
-    this.logger.error({ paymentId, result }, 'unknown charge result mapping — fallback to failed');
+    this.logger.error({ paymentId, result }, 'unknown charge result mapping - fallback to failed');
     return (await this.payments.findById(paymentId))!;
   }
 
   /**
-   * Manual retry — admin override dari terminal state (failed) atau scheduled_for_retry.
+   * Manual retry - admin override dari terminal state (failed) atau scheduled_for_retry.
    * - attempt_count direset (cycle baru)
    * - total_retry_count TIDAK direset (counter jujur)
    * - jalankan executePayment(source='manual')
@@ -612,7 +612,7 @@ export class PaymentsService {
       status: to,
     });
     if (!ok) {
-      // Status bukan processing lagi — concurrent execution. Throw agar caller tahu.
+      // Status bukan processing lagi - concurrent execution. Throw agar caller tahu.
       throw new BadRequestException(
         `Cannot transition payment ${paymentId} to ${to}: status no longer processing (concurrent execution)`,
       );
@@ -621,10 +621,10 @@ export class PaymentsService {
 
   /**
    * Wire callback onAttempt ke ResilientPaymentGateway (TASK-06).
-   * Option A (preferred): adapter yang invoke audit.recordAttempt — service cukup
+   * Option A (preferred): adapter yang invoke audit.recordAttempt - service cukup
    *   set callback sekali per execution cycle.
    * Bila adapter tidak mendukung AttemptObservable (mis. di test mock), audit tidak
-   *   ter-write — service tetap berfungsi tanpa audit trail (graceful degradation).
+   *   ter-write - service tetap berfungsi tanpa audit trail (graceful degradation).
    */
   private attachAuditCallback(traceId: string, idempotencyKey: string): void {
     const observable = this.gateway as unknown as Partial<AttemptObservable>;
@@ -663,7 +663,7 @@ export class PaymentsService {
   }
 
   private formatAmount(amount: number): string {
-    return amount.toFixed(2); // "10000.00" — PostgreSQL numeric(12,2)
+    return amount.toFixed(2); // "10000.00" - PostgreSQL numeric(12,2)
   }
 
   private toView(p: Payment): PaymentView {
@@ -685,7 +685,7 @@ export class PaymentsService {
 }
 ```
 
-### 6. `payments.module.ts` — NestJS wiring
+### 6. `payments.module.ts` - NestJS wiring
 
 ```ts
 import { Module } from '@nestjs/common';
@@ -713,7 +713,7 @@ import { AUDIT_PORT, NoopAuditService } from './audit/audit-port';
 export class PaymentsModule {}
 ```
 
-### 7. `index.ts` — barrel
+### 7. `index.ts` - barrel
 
 ```ts
 export * from './state-machine';
@@ -740,7 +740,7 @@ export * from './dto/create-payment.dto';
 #### `idempotency.spec.ts`
 - `deriveIdempotencyKey('pay_123')` -> `'pay_123'` (re-export behavior sama TASK-06).
 - `deriveIdempotencyKey('')` -> throw.
-- `assertInvariant(1, 5)` -> true (1 charge, 5 calls — invariant hold).
+- `assertInvariant(1, 5)` -> true (1 charge, 5 calls - invariant hold).
 - `assertInvariant(2, 5)` -> false (invariant violated).
 - `assertInvariant(0, 0)` -> true.
 
@@ -778,10 +778,10 @@ export * from './dto/create-payment.dto';
 - [ ] `getById(id)` return `PaymentDetail` dengan `attempts` dari `audit.listAttempts(id)`.
 - [ ] `list({ status? })` meneruskan filter ke `PaymentRepository.list`.
 - [ ] Semua transisi status pakai `atomicUpdateStatus(paymentId, expectedFrom, patch)` (atomic via `UPDATE ... WHERE id=? AND status=?`).
-- [ ] `NoopAuditService` di-bind sebagai default `AUDIT_PORT` — module bisa boot tanpa TASK-08.
+- [ ] `NoopAuditService` di-bind sebagai default `AUDIT_PORT` - module bisa boot tanpa TASK-08.
 - [ ] `PaymentsModule` exports `PaymentsService`. Import `GatewayModule` (untuk `PAYMENT_GATEWAY_PORT`) + `TypeOrmModule.forFeature([Payment])`.
 - [ ] Tidak ada import `axios`, `cockatiel`, atau `@prisma/client` di seluruh `modules/payments/` (kecuali TypeORM repository yang sudah di-task-02).
-- [ ] `attempt_count` di-reset oleh service (bukan Cockatiel). `total_retry_count` di-increment hanya oleh service (scheduler TASK-10 memanggil `executePayment(source='scheduler')` — service yang increment).
+- [ ] `attempt_count` di-reset oleh service (bukan Cockatiel). `total_retry_count` di-increment hanya oleh service (scheduler TASK-10 memanggil `executePayment(source='scheduler')` - service yang increment).
 - [ ] `pnpm --filter payment-api typecheck` lulus.
 - [ ] `pnpm --filter payment-api lint` lulus.
 - [ ] `pnpm --filter payment-api test` (Jest) lulus untuk `state-machine.spec.ts`, `idempotency.spec.ts`, `payments.service.spec.ts`.
@@ -801,7 +801,7 @@ Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih s
 
 ---
 
-### 1. Start gateway mock (dependency TASK-03 — port kondisional)
+### 1. Start gateway mock (dependency TASK-03 - port kondisional)
 
 ```bash
 # KONDISI LOCAL (gateway-mock default port 3001):
@@ -838,7 +838,7 @@ docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postg
   psql -U retry_failure -d retry_failure -c '\dt'
 
 # KONDISI SANDBOX (Docker tidak tersedia):
-# Opsi A — external PostgreSQL instance tersedia (set DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME di .env):
+# Opsi A - external PostgreSQL instance tersedia (set DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME di .env):
 cd /home/z/my-project/retry-failure/apps/payment-api
 # Edit .env terlebih dahulu: DB_HOST=..., DB_PORT=..., dst.
 pnpm db:migrate
@@ -855,7 +855,7 @@ console.log(t.rows);
 await c.end();
 "
 
-# Opsi B — tidak ada PostgreSQL sama sekali: skip migration, gunakan NoopAuditService / mock repository.
+# Opsi B - tidak ada PostgreSQL sama sekali: skip migration, gunakan NoopAuditService / mock repository.
 # Document caveat di TASK-15 production caveats. E2E service test di step 5 akan fail; jalankan unit test saja (step 4).
 ```
 
@@ -888,7 +888,7 @@ pnpm --filter payment-api lint
 pnpm --filter payment-api test
 ```
 
-### 5. Quick E2E service test via ts-node (gateway mock + DB harus sudah jalan — port kondisional)
+### 5. Quick E2E service test via ts-node (gateway mock + DB harus sudah jalan - port kondisional)
 
 Simpan sebagai `/tmp/smoke-payments-service.ts`:
 
@@ -1004,35 +1004,35 @@ pkill -f "nest start" 2>/dev/null
 
 - **Per-attempt audit: option A vs B**:
   - **Option A (dipilih)**: gateway adapter (TASK-06) invoke `audit.recordAttempt` via `onAttempt` callback yang di-set oleh `PaymentsService.attachAuditCallback`. Service cukup `gateway.setOnAttempt(cb)` sekali per execution cycle. Audit logic hidup di service (callback closure), adapter tetap framework-agnostic. Trade-off: service harus tahu bahwa gateway instanceof `AttemptObservable` (cast via `as unknown as Partial<AttemptObservable>`).
-  - **Option B (alternatif ditolak)**: service meneruskan `onAttempt` ke `executeWithResilience({ fn, onAttempt })` langsung. Tapi itu meng-couple service ke `@retry-failure/resilience` API (TASK-05) — melanggar layering yang sudah dibangun TASK-06 (adapter sebagai boundary). Tidak dipakai.
-  - **Graceful degradation**: bila adapter tidak mendukung `AttemptObservable` (mis. di test mock), `attachAuditCallback` no-op. Service tetap berfungsi — hanya tidak ada audit row.
+  - **Option B (alternatif ditolak)**: service meneruskan `onAttempt` ke `executeWithResilience({ fn, onAttempt })` langsung. Tapi itu meng-couple service ke `@retry-failure/resilience` API (TASK-05) - melanggar layering yang sudah dibangun TASK-06 (adapter sebagai boundary). Tidak dipakai.
+  - **Graceful degradation**: bila adapter tidak mendukung `AttemptObservable` (mis. di test mock), `attachAuditCallback` no-op. Service tetap berfungsi - hanya tidak ada audit row.
 
-- **Atomic status transition via `updateMany WHERE status=expectedFrom`**: TypeORM `repository.update({ id, status: expectedFrom }, patch)` menghasilkan SQL `UPDATE payments SET ... WHERE id=? AND status=?`. Bila affected rows = 0 -> status sudah berubah (concurrent execution) -> service throw `BadRequestException`. Ini menjamin idempotensi scheduler (TASK-10) — bila dua instance scheduler pick payment yang sama, hanya satu yang berhasil transisi.
+- **Atomic status transition via `updateMany WHERE status=expectedFrom`**: TypeORM `repository.update({ id, status: expectedFrom }, patch)` menghasilkan SQL `UPDATE payments SET ... WHERE id=? AND status=?`. Bila affected rows = 0 -> status sudah berubah (concurrent execution) -> service throw `BadRequestException`. Ini menjamin idempotensi scheduler (TASK-10) - bila dua instance scheduler pick payment yang sama, hanya satu yang berhasil transisi.
 
 - **Counter separation critical**:
-  - `attempt_count` di-update oleh callback `onAttempt` dari adapter (nilai akhir = `attempts` Cockatiel). Service hanya reset ke 0 di awal cycle. Bila audit NoopAuditService (placeholder), `attempt_count` row payment tidak ter-update akurat — itu OK untuk dev (TASK-08 akan fix dengan impl konkre).
-  - `total_retry_count` di-increment **hanya** oleh `PaymentsService.applyOutcome()` saat transisi `processing -> scheduled_for_retry`. Cockatiel tidak pernah menyentuh counter ini. Scheduler (TASK-10) memanggil `executePayment(source='scheduler')` — service yang increment. Manual retry (TASK-09 controller) memanggil `manualRetry()` — service yang increment (jika cycle gagal lagi).
+  - `attempt_count` di-update oleh callback `onAttempt` dari adapter (nilai akhir = `attempts` Cockatiel). Service hanya reset ke 0 di awal cycle. Bila audit NoopAuditService (placeholder), `attempt_count` row payment tidak ter-update akurat - itu OK untuk dev (TASK-08 akan fix dengan impl konkre).
+  - `total_retry_count` di-increment **hanya** oleh `PaymentsService.applyOutcome()` saat transisi `processing -> scheduled_for_retry`. Cockatiel tidak pernah menyentuh counter ini. Scheduler (TASK-10) memanggil `executePayment(source='scheduler')` - service yang increment. Manual retry (TASK-09 controller) memanggil `manualRetry()` - service yang increment (jika cycle gagal lagi).
 
-- **Idempotency test scenario 4** (`succeed-but-drop-response`): tidak diuji di task ini — ada di TASK-14 E2E. Helper `assertInvariant(actualCharges, httpCalls)` disediakan untuk assertion di task itu. Service tidak bisa mengetahui `actualCharges` sendiri (itu gateway-side truth via `replayed: true`); invariant di-enforce oleh gateway mock in-memory store.
+- **Idempotency test scenario 4** (`succeed-but-drop-response`): tidak diuji di task ini - ada di TASK-14 E2E. Helper `assertInvariant(actualCharges, httpCalls)` disediakan untuk assertion di task itu. Service tidak bisa mengetahui `actualCharges` sendiri (itu gateway-side truth via `replayed: true`); invariant di-enforce oleh gateway mock in-memory store.
 
-- **Trace ID per execution cycle**: `crypto.randomUUID()` di-generate di awal `executePayment()`. Same trace ID untuk semua attempt dalam satu cycle (Cockatiel retries). Berbeda trace ID untuk cycle berbeda (scheduler / manual retry). Full OpenTelemetry SDK (span export ke Jaeger) di TASK-11 — di task ini trace ID hanya disimpan di `payment_attempts.trace_id` (via audit callback) dan di log line.
+- **Trace ID per execution cycle**: `crypto.randomUUID()` di-generate di awal `executePayment()`. Same trace ID untuk semua attempt dalam satu cycle (Cockatiel retries). Berbeda trace ID untuk cycle berbeda (scheduler / manual retry). Full OpenTelemetry SDK (span export ke Jaeger) di TASK-11 - di task ini trace ID hanya disimpan di `payment_attempts.trace_id` (via audit callback) dan di log line.
 
 - **Permanent failure classification**: dilakukan di service (`isPermanentFailure`) berdasarkan `errorCode` + `httpStatus`. Bila TASK-04 classifier sudah ada, sebaiknya service memanggil `classifyError(result)` untuk konsistensi. Untuk sekarang, classification inline dengan tabel:
   - `errorCode` in `['invalid_card', 'insufficient_funds', 'expired_card']` -> permanent.
   - `httpStatus` in `[400, 401, 403, 404, 410, 422]` (4xx non-429, non-408) -> permanent.
   - Lainnya -> retryable.
 
-- **`MAX_TOTAL_RETRIES` dari config**: dibaca via `ConfigService.get<number>('MAX_TOTAL_RETRIES', 5)`. Default 5 sesuai plan section 7.1. Schema validation di TASK-01 (`validation.schema.ts`) — Joi atau zod. Tidak di-hardcode di service.
+- **`MAX_TOTAL_RETRIES` dari config**: dibaca via `ConfigService.get<number>('MAX_TOTAL_RETRIES', 5)`. Default 5 sesuai plan section 7.1. Schema validation di TASK-01 (`validation.schema.ts`) - Joi atau zod. Tidak di-hardcode di service.
 
 - **`NoopAuditService` default binding**: module bisa boot tanpa TASK-08. Saat TASK-08 selesai, override dengan `{ provide: AUDIT_PORT, useClass: PrismaAuditService }` di `PaymentsModule` atau di module terpisah yang di-import. Setelah override, `NoopAuditService` tetap diekspor sebagai utility untuk test.
 
-- **`attempt_count` tidak di-increment oleh service**: Cockatiel callback `onAttempt` dijalankan per attempt. Service **bisa** menulis `attempt_count` row payment di callback juga (mis. `payments.atomicUpdateStatus(id, processing, { attemptCount: ctx.attemptNumber })`). Tapi untuk simplicity di task ini, `attempt_count` di row payment diisi akhir dari `ChargeResult.attempts` di `applyOutcome()` — atau bahkan dibiarkan 0 bila tidak ada audit. Decision: `attempt_count` di-update oleh audit impl (TASK-08) via trigger pada `payment_attempts` insert, atau oleh service di callback. Pilih yang lebih sederhana saat TASK-08: update via service di callback `onAttempt`:
+- **`attempt_count` tidak di-increment oleh service**: Cockatiel callback `onAttempt` dijalankan per attempt. Service **bisa** menulis `attempt_count` row payment di callback juga (mis. `payments.atomicUpdateStatus(id, processing, { attemptCount: ctx.attemptNumber })`). Tapi untuk simplicity di task ini, `attempt_count` di row payment diisi akhir dari `ChargeResult.attempts` di `applyOutcome()` - atau bahkan dibiarkan 0 bila tidak ada audit. Decision: `attempt_count` di-update oleh audit impl (TASK-08) via trigger pada `payment_attempts` insert, atau oleh service di callback. Pilih yang lebih sederhana saat TASK-08: update via service di callback `onAttempt`:
   ```ts
   // di attachAuditCallback, sebelum audit.recordAttempt:
   await this.payments.atomicUpdateStatus(ctx.paymentId, PaymentStatus.PROCESSING, {
     attemptCount: ctx.attemptNumber,
   }).catch(() => undefined); // best-effort
   ```
-  Tapi ini menambah query per-attempt. Alternative: defer ke akhir cycle — set `attemptCount = result.attempts` di `applyOutcome()`. **Decision untuk TASK-07**: defer — set di `applyOutcome` saja, audit row di `payment_attempts.attempt_number` punya info per-attempt yang lebih akurat.
+  Tapi ini menambah query per-attempt. Alternative: defer ke akhir cycle - set `attemptCount = result.attempts` di `applyOutcome()`. **Decision untuk TASK-07**: defer - set di `applyOutcome` saja, audit row di `payment_attempts.attempt_number` punya info per-attempt yang lebih akurat.
 
-- **Setelah task ini selesai**: TASK-08 (audit trail impl) dan TASK-09 (controllers) dapat dimulai secara paralel. Keduanya hanya mengkonsumsi `PaymentsService` + `AuditPort` — tidak ada perubahan API breaking yang diharapkan di TASK-07 saat TASK-08/09/10/11 berjalan. TASK-10 scheduler akan memanggil `executePayment(paymentId, { source: 'scheduler' })` setelah poll `PaymentRepository.findDueRetries()`. TASK-11 akan wrap `PaymentsService` dengan OTel span + pino log context via `AsyncLocalStorage`.
+- **Setelah task ini selesai**: TASK-08 (audit trail impl) dan TASK-09 (controllers) dapat dimulai secara paralel. Keduanya hanya mengkonsumsi `PaymentsService` + `AuditPort` - tidak ada perubahan API breaking yang diharapkan di TASK-07 saat TASK-08/09/10/11 berjalan. TASK-10 scheduler akan memanggil `executePayment(paymentId, { source: 'scheduler' })` setelah poll `PaymentRepository.findDueRetries()`. TASK-11 akan wrap `PaymentsService` dengan OTel span + pino log context via `AsyncLocalStorage`.

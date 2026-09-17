@@ -1,7 +1,7 @@
 import { describe, it, expect } from '@jest/globals';
 import { parseRetryAfter } from '../../src/errors/retry-after';
 
-describe('parseRetryAfter — delta-seconds', () => {
+describe('parseRetryAfter - delta-seconds', () => {
   it('"10" -> 10000 ms', () => {
     expect(parseRetryAfter('10')).toBe(10000);
   });
@@ -19,7 +19,7 @@ describe('parseRetryAfter — delta-seconds', () => {
   });
 });
 
-describe('parseRetryAfter — HTTP-date', () => {
+describe('parseRetryAfter - HTTP-date', () => {
   it('RFC 7231 date 10s in future -> 10000 ms', () => {
     const now = new Date('2025-10-21T07:27:50Z');
     const header = 'Wed, 21 Oct 2025 07:28:00 GMT';
@@ -39,7 +39,7 @@ describe('parseRetryAfter — HTTP-date', () => {
   });
 });
 
-describe('parseRetryAfter — null / empty / invalid', () => {
+describe('parseRetryAfter - null / empty / invalid', () => {
   it('null -> null', () => {
     expect(parseRetryAfter(null)).toBeNull();
   });
@@ -77,7 +77,7 @@ describe('parseRetryAfter — null / empty / invalid', () => {
   });
 });
 
-describe('parseRetryAfter — custom now parameter', () => {
+describe('parseRetryAfter - custom now parameter', () => {
   it('uses injected now for HTTP-date calculation', () => {
     const now = new Date('2025-01-01T00:00:00Z');
     const future = new Date('2025-01-01T00:00:30Z').toUTCString();

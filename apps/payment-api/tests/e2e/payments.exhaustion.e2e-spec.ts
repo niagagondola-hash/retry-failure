@@ -1,5 +1,5 @@
 /**
- * SCENARIO 7 — Total Retry Exhaustion (MAX_TOTAL_RETRIES=5)
+ * SCENARIO 7 - Total Retry Exhaustion (MAX_TOTAL_RETRIES=5)
  * ========================================================
  *
  * Goal:
@@ -17,7 +17,7 @@
  *   - payment-api :3001 listening
  *     + MAX_TOTAL_RETRIES=5 (default)
  *     + SCHEDULER_INTERVAL_MS=5000
- *     + SCHEDULER_BASE_DELAY_MS=2000 (LOW — default 30000 makes test timeout)
+ *     + SCHEDULER_BASE_DELAY_MS=2000 (LOW - default 30000 makes test timeout)
  *   - gateway-mock :3002 listening
  *   - Breaker CLOSED (resetBreaker() in beforeAll)
  *   - DB clean of other 'scheduled_for_retry' payments
@@ -29,7 +29,7 @@
  *   - nextRetryAt === null (terminal, no more retries)
  *   - DB payment_attempts.length >= 6 (1 initial + 5 scheduler cycles × N attempts)
  *   - ⭐ After sleeping SCHEDULER_INTERVAL_MS+2000ms: attempts count NOT increased
- *     (scheduler stops picking this payment — proves no infinite loop)
+ *     (scheduler stops picking this payment - proves no infinite loop)
  *
  * Flow diagram (rendered in MD):
  *   See docs/tasks/TASK-14a-exhaustion.md -> section "3. Visualisasi Alur"
@@ -37,7 +37,7 @@
  * Manual verification procedure (5 layers L1-L5):
  *   See docs/tasks/TASK-14a-exhaustion.md -> section "5. Verifikasi Manual per Lapis"
  *
- * Run this file only (this is the LONGEST test — up to 240s):
+ * Run this file only (this is the LONGEST test - up to 240s):
  *   pnpm test:e2e:exhaustion
  *   # or
  *   pnpm exec jest --config ./tests/e2e/jest-e2e.json --runInBand \
@@ -55,7 +55,7 @@ import { queryAttempts } from './helpers/db';
 import { resetBreaker } from './helpers/breaker';
 import { resetGatewayToHealthy, ensureDbConnected, cleanDb, closeDb } from './helpers/setup';
 
-describe('Scenario 7 — Total retry exhaustion (MAX_TOTAL_RETRIES=5)', () => {
+describe('Scenario 7 - Total retry exhaustion (MAX_TOTAL_RETRIES=5)', () => {
   const orderId = `E2E-S7-${Date.now()}`;
   const MAX_TOTAL_RETRIES = parseInt(process.env.MAX_TOTAL_RETRIES ?? '5', 10);
   const SCHEDULER_INTERVAL_MS = parseInt(process.env.SCHEDULER_INTERVAL_MS ?? '5000', 10);
@@ -74,7 +74,7 @@ describe('Scenario 7 — Total retry exhaustion (MAX_TOTAL_RETRIES=5)', () => {
 
   it('payment eventually failed after totalRetryCount >= MAX_TOTAL_RETRIES', async () => {
     const payment = await createPayment({ orderId, amount: 30000, currency: 'IDR' });
-    // waitForFailed default 240s — enough for 6 scheduler cycles with SCHEDULER_BASE_DELAY_MS=2000
+    // waitForFailed default 240s - enough for 6 scheduler cycles with SCHEDULER_BASE_DELAY_MS=2000
     // (6 × 2s delay + 6 × ~3s execution = ~30s) OR with default 30s delay (6 × 30s = 180s+).
     const finalPayment = await waitForFailed(payment.id, 240000);
 
@@ -91,5 +91,5 @@ describe('Scenario 7 — Total retry exhaustion (MAX_TOTAL_RETRIES=5)', () => {
     await new Promise((r) => setTimeout(r, SCHEDULER_INTERVAL_MS + 2000));
     const attemptsAfter = await queryAttempts(payment.id);
     expect(attemptsAfter.length).toBe(attemptsBefore);
-  }, 300000);  // 5 min Jest timeout — safety margin for waitForFailed 240s + sleep 7s
+  }, 300000);  // 5 min Jest timeout - safety margin for waitForFailed 240s + sleep 7s
 });

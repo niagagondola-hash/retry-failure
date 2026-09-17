@@ -1,5 +1,5 @@
 /**
- * MetricsController — GET /metrics (Prometheus text format).
+ * MetricsController - GET /metrics (Prometheus text format).
  *
  * Content-Type is set explicitly to `text/plain; version=0.0.4` because
  * the prom-client Registry default is `text/plain; version=0.0.4; charset=utf-8`.

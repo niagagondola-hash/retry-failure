@@ -1,5 +1,5 @@
 /**
- * AppModule — root module for payment-gateway-mock.
+ * AppModule - root module for payment-gateway-mock.
  *
  * Imports:
  *   - SharedModule: provides MockState + IdempotencyStore singletons.

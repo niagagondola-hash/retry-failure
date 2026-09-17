@@ -1,8 +1,8 @@
-# ESM vs CJS Module Resolution — Catatan Teknis
+# ESM vs CJS Module Resolution - Catatan Teknis
 
 > **Konteks**: Project monorepo dengan mix CJS (NestJS, TypeORM) + ESM-only dependency (cockatiel v4).
 > **Dibuat**: 2026-09-14
-> **Status**: Solved — build shared package ke `dist/`
+> **Status**: Solved - build shared package ke `dist/`
 
 ---
 
@@ -92,12 +92,12 @@ export const hello = () => 'world';
 ```text
 2009 ─── Node.js lahir dengan CJS
          └── require('./errors') -> auto-append /errors/index.js
-         └── "Nyaman untuk developer" — tidak perlu tulis extension
+         └── "Nyaman untuk developer" - tidak perlu tulis extension
 
 2015 ─── TC39 (JavaScript standard body) ratifikasi ES Modules
          └── Spec: import WAJIB full path + extension
          └── Alasan: deterministic, predictable, static-analyzable
-         └── "Browser-compatible" — browser butuh exact URL
+         └── "Browser-compatible" - browser butuh exact URL
 
 2021 ─── Node.js v12+ support ESM secara native
          └── Ikuti TC39 spec: ESM resolver strict
@@ -110,11 +110,11 @@ export const hello = () => 'world';
 
 ### Kenapa Node.js Tidak Bisa "Menyamakan"?
 
-1. **CJS tidak bisa dibuat strict** — jutaan package di npm pakai directory import (`require('./routes')` -> `./routes/index.js`). Bila diubah, semuanya break.
+1. **CJS tidak bisa dibuat strict** - jutaan package di npm pakai directory import (`require('./routes')` -> `./routes/index.js`). Bila diubah, semuanya break.
 
-2. **ESM tidak bisa dibuat permissive** — TC39 spec mengharuskan explicit path. Browser juga ikut spec ini. Bila Node.js relax ESM, tidak compatible dengan browser.
+2. **ESM tidak bisa dibuat permissive** - TC39 spec mengharuskan explicit path. Browser juga ikut spec ini. Bila Node.js relax ESM, tidak compatible dengan browser.
 
-3. **Package author bebas memilih** — cockatiel v4 memilih ESM-only (`"type": "module"`) untuk align dengan modern JavaScript. Itu hak mereka.
+3. **Package author bebas memilih** - cockatiel v4 memilih ESM-only (`"type": "module"`) untuk align dengan modern JavaScript. Itu hak mereka.
 
 **Inti**: Ini bukan bug, bukan konfigurasi salah, bukan code style. Ini **realitas transisi ekosistem** yang sudah berjalan 3+ tahun dan belum selesai.
 
@@ -148,7 +148,7 @@ Bila ketiganya terpenuhi -> `ERR_UNSUPPORTED_DIR_IMPORT` atau `ERR_MODULE_NOT_FO
 
 | Scenario | Kenapa aman |
 |---|---|
-| CJS project, semua dependency CJS | CJS resolver auto-append `/index` — no problem |
+| CJS project, semua dependency CJS | CJS resolver auto-append `/index` - no problem |
 | ESM project (`"type": "module"`), semua dependency ESM | ESM resolver, tapi semua import sudah explicit path |
 | CJS project, dependency ESM-only, tapi `main` field point ke compiled `dist/index.js` | Compiled CJS tidak trigger ESM resolver switch |
 | Test via Jest (ts-jest) | ts-jest compile ke CJS, `require()` auto-append `/index` |
@@ -165,7 +165,7 @@ Error [ERR_UNSUPPORTED_DIR_IMPORT]: Directory import '.../errors' is not support
 resolving ES modules imported from .../packages/resilience/src/index.ts
 ```
 
-**Penyebab**: `export * from './errors'` — ESM resolver tidak auto-append `/index`.
+**Penyebab**: `export * from './errors'` - ESM resolver tidak auto-append `/index`.
 
 ### Error 2: `ERR_MODULE_NOT_FOUND` (setelah fix /index)
 
@@ -174,7 +174,7 @@ Error [ERR_MODULE_NOT_FOUND]: Cannot find module '.../errors/index'
 imported from .../packages/resilience/src/index.ts
 ```
 
-**Penyebab**: `export * from './errors/index'` — ESM resolver tidak menemukan file `errors/index` (butuh extension `.js`, tapi file-nya `.ts`).
+**Penyebab**: `export * from './errors/index'` - ESM resolver tidak menemukan file `errors/index` (butuh extension `.js`, tapi file-nya `.ts`).
 
 ### Error 3: Hanya muncul di runtime, tidak di typecheck/test
 
@@ -285,9 +285,9 @@ SETELAH (compiled CJS JavaScript):
 
 | File | Perubahan |
 |---|---|
-| `packages/resilience/tsconfig.build.json` | Baru — config build (exclude tests, declaration + sourceMap) |
+| `packages/resilience/tsconfig.build.json` | Baru - config build (exclude tests, declaration + sourceMap) |
 | `packages/resilience/package.json` | `main: src/index.ts` -> `dist/index.js`; tambah script `build` + `build:watch` |
-| `apps/payment-api/tsconfig.build.json` | Baru — exclude tests dari build (fix rootDir -> output `dist/main.js`) |
+| `apps/payment-api/tsconfig.build.json` | Baru - exclude tests dari build (fix rootDir -> output `dist/main.js`) |
 | `apps/payment-api/package.json` | `build` script pakai `tsconfig.build.json` |
 | Root `package.json` | `dev`/`build`/`db:migrate` auto-build resilience pertama |
 
@@ -322,11 +322,11 @@ pnpm --filter @retry-failure/resilience build:watch
 
 ### Kenapa Opsi A (Build ke dist/) Adalah yang Terbaik?
 
-1. **No module system change** — CJS tetap CJS, ESM tetap ESM, bridge via `loadESMFromCJS`
-2. **Standard pattern** — banyak monorepo besar pakai pattern ini (NestJS itself, TypeORM, Prisma)
-3. **Jest tetap pakai source** — via `moduleNameMapper`, tidak perlu rebuild saat test
-4. **Production-ready** — `dist/` adalah apa yang di-deploy, bukan `src/`
-5. **Minimal change** — hanya tambah build step, tidak ubah kode
+1. **No module system change** - CJS tetap CJS, ESM tetap ESM, bridge via `loadESMFromCJS`
+2. **Standard pattern** - banyak monorepo besar pakai pattern ini (NestJS itself, TypeORM, Prisma)
+3. **Jest tetap pakai source** - via `moduleNameMapper`, tidak perlu rebuild saat test
+4. **Production-ready** - `dist/` adalah apa yang di-deploy, bukan `src/`
+5. **Minimal change** - hanya tambah build step, tidak ubah kode
 
 ---
 
@@ -434,12 +434,12 @@ cd apps/your-app && pnpm start:dev
 ### Prinsip 2: Pisahkan `tsconfig.json` dan `tsconfig.build.json`
 
 ```json
-// tsconfig.json — untuk typecheck + IDE (include tests)
+// tsconfig.json - untuk typecheck + IDE (include tests)
 {
   "include": ["src/**/*", "tests/**/*"]
 }
 
-// tsconfig.build.json — untuk build ke dist (exclude tests)
+// tsconfig.build.json - untuk build ke dist (exclude tests)
 {
   "extends": "./tsconfig.json",
   "exclude": ["tests", "node_modules", "dist"]
@@ -496,7 +496,7 @@ node --experimental-require-module dist/main.js
 # LAKUKAN ini setelah setiap perubahan module structure:
 pnpm typecheck       # ✅ Tidak cukup
 pnpm test            # ✅ Tidak cukup
-pnpm start:dev       # ✅ INI yang penting — verify runtime module resolution
+pnpm start:dev       # ✅ INI yang penting - verify runtime module resolution
 
 # Atau untuk production build:
 pnpm build && node dist/main.js   # ✅ Verify compiled output
@@ -507,7 +507,7 @@ pnpm build && node dist/main.js   # ✅ Verify compiled output
 ### Prinsip 7: Konsistensi Node.js Version
 
 ```bash
-# .nvmrc — pin version yang sama untuk semua developer
+# .nvmrc - pin version yang sama untuk semua developer
 20
 
 # Atau v22+ untuk fitur ESM yang lebih mature:
@@ -522,8 +522,8 @@ pnpm build && node dist/main.js   # ✅ Verify compiled output
 ## Module System
 
 This project uses:
-- **CJS** for apps/* (NestJS, TypeORM — compiled via tsc)
-- **CJS** for packages/* (shared packages — built to dist/)
+- **CJS** for apps/* (NestJS, TypeORM - compiled via tsc)
+- **CJS** for packages/* (shared packages - built to dist/)
 - **ESM-only dependencies**: cockatiel v4, (daftar lain bila ada)
 
 Shared packages are built to `dist/` before `pnpm dev`.
@@ -536,8 +536,8 @@ Jest uses `src/` directly via `moduleNameMapper` (no build needed for tests).
 
 | Istilah | Arti |
 |---|---|
-| **CJS** | CommonJS — sistem module lama Node.js (`require`/`module.exports`) |
-| **ESM** | ES Modules — sistem module standar JavaScript (`import`/`export`) |
+| **CJS** | CommonJS - sistem module lama Node.js (`require`/`module.exports`) |
+| **ESM** | ES Modules - sistem module standar JavaScript (`import`/`export`) |
 | **Resolver** | Algorithm yang menentukan file mana yang di-load saat `import`/`require` |
 | **Directory import** | Import path yang merujuk ke direktori (bukan file): `import './errors'` |
 | **Auto-append** | Behavior CJS resolver: `./errors` -> `./errors/index.js` (otomatis) |
@@ -547,7 +547,7 @@ Jest uses `src/` directly via `moduleNameMapper` (no build needed for tests).
 | **`"type": "module"`** | Field di package.json yang menandai package sebagai ESM |
 | **`ERR_UNSUPPORTED_DIR_IMPORT`** | Error ESM resolver: directory import tidak didukung |
 | **`ERR_MODULE_NOT_FOUND`** | Error ESM resolver: file tidak ditemukan (biasanya butuh extension) |
-| **TC39** | Technical Committee 39 — body yang standardisasi JavaScript (ECMA-262) |
+| **TC39** | Technical Committee 39 - body yang standardisasi JavaScript (ECMA-262) |
 
 ---
 

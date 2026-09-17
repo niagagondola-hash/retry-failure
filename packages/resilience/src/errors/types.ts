@@ -1,7 +1,7 @@
 /**
  * Error classification types (plan section 5.3).
  *
- * Pure type definitions — no runtime code. Consumed by classifier.ts.
+ * Pure type definitions - no runtime code. Consumed by classifier.ts.
  */
 
 export interface ErrorClassification {

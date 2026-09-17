@@ -27,7 +27,7 @@ export class ChargeRequestDto {
   @Matches(/^[A-Z]{3}$/)
   currency!: string;
 
-  /** Optional merchant order id — echoed back for traceability. */
+  /** Optional merchant order id - echoed back for traceability. */
   @IsOptional()
   @IsString()
   order_id?: string;

@@ -3,7 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { validationSchema } from './validation.schema';
 
 /**
- * Global config module — exposes ConfigService app-wide.
+ * Global config module - exposes ConfigService app-wide.
  */
 @Global()
 @Module({

@@ -1,5 +1,5 @@
 /**
- * SCENARIO 6 — Durable Retry via @nestjs/schedule Scheduler
+ * SCENARIO 6 - Durable Retry via @nestjs/schedule Scheduler
  * =========================================================
  *
  * Goal:
@@ -29,7 +29,7 @@
  *   - Phase 1: status='scheduled_for_retry', totalRetryCount=0, nextRetryAt NOT NULL
  *   - Phase 4: status='succeeded', totalRetryCount=1
  *   - DB: trace_id differs between inline cycle (T1, attempts #1-3)
- *         and scheduler cycle (T2, attempt #4) — at least 2 unique trace IDs
+ *         and scheduler cycle (T2, attempt #4) - at least 2 unique trace IDs
  *
  * Distinction from Scenario 1 (transient):
  *   - S1: all attempts share ONE trace_id (inline retry succeeded)
@@ -53,7 +53,7 @@ import { queryAttempts } from './helpers/db';
 import { resetBreaker } from './helpers/breaker';
 import { resetGatewayToHealthy, ensureDbConnected, cleanDb, closeDb } from './helpers/setup';
 
-describe('Scenario 6 — Durable scheduler retry (server-error -> always-success)', () => {
+describe('Scenario 6 - Durable scheduler retry (server-error -> always-success)', () => {
   const orderId = `E2E-S6-${Date.now()}`;
   const SCHEDULER_INTERVAL_MS = parseInt(process.env.SCHEDULER_INTERVAL_MS ?? '5000', 10);
 

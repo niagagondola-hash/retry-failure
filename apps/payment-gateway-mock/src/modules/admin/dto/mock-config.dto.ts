@@ -1,7 +1,7 @@
 /**
  * DTO for PUT /admin/config.
  *
- * All fields optional — caller can update a subset. class-validator enforces
+ * All fields optional - caller can update a subset. class-validator enforces
  * value ranges; class-transformer coerces JSON values to the right types
  * (e.g. "2" -> 2) when `transform: true` is set on the global ValidationPipe.
  */

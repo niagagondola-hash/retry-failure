@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 /**
- * Initial migration — create native PG enums + tables + indexes (plan section 11 rev 2).
+ * Initial migration - create native PG enums + tables + indexes (plan section 11 rev 2).
  *
  * Tables:
  *   - payments (plan 11.1)

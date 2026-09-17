@@ -37,7 +37,7 @@ export class RetrySchedulerService implements OnApplicationBootstrap {
     try {
       this.schedulerRegistry.deleteInterval(INTERVAL_NAME);
     } catch {
-      // Interval tidak ada — normal first run
+      // Interval tidak ada - normal first run
     }
 
     const intervalRef = setInterval(() => {
@@ -56,7 +56,7 @@ export class RetrySchedulerService implements OnApplicationBootstrap {
 
   async poll(): Promise<void> {
     if (this.running) {
-      this.logger.debug('Poll already running — skip cycle');
+      this.logger.debug('Poll already running - skip cycle');
       return;
     }
     this.running = true;
@@ -66,7 +66,7 @@ export class RetrySchedulerService implements OnApplicationBootstrap {
       const due = await this.payments.findDueRetries(new Date(), this.batchSize);
 
       if (due.length === 0) {
-        this.logger.debug('No due payments — idle');
+        this.logger.debug('No due payments - idle');
         return;
       }
 
@@ -107,14 +107,14 @@ export class RetrySchedulerService implements OnApplicationBootstrap {
       return;
     }
 
-    // Increment totalRetryCount — scheduler is attempting this payment.
+    // Increment totalRetryCount - scheduler is attempting this payment.
     const newTotal = currentTotal + 1;
     const incremented = await this.payments.atomicUpdateStatus(paymentId, PaymentStatus.SCHEDULED_FOR_RETRY, {
       totalRetryCount: newTotal,
     });
     if (!incremented) {
       // Status changed concurrently (another scheduler instance or manual retry).
-      this.logger.warn({ paymentId }, '[scheduler] payment status changed concurrently — skip');
+      this.logger.warn({ paymentId }, '[scheduler] payment status changed concurrently - skip');
       return;
     }
 
@@ -136,7 +136,7 @@ export class RetrySchedulerService implements OnApplicationBootstrap {
       ) {
         this.logger.warn(
           { paymentId, totalRetryCount: updated.totalRetryCount, max: this.maxTotalRetries },
-          '[scheduler] payment approaching MAX_TOTAL_RETRIES — next failure will mark as failed',
+          '[scheduler] payment approaching MAX_TOTAL_RETRIES - next failure will mark as failed',
         );
       }
 
@@ -149,7 +149,7 @@ export class RetrySchedulerService implements OnApplicationBootstrap {
       this.lastError = err instanceof Error ? err.message : String(err);
       this.logger.warn(
         { paymentId, err: this.lastError },
-        '[scheduler] error processing payment — continue to next',
+        '[scheduler] error processing payment - continue to next',
       );
     }
   }

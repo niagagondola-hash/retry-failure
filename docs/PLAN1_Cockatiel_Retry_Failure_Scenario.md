@@ -1,8 +1,8 @@
-# Technical Plan — Retry Failure Scenario (Payment Processing) — Cockatiel Edition
+# Technical Plan - Retry Failure Scenario (Payment Processing) - Cockatiel Edition
 
-> **Status**: Draft for implementation (rev 2 — PostgreSQL + dual frontend)
+> **Status**: Draft for implementation (rev 2 - PostgreSQL + dual frontend)
 > **Created**: 2026-09-10
-> **Last updated**: 2026-09-13 — perubahan database ke PostgreSQL 16, tambah strategi dual frontend (Next.js + Vue+PrimeVue)
+> **Last updated**: 2026-09-13 - perubahan database ke PostgreSQL 16, tambah strategi dual frontend (Next.js + Vue+PrimeVue)
 > **Baseline**: Evolusi dari plan simulasi retry sebelumnya  
 > **Purpose**: Mendemonstrasikan failure handling pada proses payment secara production-like dengan memanfaatkan library resilience **Cockatiel**, sehingga fokus utama tetap pada business flow, failure scenario, idempotency, durable retry, dan observability.
 >
@@ -12,7 +12,7 @@
 > - Section 11: Tipe data persistence disesuaikan ke native PostgreSQL (`uuid`, `numeric`, `timestamp(3)`, native `ENUM`).
 > - Section 15: Konfigurasi DB diubah ke PostgreSQL (port 5432, schema `public`).
 > - Section 16: Service Docker `mysql` diganti `postgres`.
-> - Section 17 (baru): Strategi dual frontend — Next.js sebagai dashboard ringkas, Vue+PrimeVue sebagai dashboard lengkap di monorepo.
+> - Section 17 (baru): Strategi dual frontend - Next.js sebagai dashboard ringkas, Vue+PrimeVue sebagai dashboard lengkap di monorepo.
 > - Section 21: Urutan implementasi ditambah dua task frontend.
 > - Section 22: DoD ditambah Vue dashboard dan Next.js dashboard.
 >
@@ -120,8 +120,8 @@ Business layer tidak boleh menyebarkan import Cockatiel ke seluruh application.
 - **Validation**: class-validator + class-transformer
 - **Config**: `@nestjs/config` + schema validation
 - **Container**: Docker multi-stage + docker-compose
-- **Frontend (Next.js)**: Next.js 16 (App Router) + shadcn/ui — dashboard ringkas sebagai konsumen API.
-- **Frontend (Vue)**: Vue 3 + PrimeVue + Vite — dashboard lengkap sebagai konsumen resmi API `payment-api`.
+- **Frontend (Next.js)**: Next.js 16 (App Router) + shadcn/ui - dashboard ringkas sebagai konsumen API.
+- **Frontend (Vue)**: Vue 3 + PrimeVue + Vite - dashboard lengkap sebagai konsumen resmi API `payment-api`.
 
 > Catatan: versi package sebaiknya dipin di `package.json`/lockfile pada saat implementasi.
 > Kedua frontend di atas konsumen API yang sama; pilih salah satu atau keduanya sesuai kebutuhan deploy.
@@ -692,7 +692,7 @@ Tidak perlu menulis unit test yang membuktikan bahwa Cockatiel sendiri menghitun
 
 ### 14.2 E2E scenarios
 
-#### Scenario 1 — transient failure
+#### Scenario 1 - transient failure
 
 ```text
 fail-first-n=2
@@ -709,7 +709,7 @@ payment = succeeded
 attempt rows = 3
 ```
 
-#### Scenario 2 — permanent failure
+#### Scenario 2 - permanent failure
 
 ```text
 client-error
@@ -723,7 +723,7 @@ payment = failed
 no retry
 ```
 
-#### Scenario 3 — circuit breaker
+#### Scenario 3 - circuit breaker
 
 ```text
 always-timeout
@@ -739,7 +739,7 @@ initial failures
    -> payment scheduled_for_retry
 ```
 
-#### Scenario 4 — anti double-charge
+#### Scenario 4 - anti double-charge
 
 ```text
 succeed-but-drop-response
@@ -754,7 +754,7 @@ replays >= 1
 payment = succeeded
 ```
 
-#### Scenario 5 — Retry-After
+#### Scenario 5 - Retry-After
 
 ```text
 rate-limited
@@ -767,7 +767,7 @@ Expected:
 chosen delay >= Retry-After
 ```
 
-#### Scenario 6 — durable scheduler retry
+#### Scenario 6 - durable scheduler retry
 
 ```text
 payment scheduled_for_retry
@@ -777,7 +777,7 @@ payment scheduled_for_retry
    -> success
 ```
 
-#### Scenario 7 — total retry exhaustion
+#### Scenario 7 - total retry exhaustion
 
 ```text
 persistent gateway failure
@@ -875,7 +875,7 @@ Project mempunyai **dua versi frontend** dengan tujuan berbeda:
 
 - **Tujuan**: Dashboard ringkas sebagai konsumen API `payment-api`.
 - **Stack**: Next.js 16 (App Router) + shadcn/ui + TanStack Query.
-- **Scope**: Subset fungsionalitas — gateway mode selector, create payment, list, detail drawer, metrics snapshot. Cukup untuk verifikasi visual.
+- **Scope**: Subset fungsionalitas - gateway mode selector, create payment, list, detail drawer, metrics snapshot. Cukup untuk verifikasi visual.
 - **Implementasi**: 1 task (TASK-12).
 
 ### 17.2 Vue 3 + PrimeVue (di `apps/frontend-vue/`)
@@ -883,7 +883,7 @@ Project mempunyai **dua versi frontend** dengan tujuan berbeda:
 - **Tujuan**: Dashboard user-facing resmi yang dipakai untuk demo scenario A–E (section 18).
 - **Stack**: Vue 3 (Composition API) + Vite + PrimeVue + Pinia + Vue Router + axios.
 - **Komponen PrimeVue yang dipakai**: `DataTable`, `Card`, `Button`, `Toast`, `Dialog`, `Select`, `InputText`, `InputNumber`, `Tag`, `Timeline`, `Chart` (wrapper Chart.js).
-- **Scope**: Lengkap — gateway mode selector, create payment, list + filter + sort, detail dialog dengan attempt history timeline, manual retry, circuit breaker card, metrics charts, demo scenario runner (A–E).
+- **Scope**: Lengkap - gateway mode selector, create payment, list + filter + sort, detail dialog dengan attempt history timeline, manual retry, circuit breaker card, metrics charts, demo scenario runner (A–E).
 - **Implementasi**: 1 task (TASK-13).
 
 ### 17.3 Perbandingan
@@ -895,7 +895,7 @@ Project mempunyai **dua versi frontend** dengan tujuan berbeda:
 | State | TanStack Query | Pinia + composables |
 | Scope | Subset fungsionalitas | Lengkap |
 
-Keduanya konsumen API yang sama (`/api/payments`, `/api/health`, `/api/metrics`, gateway mock `/admin/config`). Tidak ada logic bisnis di frontend — pure presentation layer.
+Keduanya konsumen API yang sama (`/api/payments`, `/api/health`, `/api/metrics`, gateway mock `/admin/config`). Tidak ada logic bisnis di frontend - pure presentation layer.
 
 ---
 
@@ -903,7 +903,7 @@ Keduanya konsumen API yang sama (`/api/payments`, `/api/health`, `/api/metrics`,
 
 Project sebaiknya mempunyai demo script / documentation yang menjelaskan business impact, bukan hanya API call.
 
-### Demo A — retry menyelamatkan transient failure
+### Demo A - retry menyelamatkan transient failure
 
 ```text
 Gateway: fail-first-n=2
@@ -916,7 +916,7 @@ processing
   -> succeeded
 ```
 
-### Demo B — jangan retry permanent error
+### Demo B - jangan retry permanent error
 
 ```text
 Gateway: client-error
@@ -927,7 +927,7 @@ processing
   -> failed
 ```
 
-### Demo C — circuit breaker melindungi gateway
+### Demo C - circuit breaker melindungi gateway
 
 ```text
 Gateway: always-timeout
@@ -943,7 +943,7 @@ New payment:
   -> scheduled_for_retry
 ```
 
-### Demo D — idempotency mencegah double charge
+### Demo D - idempotency mencegah double charge
 
 ```text
 Gateway:
@@ -962,7 +962,7 @@ calls >= 2
 actualCharges = 1
 ```
 
-### Demo E — server menentukan waktu retry
+### Demo E - server menentukan waktu retry
 
 ```text
 Gateway:

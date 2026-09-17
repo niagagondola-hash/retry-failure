@@ -1,4 +1,4 @@
-# TASK-14a-permanent — Skenario 2: Permanent Failure (client-error)
+# TASK-14a-permanent - Skenario 2: Permanent Failure (client-error)
 
 > **Parent**: [TASK-14a-e2e-verification.md](./TASK-14a-e2e-verification.md)
 > **Spec file**: `apps/payment-api/tests/e2e/payments.permanent.e2e-spec.ts`
@@ -148,7 +148,7 @@ Cari di `logs/e2e/payment-api-*.log`:
 [payments] payment failed permanently {reason:invalid_card}
 ```
 
-Tidak boleh ada baris `[retry] attempt 2 of N` — kalau ada, berarti retry terjadi.
+Tidak boleh ada baris `[retry] attempt 2 of N` - kalau ada, berarti retry terjadi.
 
 ---
 
@@ -169,9 +169,9 @@ Tidak boleh ada baris `[retry] attempt 2 of N` — kalau ada, berarti retry terj
 
 | Gejala | Kemungkinan cause | Fix |
 |---|---|---|
-| `attemptCount = 2 atau lebih` | Error 400 salah diklasifikasikan sebagai retryable | Cek `classifyError()` di `packages/resilience/src/errors/` — 4xx harus return `kind: 'permanent'` |
-| `failureReason` kosong/null | Body parsing dari gateway gagal ekstrak `errorMessage` | Cek `HttpGatewayAdapter.mapError()` — pastikan baca `message` field dari body (BUKAN `error_code` — `failureReason` pakai `errorMessage ?? errorCode`) |
-| Test timeout 30s | Status `failed` tidak terdeteksi oleh `waitForTerminalStatus` | Cek `payments.ts` helper — `['succeeded', 'failed'].includes(...)` sudah benar |
+| `attemptCount = 2 atau lebih` | Error 400 salah diklasifikasikan sebagai retryable | Cek `classifyError()` di `packages/resilience/src/errors/` - 4xx harus return `kind: 'permanent'` |
+| `failureReason` kosong/null | Body parsing dari gateway gagal ekstrak `errorMessage` | Cek `HttpGatewayAdapter.mapError()` - pastikan baca `message` field dari body (BUKAN `error_code` - `failureReason` pakai `errorMessage ?? errorCode`) |
+| Test timeout 30s | Status `failed` tidak terdeteksi oleh `waitForTerminalStatus` | Cek `payments.ts` helper - `['succeeded', 'failed'].includes(...)` sudah benar |
 | Masih 500 bukan 400 | Gateway mock mode tidak terganti ke `client-error` | Cek `beforeAll` -> `setGatewayMode('client-error')`. Verifikasi via `GET /admin/config` |
 | `ECONNREFUSED` | Service belum start | Start payment-api + gateway-mock |
 
@@ -179,10 +179,10 @@ Tidak boleh ada baris `[retry] attempt 2 of N` — kalau ada, berarti retry terj
 
 ## 8. Catatan Edge Case
 
-- **Mode `client-error` tidak punya parameter** — selalu balas 400 dengan body yang sama. Tidak ada variasi.
+- **Mode `client-error` tidak punya parameter** - selalu balas 400 dengan body yang sama. Tidak ada variasi.
 - **`MAX_TOTAL_RETRIES` tidak relevan** di skenario ini karena Cockatiel tidak retry permanent error. Bahkan kalau MAX=0, behavior sama.
-- **Penting**: test ini adalah **invers** dari skenario 1 — kalau skenario 1 pass tapi skenario 2 fail (atau sebaliknya), kemungkinan besar bug di `classifyError` (4xx vs 5xx classification).
-- **Audit trail** harus menunjukkan **TIDAK ADA next_retry_at** — kalau ada, berarti payment dischedule untuk retry padahal seharusnya terminal.
+- **Penting**: test ini adalah **invers** dari skenario 1 - kalau skenario 1 pass tapi skenario 2 fail (atau sebaliknya), kemungkinan besar bug di `classifyError` (4xx vs 5xx classification).
+- **Audit trail** harus menunjukkan **TIDAK ADA next_retry_at** - kalau ada, berarti payment dischedule untuk retry padahal seharusnya terminal.
 
 ---
 
@@ -212,7 +212,7 @@ if (innerResult.status === 'failed') {
 }
 ```
 
-Cockatiel pakai `handleAll` yang **retry semua error yang di-throw** — termasuk permanent error (400 invalid_card). Akibatnya, Cockatiel retry 4x (maxAttempts=3 = 4 total fn() calls).
+Cockatiel pakai `handleAll` yang **retry semua error yang di-throw** - termasuk permanent error (400 invalid_card). Akibatnya, Cockatiel retry 4x (maxAttempts=3 = 4 total fn() calls).
 
 **Kontradiksi dengan PLAN1**:
 - PLAN1 section 5.3: "4xx selain 429 -> permanent" (no retry)
@@ -247,9 +247,9 @@ Di `resilient-adapter.ts`:
    if (innerResult.status === 'failed') {
      const classification = classifyChargeResult(innerResult);
      if (!classification.retryable) {
-       return innerResult;  // permanent — return, Cockatiel won't retry
+       return innerResult;  // permanent - return, Cockatiel won't retry
      }
-     throw new GatewayChargeError(innerResult);  // retryable — throw for retry
+     throw new GatewayChargeError(innerResult);  // retryable - throw for retry
    }
    ```
 
@@ -263,7 +263,7 @@ Di `resilient-adapter.ts`:
 | Network timeout | undefined | ECONNABORTED | ✅ true | throw (retry) |
 | Network reset | undefined | ECONNRESET | ✅ true | throw (retry) |
 
-**Key insight**: Cockatiel `handleAll` menganggap fn yang **return** sebagai "success" — jadi untuk permanent error, kita return (bukan throw), dan Cockatiel berhenti retry. Outcome mapping di `mapOutcome()` akan detect `result.status === 'failed'` dan return ChargeResult yang benar ke `applyOutcome()`.
+**Key insight**: Cockatiel `handleAll` menganggap fn yang **return** sebagai "success" - jadi untuk permanent error, kita return (bukan throw), dan Cockatiel berhenti retry. Outcome mapping di `mapOutcome()` akan detect `result.status === 'failed'` dan return ChargeResult yang benar ke `applyOutcome()`.
 
 ### Flow Setelah Fix
 
@@ -287,7 +287,7 @@ Di `resilient-adapter.ts`:
 | Test | Gateway mode | HTTP status | retryable? | Impact |
 |---|---|---|---|---|
 | S1 transient | fail-first-n | 500 | ✅ retryable | TIDAK terdampak (throw -> retry -> sukses attempt 3) |
-| **S2 permanent** | **client-error** | **400** | **❌ permanent** | **FIX — sekarang attemptCount=1** |
+| **S2 permanent** | **client-error** | **400** | **❌ permanent** | **FIX - sekarang attemptCount=1** |
 | S3 circuit-breaker | always-timeout | timeout | ✅ retryable | TIDAK terdampak |
 | S4 idempotency | succeed-but-drop | ECONNRESET | ✅ retryable | TIDAK terdampak |
 | S5 retry-after | rate-limited | 429 | ✅ retryable | TIDAK terdampak |
@@ -298,7 +298,7 @@ Di `resilient-adapter.ts`:
 
 ## 10. Algoritma Test Script Walkthrough
 
-Section ini berbeda dari diagram di section 3 — diagram menjelaskan **apa yang terjadi di sistem**; section ini menjelaskan **apa yang dilakukan test code** untuk memverifikasi sistem tersebut. Pseudocode algoritmik, bukan pengulangan diagram.
+Section ini berbeda dari diagram di section 3 - diagram menjelaskan **apa yang terjadi di sistem**; section ini menjelaskan **apa yang dilakukan test code** untuk memverifikasi sistem tersebut. Pseudocode algoritmik, bukan pengulangan diagram.
 
 ### 10.1 Algoritma `beforeAll` (setup)
 
@@ -312,7 +312,7 @@ function beforeAll():
      └── DELETE FROM payments
      # Penting: supaya scheduler tidak interfere dengan payments dari test sebelumnya
      # (scheduler bisa pick payments scheduled_for_retry dan execute,
-     #  yang akan menambah actualChargesCount di gateway mock — pollute assertion)
+     #  yang akan menambah actualChargesCount di gateway mock - pollute assertion)
 
   3. setGatewayMode('client-error')
      └── PUT /admin/config {mode:'client-error'}
@@ -321,7 +321,7 @@ function beforeAll():
   # State setelah beforeAll:
   # - DB kosong (clean)
   # - Gateway mode = client-error (always 400)
-  # - Breaker tidak di-reset (test ini tidak butuh resetBreaker — tidak ada retry yang bisa trip breaker)
+  # - Breaker tidak di-reset (test ini tidak butuh resetBreaker - tidak ada retry yang bisa trip breaker)
 ```
 
 **Catatan**: Skenario 2 **tidak panggil `resetBreaker()`** di beforeAll, berbeda dari skenario lain (S3, S4, S5, S6, S7). Alasannya:

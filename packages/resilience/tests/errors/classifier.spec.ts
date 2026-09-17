@@ -1,7 +1,7 @@
 import { describe, it, expect } from '@jest/globals';
 import { classifyError } from '../../src/errors/classifier';
 
-describe('classifyError — HTTP classification', () => {
+describe('classifyError - HTTP classification', () => {
   describe('5xx -> retryable server_error', () => {
     for (const status of [500, 502, 503, 504]) {
       it(`status ${status} -> retryable=true, reason=server_error`, () => {
@@ -142,7 +142,7 @@ describe('classifyError — HTTP classification', () => {
   });
 });
 
-describe('classifyError — network classification', () => {
+describe('classifyError - network classification', () => {
   const retryableCases: Array<[string, string]> = [
     ['ECONNREFUSED', 'connection_refused'],
     ['ECONNRESET', 'connection_reset'],
@@ -169,7 +169,7 @@ describe('classifyError — network classification', () => {
   });
 });
 
-describe('classifyError — timeout classification', () => {
+describe('classifyError - timeout classification', () => {
   it('kind=timeout -> retryable=true, reason=timeout', () => {
     const r = classifyError({ kind: 'timeout', message: 'request timeout after 2000ms' });
     expect(r.retryable).toBe(true);

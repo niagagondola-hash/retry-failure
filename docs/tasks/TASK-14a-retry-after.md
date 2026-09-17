@@ -1,4 +1,4 @@
-# TASK-14a-retry-after — Skenario 5: Server-Directed Retry (Retry-After header)
+# TASK-14a-retry-after - Skenario 5: Server-Directed Retry (Retry-After header)
 
 > **Parent**: [TASK-14a-e2e-verification.md](./TASK-14a-e2e-verification.md)
 > **Spec file**: `apps/payment-api/tests/e2e/payments.retry-after.e2e-spec.ts`
@@ -7,7 +7,7 @@
 
 ## 1. Apa yang Diuji
 
-Gateway mock diset mode `rate-limited` dengan `retryAfterSeconds=3`. Setiap request charge balas `429 Too Many Requests` dengan header `Retry-After: 3`. Cockatiel retry policy harus **menghormati header ini** — delay antar attempt ≥ 3000ms (bukan backoff default).
+Gateway mock diset mode `rate-limited` dengan `retryAfterSeconds=3`. Setiap request charge balas `429 Too Many Requests` dengan header `Retry-After: 3`. Cockatiel retry policy harus **menghormati header ini** - delay antar attempt ≥ 3000ms (bukan backoff default).
 
 **Assertion utama**:
 - Minimal 1 attempt dengan `httpStatus=429`
@@ -112,7 +112,7 @@ sequenceDiagram
 ### L1: HTTP response
 Test hanya assert delay timing & 429 attempts, tidak assert outcome terminal. Pass jika assertions delay terpenuhi.
 
-### L2: DB state — krusial untuk skenario ini
+### L2: DB state - krusial untuk skenario ini
 ```sql
 SELECT attempt_number, outcome, http_status,
        EXTRACT(EPOCH FROM created_at) * 1000 AS created_ms,
@@ -157,7 +157,7 @@ Cari di `logs/e2e/payment-api-*.log`:
 [retry] attempt 2 -> 429 Too Many Requests
 ```
 
-Tidak boleh ada `[retry] sleeping 1000ms` (default backoff) — kalau ada, berarti Retry-After header tidak diparse.
+Tidak boleh ada `[retry] sleeping 1000ms` (default backoff) - kalau ada, berarti Retry-After header tidak diparse.
 
 ---
 
@@ -178,10 +178,10 @@ Tidak boleh ada `[retry] sleeping 1000ms` (default backoff) — kalau ada, berar
 
 | Gejala | Kemungkinan cause | Fix |
 |---|---|---|
-| `delta < 2500ms` (~1000ms) | Retry-After header tidak diparse, Cockatiel pakai default backoff | Cek `parseRetryAfter()` di `packages/resilience/src/errors/` — harus baca header dari error object |
-| `delay_before_next_ms = null` | Audit tidak record field ini | Cek `AuditService.recordAttempt()` — harus simpan `delayBeforeNextMs` dari `onAttempt` callback |
+| `delta < 2500ms` (~1000ms) | Retry-After header tidak diparse, Cockatiel pakai default backoff | Cek `parseRetryAfter()` di `packages/resilience/src/errors/` - harus baca header dari error object |
+| `delay_before_next_ms = null` | Audit tidak record field ini | Cek `AuditService.recordAttempt()` - harus simpan `delayBeforeNextMs` dari `onAttempt` callback |
 | Tidak ada 429 attempts (semua 200/500) | Mode gateway tidak ter-set ke `rate-limited` | Cek `beforeAll` -> `setGatewayMode('rate-limited', {retryAfterSeconds:3})`. Verifikasi via `GET /admin/config` |
-| `httpStatus = null` padahal expect 429 | Network error (timeout) bukan HTTP 429 | Cek gateway mock `mode-handler.ts` mode rate-limited — harus balas 429 dengan body, bukan disconnect |
+| `httpStatus = null` padahal expect 429 | Network error (timeout) bukan HTTP 429 | Cek gateway mock `mode-handler.ts` mode rate-limited - harus balas 429 dengan body, bukan disconnect |
 | Breaker OPEN sebelum delay sempat diukur | Skenario 3 belum direset | `resetBreaker()` di `beforeAll` wajib |
 | Test timeout 90s | Cockatiel tidak menghormati Retry-After, jadi tidak retry, akhirnya timeout di `waitForTerminalStatus` | Sebenarnya bug di atas. Fix parser Retry-After |
 
@@ -189,12 +189,12 @@ Tidak boleh ada `[retry] sleeping 1000ms` (default backoff) — kalau ada, berar
 
 ## 8. Catatan Edge Case
 
-- **Gateway mode `rate-limited` tidak auto-recover** — tidak ada "setelah N request lepas rate limit". Setiap request dapat 429. Test oleh karena itu tidak assert sukses, hanya timing.
+- **Gateway mode `rate-limited` tidak auto-recover** - tidak ada "setelah N request lepas rate limit". Setiap request dapat 429. Test oleh karena itu tidak assert sukses, hanya timing.
 - **Toleransi 500ms** di assertion (`>= 2500` padahal expect 3000) mengakomodasi:
   - Clock drift antara app server & DB server
   - Network latency minimal antar HTTP call
   - TypeScript `Date.now()` precision
 - **`delayBeforeNextMs` di audit** harus **exact 3000** kalau parser benar, bukan ≥ 3000. Tapi test pakai `>= 3000` supaya kalau parser round-up (e.g., 3001 karena timer granularity), tetap pass.
 - **Jika `MAX_TOTAL_RETRIES=0`** (tidak retry sama sekali), test akan fail karena tidak ada 2 attempts untuk diukur delta-nya. Pastikan `MAX_TOTAL_RETRIES >= 2` di env.
-- **Retry-After value lain** (mis. `Retry-After: Wed, 21 Oct 2025 07:28:00 GMT` — HTTP date format) **tidak diuji** di skenario ini. Hanya numeric seconds. Kalau mau uji date format, buat skenario tambahan.
-- **Mode `rate-limited` di gateway mock punya `retryAfterSeconds` parameter** — kalau tidak diset, default-nya mungkin 1s atau 0. Selalu pass explicit `retryAfterSeconds: 3` di `setGatewayMode`.
+- **Retry-After value lain** (mis. `Retry-After: Wed, 21 Oct 2025 07:28:00 GMT` - HTTP date format) **tidak diuji** di skenario ini. Hanya numeric seconds. Kalau mau uji date format, buat skenario tambahan.
+- **Mode `rate-limited` di gateway mock punya `retryAfterSeconds` parameter** - kalau tidak diset, default-nya mungkin 1s atau 0. Selalu pass explicit `retryAfterSeconds: 3` di `setGatewayMode`.

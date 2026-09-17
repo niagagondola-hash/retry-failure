@@ -2,7 +2,7 @@
   "name": "retry-failure",
   "version": "0.1.0",
   "private": true,
-  "description": "Cockatiel-based payment retry/failure scenario demo — NestJS + TypeORM + PostgreSQL monorepo",
+  "description": "Cockatiel-based payment retry/failure scenario demo - NestJS + TypeORM + PostgreSQL monorepo",
   "engines": {
     "node": ">=20",
     "pnpm": ">=9"

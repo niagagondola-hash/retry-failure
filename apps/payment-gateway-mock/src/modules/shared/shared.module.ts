@@ -1,8 +1,8 @@
 /**
- * SharedModule — provides process-wide singletons: MockState + IdempotencyStore.
+ * SharedModule - provides process-wide singletons: MockState + IdempotencyStore.
  *
  * These are shared by ChargesModule (writes) and AdminModule (reads / config
- * mutations). Importing this module from multiple feature modules is safe —
+ * mutations). Importing this module from multiple feature modules is safe -
  * NestJS deduplicates module instances, so providers stay singletons.
  */
 

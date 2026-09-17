@@ -32,7 +32,7 @@ beforeEach(() => {
   resetBreakerStore();
 });
 
-describe('executeWithResilience — happy path', () => {
+describe('executeWithResilience - happy path', () => {
   it('returns result on first attempt success', async () => {
     let calls = 0;
     const outcome = await executeWithResilience({
@@ -70,7 +70,7 @@ describe('executeWithResilience — happy path', () => {
   });
 });
 
-describe('executeWithResilience — retry exhaustion', () => {
+describe('executeWithResilience - retry exhaustion', () => {
   it('returns exhausted=true after maxAttempts failed', async () => {
     const outcome = await executeWithResilience<string>({
       dependencyName: 'test-exhaust',
@@ -103,7 +103,7 @@ describe('executeWithResilience — retry exhaustion', () => {
   });
 });
 
-describe('executeWithResilience — Retry-After header', () => {
+describe('executeWithResilience - Retry-After header', () => {
   it('extracts retryAfterMs from 429 response', async () => {
     const outcome = await executeWithResilience<string>({
       dependencyName: 'test-retry-after',
@@ -118,7 +118,7 @@ describe('executeWithResilience — Retry-After header', () => {
   });
 });
 
-describe('executeWithResilience — circuit breaker', () => {
+describe('executeWithResilience - circuit breaker', () => {
   it('opens circuit after threshold consecutive failures', async () => {
     const cfg: ResilienceConfig = {
       ...FAST_CONFIG,
@@ -141,7 +141,7 @@ describe('executeWithResilience — circuit breaker', () => {
 
     expect(getBreakerState(depName)).toBe('open');
 
-    // 4th call — breaker rejects immediately (breakerTripped=true)
+    // 4th call - breaker rejects immediately (breakerTripped=true)
     let calls = 0;
     const outcome = await executeWithResilience({
       dependencyName: depName,
@@ -170,7 +170,7 @@ describe('executeWithResilience — circuit breaker', () => {
       config: { ...cfg, retryMaxAttempts: 1 },
     });
 
-    // Another call — same breaker instance, state should be same
+    // Another call - same breaker instance, state should be same
     // (not yet open because threshold not reached)
     expect(getBreakerState(depName)).toBe('closed');
 
@@ -194,7 +194,7 @@ describe('executeWithResilience — circuit breaker', () => {
   });
 });
 
-describe('executeWithResilience — onAttempt callback', () => {
+describe('executeWithResilience - onAttempt callback', () => {
   it('invokes onAttempt for each attempt failure', async () => {
     const attempts: Array<{ attemptNumber: number; outcome: string; httpStatus?: number }> = [];
     await executeWithResilience({
@@ -218,7 +218,7 @@ describe('executeWithResilience — onAttempt callback', () => {
   });
 });
 
-describe('executeWithResilience — timeout handling', () => {
+describe('executeWithResilience - timeout handling', () => {
   it('treats timeout as retryable failure', async () => {
     const outcome = await executeWithResilience({
       dependencyName: 'test-timeout',

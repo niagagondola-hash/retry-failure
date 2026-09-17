@@ -48,7 +48,7 @@ beforeEach(() => {
   resetBreakerStore();
 });
 
-describe('ResilientPaymentGateway — success path', () => {
+describe('ResilientPaymentGateway - success path', () => {
   it('returns succeeded result on first attempt', async () => {
     const inner: PaymentGatewayPort = {
       charge: jest.fn(async () => makeSucceededResult()),
@@ -88,7 +88,7 @@ describe('ResilientPaymentGateway — success path', () => {
   });
 });
 
-describe('ResilientPaymentGateway — retry exhaustion', () => {
+describe('ResilientPaymentGateway - retry exhaustion', () => {
   it('returns failed with retry_exhausted after maxAttempts', async () => {
     const inner: PaymentGatewayPort = {
       charge: jest.fn(async () => makeFailedResult(500, 'server_error', 'always fail')),
@@ -122,7 +122,7 @@ describe('ResilientPaymentGateway — retry exhaustion', () => {
   });
 });
 
-describe('ResilientPaymentGateway — onAttempt callback', () => {
+describe('ResilientPaymentGateway - onAttempt callback', () => {
   it('invokes onAttempt for each attempt (success + failures)', async () => {
     let calls = 0;
     const inner: PaymentGatewayPort = {
@@ -173,7 +173,7 @@ describe('ResilientPaymentGateway — onAttempt callback', () => {
   });
 });
 
-describe('ResilientPaymentGateway — circuit breaker', () => {
+describe('ResilientPaymentGateway - circuit breaker', () => {
   it('returns circuit_open errorCode when breaker is open', async () => {
     const cfg: ResilienceConfig = {
       ...FAST_CONFIG,
@@ -196,7 +196,7 @@ describe('ResilientPaymentGateway — circuit breaker', () => {
     await gw.charge(SAMPLE_REQ);
     await gw.charge(SAMPLE_REQ);
 
-    // 3rd call — breaker rejects immediately
+    // 3rd call - breaker rejects immediately
     inner.charge = jest.fn(async () => makeSucceededResult());
     const result = await gw.charge(SAMPLE_REQ);
     expect(result.status).toBe('failed');
@@ -205,7 +205,7 @@ describe('ResilientPaymentGateway — circuit breaker', () => {
   });
 });
 
-describe('ResilientPaymentGateway — replayed flag passthrough', () => {
+describe('ResilientPaymentGateway - replayed flag passthrough', () => {
   it('passes replayed=true from inner on success', async () => {
     const inner: PaymentGatewayPort = {
       charge: jest.fn(async () => ({

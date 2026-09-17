@@ -1,7 +1,7 @@
 /**
  * Resilience policy types (plan section 5).
  *
- * Pure type definitions — no runtime code. Consumed by policies.ts + composition.ts.
+ * Pure type definitions - no runtime code. Consumed by policies.ts + composition.ts.
  */
 
 /**
@@ -48,7 +48,7 @@ export interface ResilienceConfig {
 export type BreakerState = 'closed' | 'open' | 'half_open';
 
 /**
- * Result of executeWithResilience — what the application layer sees.
+ * Result of executeWithResilience - what the application layer sees.
  */
 export interface ResilienceOutcome<T> {
   /** Successful result, bila ada. */
@@ -75,7 +75,7 @@ export interface ResilienceOutcome<T> {
  */
 export interface AttemptDetail {
   attemptNumber: number;
-  /** Outcome classification — maps to AttemptOutcome enum di apps/payment-api. */
+  /** Outcome classification - maps to AttemptOutcome enum di apps/payment-api. */
   outcome: 'success' | 'retryable_failure' | 'permanent_failure' | 'timeout' | 'circuit_open';
   /** HTTP status from gateway (null bila network error). */
   httpStatus?: number;

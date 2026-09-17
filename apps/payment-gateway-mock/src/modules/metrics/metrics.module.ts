@@ -1,5 +1,5 @@
 /**
- * MetricsModule — provides MetricsService + MetricsController.
+ * MetricsModule - provides MetricsService + MetricsController.
  *
  * MetricsService is exported so ChargesModule can call increment*() methods.
  */

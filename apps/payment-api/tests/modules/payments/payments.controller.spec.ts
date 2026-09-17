@@ -34,7 +34,7 @@ function makeMockService() {
   } as unknown as PaymentsService;
 }
 
-describe('PaymentsController — create', () => {
+describe('PaymentsController - create', () => {
   it('returns 201 with payment response', async () => {
     const svc = makeMockService();
     const ctrl = new PaymentsController(svc);
@@ -57,7 +57,7 @@ describe('PaymentsController — create', () => {
   });
 });
 
-describe('PaymentsController — list', () => {
+describe('PaymentsController - list', () => {
   it('returns payments with limit + offset echo', async () => {
     const svc = makeMockService();
     const ctrl = new PaymentsController(svc);
@@ -86,7 +86,7 @@ describe('PaymentsController — list', () => {
   });
 });
 
-describe('PaymentsController — getById', () => {
+describe('PaymentsController - getById', () => {
   it('returns payment detail with attempts', async () => {
     const svc = makeMockService();
     svc.getById = jest.fn(async () => ({
@@ -121,7 +121,7 @@ describe('PaymentsController — getById', () => {
   });
 });
 
-describe('PaymentsController — retry', () => {
+describe('PaymentsController - retry', () => {
   it('returns payment after retry', async () => {
     const svc = makeMockService();
     const ctrl = new PaymentsController(svc);

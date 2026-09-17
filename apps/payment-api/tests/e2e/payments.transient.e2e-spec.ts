@@ -1,5 +1,5 @@
 /**
- * SCENARIO 1 — Transient Failure (fail-first-n=2)
+ * SCENARIO 1 - Transient Failure (fail-first-n=2)
  * ===============================================
  *
  * Goal:
@@ -42,7 +42,7 @@ import { getMetric } from './helpers/metrics';
 import { queryAttempts } from './helpers/db';
 import { resetGatewayToHealthy, ensureDbConnected, cleanDb, closeDb } from './helpers/setup';
 
-describe('Scenario 1 — Transient failure (fail-first-n=2)', () => {
+describe('Scenario 1 - Transient failure (fail-first-n=2)', () => {
   const orderId = `E2E-S1-${Date.now()}`;
 
   beforeAll(async () => {

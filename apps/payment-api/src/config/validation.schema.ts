@@ -23,7 +23,7 @@ export const validationSchema = Joi.object({
   // Durable retry
   MAX_TOTAL_RETRIES: Joi.number().integer().positive().default(5),
 
-  // Scheduler base delay (ms) — delay sebelum payment scheduled_for_retry bisa di-pick lagi.
+  // Scheduler base delay (ms) - delay sebelum payment scheduled_for_retry bisa di-pick lagi.
   // Default code 30000 (30s). Untuk E2E test, set ke 2000 (2s) supaya test cepat selesai.
   // Production: 30000-60000 supaya gateway punya waktu recover antar cycle.
   SCHEDULER_BASE_DELAY_MS: Joi.number().integer().positive().default(30000),

@@ -43,7 +43,7 @@ function toggleDark() {
     <!-- Sticky Footer -->
     <footer class="mt-auto border-t bg-gray-50 dark:bg-gray-900 py-3">
       <div class="container mx-auto px-4 text-center text-xs text-gray-500">
-        Cockatiel Retry Failure Demo — Payment Processing with Resilience
+        Cockatiel Retry Failure Demo - Payment Processing with Resilience
       </div>
     </footer>
 

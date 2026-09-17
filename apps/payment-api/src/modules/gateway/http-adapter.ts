@@ -19,7 +19,7 @@ export class HttpPaymentGateway implements PaymentGatewayPort {
    * ensuring fn() body completes (and audit onAttempt is called) BEFORE
    * Cockatiel's timeout policy moves on. Without this, axios waits for the
    * full gateway response (e.g. 5s in always-timeout mode) while Cockatiel
-   * already advanced to the next retry — causing a race condition where late
+   * already advanced to the next retry - causing a race condition where late
    * audit rows are written AFTER the payment is already scheduled_for_retry.
    *
    * Buffer of 200ms ensures axios fires before Cockatiel's Promise.race

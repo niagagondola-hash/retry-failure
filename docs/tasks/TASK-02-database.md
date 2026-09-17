@@ -1,10 +1,10 @@
-# TASK-02 — PostgreSQL 16 + TypeORM Entities + Migrations
+# TASK-02 - PostgreSQL 16 + TypeORM Entities + Migrations
 
 > **Task ID**: 2-a
 > **Depends on**: 1 (scaffolding)
 > **Can run in parallel with**: TASK-03, TASK-04
 > **Estimated effort**: M (~1.5 jam)
-> **Plan reference**: Section 11 (Persistence rev 2 — PostgreSQL-native), Section 15 (Configuration)
+> **Plan reference**: Section 11 (Persistence rev 2 - PostgreSQL-native), Section 15 (Configuration)
 
 ---
 
@@ -17,11 +17,11 @@ Mendefinisikan TypeORM entities `Payment` dan `PaymentAttempt` dengan native Pos
 **In scope**:
 - `apps/payment-api/src/database/entities/payment.entity.ts`
 - `apps/payment-api/src/database/entities/payment-attempt.entity.ts`
-- `apps/payment-api/src/database/entities/enums.ts` — PG enum definitions.
-- `apps/payment-api/src/database/data-source.ts` — DataSource for CLI.
-- `apps/payment-api/src/database/database.module.ts` — TypeOrmModule.forRootAsync (ConfigService inject).
-- `apps/payment-api/src/database/migrations/0001_init.ts` — initial migration (create tables + enums + indexes).
-- `docker/postgres/init.sql` — create extension pgcrypto (bila perlu), create database bila belum.
+- `apps/payment-api/src/database/entities/enums.ts` - PG enum definitions.
+- `apps/payment-api/src/database/data-source.ts` - DataSource for CLI.
+- `apps/payment-api/src/database/database.module.ts` - TypeOrmModule.forRootAsync (ConfigService inject).
+- `apps/payment-api/src/database/migrations/0001_init.ts` - initial migration (create tables + enums + indexes).
+- `docker/postgres/init.sql` - create extension pgcrypto (bila perlu), create database bila belum.
 - Repository classes: `PaymentRepository`, `PaymentAttemptRepository` (TypeORM custom repositories).
 
 **Out of scope**:
@@ -34,7 +34,7 @@ Mendefinisikan TypeORM entities `Payment` dan `PaymentAttempt` dengan native Pos
 ### `payments` entity
 - `id: string` (uuid PK, default `gen_random_uuid()`)
 - `orderId: string` (varchar 64, unique)
-- `amount: string` (numeric 12,2 — TypeORM `numeric` return as string untuk precision)
+- `amount: string` (numeric 12,2 - TypeORM `numeric` return as string untuk precision)
 - `currency: string` (char 3, default `'IDR'`)
 - `status: PaymentStatus` (enum)
 - `gatewayReference: string | null` (varchar 64)
@@ -145,7 +145,7 @@ Mendefinisikan TypeORM entities `Payment` dan `PaymentAttempt` dengan native Pos
      attempts: PaymentAttempt[];
    }
    ```
-3. `entities/payment-attempt.entity.ts` — similar pattern, with `ManyToOne` to Payment.
+3. `entities/payment-attempt.entity.ts` - similar pattern, with `ManyToOne` to Payment.
 4. `data-source.ts` (untuk TypeORM CLI):
    ```ts
    import 'dotenv/config';
@@ -192,7 +192,7 @@ Mendefinisikan TypeORM entities `Payment` dan `PaymentAttempt` dengan native Pos
    })
    export class DatabaseModule {}
    ```
-6. Repositories — pakai custom repository pattern TypeORM 0.3:
+6. Repositories - pakai custom repository pattern TypeORM 0.3:
    ```ts
    @Injectable()
    export class PaymentRepository {
@@ -232,7 +232,7 @@ Mendefinisikan TypeORM entities `Payment` dan `PaymentAttempt` dengan native Pos
 
 ## Acceptance criteria
 
-- [ ] `pnpm db:migrate` di `apps/payment-api` berhasil (membutuhkan PostgreSQL jalan di port 5432 — start via `docker compose up -d postgres` atau connect ke external instance).
+- [ ] `pnpm db:migrate` di `apps/payment-api` berhasil (membutuhkan PostgreSQL jalan di port 5432 - start via `docker compose up -d postgres` atau connect ke external instance).
 - [ ] Tabel `payments` dan `payment_attempts` ada di schema `public`.
 - [ ] Native enum types `payment_status_enum` dan `attempt_outcome_enum` ada (`\dT` di psql).
 - [ ] Index `idx_payments_status`, `idx_payments_next_retry_at`, `idx_payment_attempts_payment_id`, `idx_payment_attempts_idempotency_key` ada.
@@ -258,7 +258,7 @@ Mendefinisikan TypeORM entities `Payment` dan `PaymentAttempt` dengan native Pos
 
 ```bash
 # 0. Enable pnpm (bila belum)
-# KONDISI LOCAL: pnpm sudah terinstall — skip, jalankan `pnpm --version` untuk verify.
+# KONDISI LOCAL: pnpm sudah terinstall - skip, jalankan `pnpm --version` untuk verify.
 # KONDISI SANDBOX:
 corepack enable pnpm
 corepack prepare pnpm@9.12.0 --activate
@@ -292,7 +292,7 @@ cp ../../.env.sandbox.example .env
 # Bila ada external PostgreSQL -> edit DB_HOST/DB_USER/DB_PASS/DB_NAME sesuai instance.
 # Bila TIDAK ada DB -> skip migration + gunakan mock repository.
 
-# 3. Run migration — sama kedua kondisi (asalkan DB dapat diakses)
+# 3. Run migration - sama kedua kondisi (asalkan DB dapat diakses)
 pnpm db:migrate
 
 # Bila DB TIDAK bisa diakses di SANDBOX (tanpa external PostgreSQL):
@@ -329,16 +329,16 @@ console.log('enums:', e.rows);
 await c.end();
 "
 
-# 4. Lint & typecheck — sama kedua kondisi
+# 4. Lint & typecheck - sama kedua kondisi
 cd /home/z/my-project/retry-failure/apps/payment-api
 pnpm lint
 pnpm typecheck
 
-# 5. Quick repository test (Node script — butuh DB up)
+# 5. Quick repository test (Node script - butuh DB up)
 # Tambah script scripts/smoke-db.ts lalu run via ts-node:
 # pnpm exec ts-node -r tsconfig-paths/register scripts/smoke-db.ts
 
-# 6. Revert migration (test) — sama kedua kondisi (asalkan DB dapat diakses)
+# 6. Revert migration (test) - sama kedua kondisi (asalkan DB dapat diakses)
 pnpm db:migrate:revert
 pnpm db:migrate  # re-apply
 
@@ -348,7 +348,7 @@ pnpm db:migrate  # re-apply
 
 ## Notes
 
-- **`numeric` returns string**: TypeORM `numeric` column returns JS `string` untuk preserve precision (avoid float rounding). Aplikasi harus handle ini — di TASK-07 service akan `Number(amount)` bila perlu, atau tetap sebagai string untuk display.
+- **`numeric` returns string**: TypeORM `numeric` column returns JS `string` untuk preserve precision (avoid float rounding). Aplikasi harus handle ini - di TASK-07 service akan `Number(amount)` bila perlu, atau tetap sebagai string untuk display.
 - **Native enum**: TypeORM 0.3 dengan PostgreSQL mendukung `type: 'enum'` yang otomatis create PG enum type. Migration pertama generate harusnya handle ini.
 - **`synchronize: false`**: WAJIB. Jangan pernah `true` di production.
 - **`pgcrypto` extension**: PostgreSQL 13+ sudah punya `gen_random_uuid()` builtin di `pgcrypto`-less mode, tapi tetap best practice enable extension untuk safety.

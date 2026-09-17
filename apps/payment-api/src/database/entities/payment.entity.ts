@@ -11,7 +11,7 @@ import { PaymentStatus } from './enums';
 import { PaymentAttempt } from './payment-attempt.entity';
 
 /**
- * Payment entity (plan section 11.1 rev 2 — PostgreSQL-native).
+ * Payment entity (plan section 11.1 rev 2 - PostgreSQL-native).
  *
  * Native PG types:
  *   - id: uuid (default gen_random_uuid())

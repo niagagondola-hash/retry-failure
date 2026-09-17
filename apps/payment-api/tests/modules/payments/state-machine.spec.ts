@@ -8,7 +8,7 @@ import {
 } from '../../../src/modules/payments/state-machine';
 import { PaymentStatus } from '../../../src/database/entities/enums';
 
-describe('state-machine — VALID_TRANSITIONS', () => {
+describe('state-machine - VALID_TRANSITIONS', () => {
   it('processing -> succeeded|failed|scheduled_for_retry', () => {
     expect(VALID_TRANSITIONS[PaymentStatus.PROCESSING]).toContain(PaymentStatus.SUCCEEDED);
     expect(VALID_TRANSITIONS[PaymentStatus.PROCESSING]).toContain(PaymentStatus.FAILED);

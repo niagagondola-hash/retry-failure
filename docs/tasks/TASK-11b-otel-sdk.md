@@ -1,25 +1,25 @@
-# TASK-11b — Full OpenTelemetry SDK + Jaeger Export (Extension)
+# TASK-11b - Full OpenTelemetry SDK + Jaeger Export (Extension)
 
 > **Task ID**: 8b
-> **Depends on**: 8 (TASK-11 — pino logger + prom-client metrics + AsyncLocalStorage trace context sudah jalan)
+> **Depends on**: 8 (TASK-11 - pino logger + prom-client metrics + AsyncLocalStorage trace context sudah jalan)
 > **Estimated effort**: M (~2-3 jam)
-> **Plan reference**: Section 13.3 (Tracing) + Section 22 (DoD — "Trace payment dapat ditemukan di Jaeger")
+> **Plan reference**: Section 13.3 (Tracing) + Section 22 (DoD - "Trace payment dapat ditemukan di Jaeger")
 > **Prerequisite**: Docker tersedia (Jaeger + OTLP collector di docker-compose.yml). Tidak bisa di-test di sandbox Z.ai (no Docker).
 
 ---
 
 ## Goal
 
-Mengaktifkan full OpenTelemetry SDK + Jaeger export dengan **flip env `IS_OTEL=true`**. TASK-11 sudah menyediakan `IS_OTEL` toggle di `trace-context.ts` — TASK-11b hanya perlu:
+Mengaktifkan full OpenTelemetry SDK + Jaeger export dengan **flip env `IS_OTEL=true`**. TASK-11 sudah menyediakan `IS_OTEL` toggle di `trace-context.ts` - TASK-11b hanya perlu:
 
-1. **Install OTel dependencies** — `@opentelemetry/sdk-node` + `@opentelemetry/auto-instrumentations-node` + `@opentelemetry/exporter-trace-otlp-http` + `@opentelemetry/api` + `@opentelemetry/resources` + `@opentelemetry/semantic-conventions`.
-2. **Buat `apps/payment-api/src/otel.ts`** — OTel SDK initialization (load sebelum NestJS bootstrap). File ini cek `process.env.IS_OTEL === 'true'` -> start SDK + OTLP exporter ke Jaeger.
-3. **Import `./otel` di `main.ts`** — baris pertama, sebelum `NestFactory.create()`.
-4. **(Opsional) Custom span di `payments.service.ts`** — create span `payment.processing` via OTel API untuk span tree visualization.
-5. **(Opsional) Gateway mock instrument** — receive `traceparent` header + create child span.
-6. **Set `IS_OTEL=true` di `.env`** — flip toggle. `getTraceId()` di `trace-context.ts` otomatis baca dari OTel active span.
+1. **Install OTel dependencies** - `@opentelemetry/sdk-node` + `@opentelemetry/auto-instrumentations-node` + `@opentelemetry/exporter-trace-otlp-http` + `@opentelemetry/api` + `@opentelemetry/resources` + `@opentelemetry/semantic-conventions`.
+2. **Buat `apps/payment-api/src/otel.ts`** - OTel SDK initialization (load sebelum NestJS bootstrap). File ini cek `process.env.IS_OTEL === 'true'` -> start SDK + OTLP exporter ke Jaeger.
+3. **Import `./otel` di `main.ts`** - baris pertama, sebelum `NestFactory.create()`.
+4. **(Opsional) Custom span di `payments.service.ts`** - create span `payment.processing` via OTel API untuk span tree visualization.
+5. **(Opsional) Gateway mock instrument** - receive `traceparent` header + create child span.
+6. **Set `IS_OTEL=true` di `.env`** - flip toggle. `getTraceId()` di `trace-context.ts` otomatis baca dari OTel active span.
 
-**trace-context.ts TIDAK perlu di-modify** — TASK-11 sudah implementasi `IS_OTEL` toggle dengan lazy import + fallback ALS.
+**trace-context.ts TIDAK perlu di-modify** - TASK-11 sudah implementasi `IS_OTEL` toggle dengan lazy import + fallback ALS.
 
 ### Yang TIDAK Dilakukan TASK-11b
 
@@ -35,25 +35,25 @@ Setelah task ini selesai, plan section 13.3 + DoD item "Trace payment dapat dite
 ## Scope
 
 **In scope**:
-- `apps/payment-api/src/otel.ts` — OTel SDK initialization (load sebelum NestJS bootstrap). Cek `IS_OTEL=true` -> start SDK.
-- `apps/payment-api/src/main.ts` — tambah `import './otel'` di baris pertama.
-- `apps/payment-api/package.json` — tambah OTel dependencies.
-- `apps/payment-api/src/modules/payments/payments.service.ts` — (opsional) create custom span `payment.processing` via OTel API.
-- `apps/payment-gateway-mock/src/otel.ts` + `main.ts` — (opsional) instrument gateway mock.
-- `.env.example` + `.env.sandbox.example` — tambah `IS_OTEL=false` default.
-- `docker-compose.yml` — verify Jaeger service sudah ada (sudah, dari TASK-01).
+- `apps/payment-api/src/otel.ts` - OTel SDK initialization (load sebelum NestJS bootstrap). Cek `IS_OTEL=true` -> start SDK.
+- `apps/payment-api/src/main.ts` - tambah `import './otel'` di baris pertama.
+- `apps/payment-api/package.json` - tambah OTel dependencies.
+- `apps/payment-api/src/modules/payments/payments.service.ts` - (opsional) create custom span `payment.processing` via OTel API.
+- `apps/payment-gateway-mock/src/otel.ts` + `main.ts` - (opsional) instrument gateway mock.
+- `.env.example` + `.env.sandbox.example` - tambah `IS_OTEL=false` default.
+- `docker-compose.yml` - verify Jaeger service sudah ada (sudah, dari TASK-01).
 
 **TIDAK perlu modify** (sudah disiapkan oleh TASK-11):
-- ~~`trace-context.ts`~~ — sudah punya `IS_OTEL` toggle + lazy import + fallback ALS dari TASK-11.
-- ~~pino logger~~ — tetap dari TASK-11.
-- ~~prom-client metrics~~ — tetap dari TASK-11.
-- ~~Jest tests~~ — `IS_OTEL=false` di test env, OTel SDK tidak di-load.
+- ~~`trace-context.ts`~~ - sudah punya `IS_OTEL` toggle + lazy import + fallback ALS dari TASK-11.
+- ~~pino logger~~ - tetap dari TASK-11.
+- ~~prom-client metrics~~ - tetap dari TASK-11.
+- ~~Jest tests~~ - `IS_OTEL=false` di test env, OTel SDK tidak di-load.
 
 **Out of scope**:
-- Metrics via OTel (metrics sudah via prom-client dari TASK-11 — tidak double-instrument).
-- Logging via OTel (pino sudah handle dari TASK-11 — OTel log API tidak dipakai).
-- Gateway mock full instrumentation (opsional — dijelaskan sebagai bonus step, boleh skip).
-- Production OTel collector deployment (OTel Collector as separate service) — demo pakai Jaeger all-in-one yang punya built-in OTLP receiver.
+- Metrics via OTel (metrics sudah via prom-client dari TASK-11 - tidak double-instrument).
+- Logging via OTel (pino sudah handle dari TASK-11 - OTel log API tidak dipakai).
+- Gateway mock full instrumentation (opsional - dijelaskan sebagai bonus step, boleh skip).
+- Production OTel collector deployment (OTel Collector as separate service) - demo pakai Jaeger all-in-one yang punya built-in OTLP receiver.
 - Sampling strategy (always-on sampling untuk demo; production butuh head-based atau tail-based sampling).
 
 ---
@@ -88,7 +88,7 @@ PaymentsService.executePayment()
   │     └── attempt #3 -> audit.recordAttempt({ traceId })
   └── traceId persisted di payment_attempts.trace_id
 
-Jaeger UI: (kosong — tidak ada OTel export)
+Jaeger UI: (kosong - tidak ada OTel export)
 ```
 
 ### After (TASK-11b full OTel)
@@ -150,19 +150,19 @@ docker compose up -d jaeger
 
 ### Create baru
 
-- `/home/z/my-project/retry-failure/apps/payment-api/src/otel.ts` — OTel SDK init (load sebelum NestJS).
-- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/otel.ts` — (opsional) gateway mock OTel init.
+- `/home/z/my-project/retry-failure/apps/payment-api/src/otel.ts` - OTel SDK init (load sebelum NestJS).
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/otel.ts` - (opsional) gateway mock OTel init.
 
 ### Modify
 
-- `apps/payment-api/src/main.ts` — tambah `import './otel'` di baris pertama.
-- `apps/payment-api/package.json` — tambah OTel dependencies.
-- `.env.example` + `.env.sandbox.example` — tambah `IS_OTEL=false` default.
-- `apps/payment-api/src/modules/payments/payments.service.ts` — (opsional) create custom span `payment.processing`.
+- `apps/payment-api/src/main.ts` - tambah `import './otel'` di baris pertama.
+- `apps/payment-api/package.json` - tambah OTel dependencies.
+- `.env.example` + `.env.sandbox.example` - tambah `IS_OTEL=false` default.
+- `apps/payment-api/src/modules/payments/payments.service.ts` - (opsional) create custom span `payment.processing`.
 
 ### TIDAK perlu modify (sudah disiapkan oleh TASK-11)
 
-- ~~`apps/payment-api/src/modules/observability/trace-context.ts`~~ — sudah punya `IS_OTEL` toggle + lazy import `@opentelemetry/api` + fallback ALS dari TASK-11. Saat `IS_OTEL=true` dan package ter-install, `getTraceId()` otomatis baca dari OTel active span.
+- ~~`apps/payment-api/src/modules/observability/trace-context.ts`~~ - sudah punya `IS_OTEL` toggle + lazy import `@opentelemetry/api` + fallback ALS dari TASK-11. Saat `IS_OTEL=true` dan package ter-install, `getTraceId()` otomatis baca dari OTel active span.
 
 ---
 
@@ -190,11 +190,11 @@ pnpm --filter payment-gateway-mock add \
   @opentelemetry/semantic-conventions
 ```
 
-### 2. `apps/payment-api/src/otel.ts` — OTel SDK initialization
+### 2. `apps/payment-api/src/otel.ts` - OTel SDK initialization
 
 ```ts
 /**
- * OpenTelemetry SDK initialization — WAJIB di-import pertama di main.ts
+ * OpenTelemetry SDK initialization - WAJIB di-import pertama di main.ts
  * SEBELUM NestFactory.create(), agar auto-instrumentations hook terpasang
  * sebelum module system load.
  *
@@ -208,7 +208,7 @@ import { Resource } from '@opentelemetry/resources';
 import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
 
-// Skip di test environment — tidak butuh Jaeger export
+// Skip di test environment - tidak butuh Jaeger export
 if (process.env.NODE_ENV !== 'test') {
   const exporterUrl = process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? 'http://localhost:4318/v1/traces';
 
@@ -229,7 +229,7 @@ if (process.env.NODE_ENV !== 'test') {
 
   sdk.start();
 
-  // Graceful shutdown — flush pending spans ke Jaeger sebelum process exit
+  // Graceful shutdown - flush pending spans ke Jaeger sebelum process exit
   process.on('SIGTERM', () => {
     sdk
       .shutdown()
@@ -239,17 +239,17 @@ if (process.env.NODE_ENV !== 'test') {
 }
 ```
 
-### 3. `apps/payment-api/src/main.ts` — import otel.ts sebelum bootstrap
+### 3. `apps/payment-api/src/main.ts` - import otel.ts sebelum bootstrap
 
 ```ts
-// WAJIB: import otel.ts pertama — sebelum apapun yang load modules
+// WAJIB: import otel.ts pertama - sebelum apapun yang load modules
 import './otel';
 
 import { NestFactory } from '@nestjs/core';
 // ... rest of existing main.ts (tidak diubah)
 ```
 
-### 4. trace-context.ts — TIDAK perlu modify
+### 4. trace-context.ts - TIDAK perlu modify
 
 TASK-11 sudah mengimplementasi `IS_OTEL` toggle di `trace-context.ts` dengan:
 
@@ -270,7 +270,7 @@ Bila `IS_OTEL=true` TAPI TASK-11b belum dieksekusi (package belum install):
 
 **Tidak ada yang perlu diubah di `trace-context.ts`.**
 
-### 5. Modify `payments.service.ts` — create custom span di executePayment
+### 5. Modify `payments.service.ts` - create custom span di executePayment
 
 ```ts
 import { trace } from '@opentelemetry/api';
@@ -304,7 +304,7 @@ async executePayment(paymentId: string, options: ExecuteOptions): Promise<Paymen
 }
 ```
 
-### 6. (Opsional) `apps/payment-gateway-mock/src/otel.ts` — gateway mock OTel
+### 6. (Opsional) `apps/payment-gateway-mock/src/otel.ts` - gateway mock OTel
 
 ```ts
 import { NodeSDK } from '@opentelemetry/sdk-node';
@@ -336,7 +336,7 @@ import { NestFactory } from '@nestjs/core';
 
 Dengan ini, trace context otomatis propagate dari payment-api -> gateway mock via W3C `traceparent` header (di-inject oleh axios auto-instrumentation, di-receive oleh HTTP server auto-instrumentation di gateway mock). Jaeger UI akan menampilkan cross-service span tree.
 
-### 7. Verify docker-compose.yml — Jaeger sudah ada (tidak perlu diubah)
+### 7. Verify docker-compose.yml - Jaeger sudah ada (tidak perlu diubah)
 
 ```yaml
 jaeger:
@@ -382,7 +382,7 @@ jaeger:
                 └── POST /v1/charges (gateway-mock, child span)
   ```
 - [ ] `pnpm typecheck` + `pnpm lint` lulus.
-- [ ] `pnpm test` lulus (OTel SDK tidak aktif di test env — `NODE_ENV=test` skip init).
+- [ ] `pnpm test` lulus (OTel SDK tidak aktif di test env - `NODE_ENV=test` skip init).
 
 ---
 
@@ -471,21 +471,21 @@ docker compose down
 
 ## Notes
 
-- **OTel SDK harus di-import sebelum NestFactory.create()** — auto-instrumentations hook ke Node.js module system (require/import). Bila di-import setelah module system sudah load modules (mis. axios, pg), hook tidak tertangkap -> span tidak dibuat. Pattern: `import './otel'` di baris pertama `main.ts`.
+- **OTel SDK harus di-import sebelum NestFactory.create()** - auto-instrumentations hook ke Node.js module system (require/import). Bila di-import setelah module system sudah load modules (mis. axios, pg), hook tidak tertangkap -> span tidak dibuat. Pattern: `import './otel'` di baris pertama `main.ts`.
 
-- **NODE_ENV=test skip SDK** — Jest tidak butuh OTel (test pakai mock). `otel.ts` cek `process.env.NODE_ENV !== 'test'` untuk skip init. Test tetap pakai `AsyncLocalStorage` fallback via `getTraceId()`.
+- **NODE_ENV=test skip SDK** - Jest tidak butuh OTel (test pakai mock). `otel.ts` cek `process.env.NODE_ENV !== 'test'` untuk skip init. Test tetap pakai `AsyncLocalStorage` fallback via `getTraceId()`.
 
-- **AsyncLocalStorage tetap dipertahankan** — `getTraceId()` prefer OTel active span, fallback AsyncLocalStorage. Ini untuk backward compatibility dengan TASK-11 code yang pakai `withTrace()`. Bila OTel SDK tidak aktif (test, atau dev tanpa Jaeger), behavior sama dengan TASK-11 simplified.
+- **AsyncLocalStorage tetap dipertahankan** - `getTraceId()` prefer OTel active span, fallback AsyncLocalStorage. Ini untuk backward compatibility dengan TASK-11 code yang pakai `withTrace()`. Bila OTel SDK tidak aktif (test, atau dev tanpa Jaeger), behavior sama dengan TASK-11 simplified.
 
-- **Gateway mock instrumentation opsional** — bila gateway mock TIDAK di-instrument, `traceparent` header tetap di-inject oleh payment-api axios auto-instrumentation, tapi gateway mock tidak create child span. Jaeger UI tetap menampilkan payment-api spans, tapi tidak ada cross-service span. Cross-service span hanya muncul bila kedua service di-instrument.
+- **Gateway mock instrumentation opsional** - bila gateway mock TIDAK di-instrument, `traceparent` header tetap di-inject oleh payment-api axios auto-instrumentation, tapi gateway mock tidak create child span. Jaeger UI tetap menampilkan payment-api spans, tapi tidak ada cross-service span. Cross-service span hanya muncul bila kedua service di-instrument.
 
-- **Sampling** — demo pakai always-on (100% sampling). Production butuh sampling strategy (head-based 10% atau tail-based dengan adaptive sampling). Document di TASK-15 caveats.
+- **Sampling** - demo pakai always-on (100% sampling). Production butuh sampling strategy (head-based 10% atau tail-based dengan adaptive sampling). Document di TASK-15 caveats.
 
-- **Performance overhead** — OTel auto-instrumentation add ~5-10% overhead per HTTP call (span create + export). Untuk demo (ratusan RPS), acceptable. Production high-throughput (>10k RPS) -> pertimbangkan sampling atau custom instrumentation (hanya span yang penting).
+- **Performance overhead** - OTel auto-instrumentation add ~5-10% overhead per HTTP call (span create + export). Untuk demo (ratusan RPS), acceptable. Production high-throughput (>10k RPS) -> pertimbangkan sampling atau custom instrumentation (hanya span yang penting).
 
-- **DoD update** — setelah task ini selesai, plan section 22 DoD item "Trace payment dapat ditemukan di Jaeger" -> ✓.
+- **DoD update** - setelah task ini selesai, plan section 22 DoD item "Trace payment dapat ditemukan di Jaeger" -> ✓.
 
-- **TASK-11 tidak perlu di-rerun** — TASK-11b adalah add-on. Bila TASK-11b tidak dieksekusi, TASK-11 simplified tetap berfungsi (trace ID via AsyncLocalStorage, tidak ada Jaeger UI, tapi trace ID di `payment_attempts` + pino log tetap ada).
+- **TASK-11 tidak perlu di-rerun** - TASK-11b adalah add-on. Bila TASK-11b tidak dieksekusi, TASK-11 simplified tetap berfungsi (trace ID via AsyncLocalStorage, tidak ada Jaeger UI, tapi trace ID di `payment_attempts` + pino log tetap ada).
 
 ---
 
@@ -497,5 +497,5 @@ docker compose down
 | "span error memperlihatkan failure" | ❌ (tidak ada span) | ✅ (error spans dengan exception + stack trace) |
 | "trace context propagate ke mock" | ❌ (tidak ada traceparent header) | ✅ (W3C traceparent via axios auto-instrumentation) |
 | "trace ID dapat dikorelasikan dengan payment_attempts" | ✅ (traceId field di DB) | ✅ (trace ID sama = OTel trace ID = DB trace_id) |
-| "Gateway mock juga diinstrument" | ❌ | ✅ (opsional — step 6) |
+| "Gateway mock juga diinstrument" | ❌ | ✅ (opsional - step 6) |
 | DoD: "Trace payment dapat ditemukan di Jaeger" | ❌ | ✅ |

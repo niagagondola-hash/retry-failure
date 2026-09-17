@@ -4,7 +4,7 @@
  * Stores the result of successful charges keyed by `Idempotency-Key`.
  * Replays (same key) return the stored result with `replayed: true`.
  *
- * Failures are NOT stored — only successful captures.
+ * Failures are NOT stored - only successful captures.
  */
 
 export interface ChargeResult {

@@ -1,5 +1,5 @@
 /**
- * MetricsService — wraps prom-client Registry + 3 counters.
+ * MetricsService - wraps prom-client Registry + 3 counters.
  *
  * Counters (plan section 8.4 + TASK-03 spec):
  *   payment_gateway_mock_requests_total{outcome,http_status}

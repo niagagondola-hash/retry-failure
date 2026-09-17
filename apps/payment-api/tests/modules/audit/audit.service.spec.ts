@@ -63,7 +63,7 @@ function makeInput(overrides: Partial<RecordAttemptInput> = {}): RecordAttemptIn
   };
 }
 
-describe('AuditService — recordAttempt', () => {
+describe('AuditService - recordAttempt', () => {
   it('persists attempt row with all fields', async () => {
     const attemptRepo = makeMockAttemptRepo();
     const paymentRepo = makeMockPaymentRepo();
@@ -129,7 +129,7 @@ describe('AuditService — recordAttempt', () => {
     const paymentRepo = makeMockPaymentRepo();
     const svc = new AuditService(attemptRepo as unknown as never, paymentRepo);
 
-    // Should NOT throw — audit failure must not break payment flow
+    // Should NOT throw - audit failure must not break payment flow
     await expect(svc.recordAttempt(makeInput())).resolves.not.toThrow();
   });
 
@@ -168,7 +168,7 @@ describe('AuditService — recordAttempt', () => {
   });
 });
 
-describe('AuditService — listAttempts', () => {
+describe('AuditService - listAttempts', () => {
   it('returns attempts ordered by attemptNumber ASC', async () => {
     const attemptRepo = makeMockAttemptRepo();
     // Pre-populate with unsorted rows

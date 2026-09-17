@@ -1,5 +1,5 @@
 /**
- * Mode handler — pure function mapping (mode, ctx) -> ModeResult.
+ * Mode handler - pure function mapping (mode, ctx) -> ModeResult.
  *
  * Stateful bookkeeping (fail-first-n counter) is delegated to MockState so
  * callers retain explicit control over when/how counters mutate.
@@ -22,7 +22,7 @@ export interface ModeResult {
   headers?: Record<string, string>;
   /**
    * If true, the charge has been captured (saved to idempotency store) but
-   * the response will be dropped — caller should hang long enough for the
+   * the response will be dropped - caller should hang long enough for the
    * client to time out, then throw/abort.
    */
   shouldDropResponse?: boolean;
@@ -59,7 +59,7 @@ function newGatewayReference(): string {
 /**
  * Apply a failure mode to the current request.
  *
- * Does NOT mutate MockState counters (requestCount/successCount/etc.) — that's
+ * Does NOT mutate MockState counters (requestCount/successCount/etc.) - that's
  * the caller's responsibility (so replay vs. fresh-charge semantics stay
  * clean). Does mutate `failFirstNCounter` because it's mode-local state.
  */
@@ -182,7 +182,7 @@ export function applyMode(mode: FailureMode, ctx: ModeContext): ModeResult {
     }
 
     default: {
-      // Exhaustiveness check — TypeScript guarantees we covered all modes.
+      // Exhaustiveness check - TypeScript guarantees we covered all modes.
       // If a new mode is added to the union without a case here, compile fails.
       const _exhaustive: never = mode;
       void _exhaustive;

@@ -1,5 +1,5 @@
 /**
- * AdminModule — wires AdminController + AdminService with shared MockState.
+ * AdminModule - wires AdminController + AdminService with shared MockState.
  */
 
 import { Module } from '@nestjs/common';

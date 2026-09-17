@@ -76,7 +76,7 @@ function makeMockAudit() {
 
 // --- Tests ---
 
-describe('PaymentsService — createPayment', () => {
+describe('PaymentsService - createPayment', () => {
   it('always-success -> status=succeeded, gatewayReference set', async () => {
     const repo = makeMockRepo();
     const gateway = makeMockGateway({
@@ -160,7 +160,7 @@ describe('PaymentsService — createPayment', () => {
   });
 });
 
-describe('PaymentsService — manualRetry', () => {
+describe('PaymentsService - manualRetry', () => {
   it('from scheduled_for_retry -> executePayment runs', async () => {
     const repo = makeMockRepo();
     repo._setPayment(makePayment({ status: PaymentStatus.SCHEDULED_FOR_RETRY, totalRetryCount: 2 }));
@@ -199,7 +199,7 @@ describe('PaymentsService — manualRetry', () => {
   });
 });
 
-describe('PaymentsService — MAX_TOTAL_RETRIES exceeded', () => {
+describe('PaymentsService - MAX_TOTAL_RETRIES exceeded', () => {
   it('totalRetryCount=5 + failed result -> status=failed, failureReason=max_total_retries_exceeded', async () => {
     const repo = makeMockRepo();
     repo._setPayment(makePayment({ status: PaymentStatus.PROCESSING, totalRetryCount: 5 }));
@@ -219,7 +219,7 @@ describe('PaymentsService — MAX_TOTAL_RETRIES exceeded', () => {
   });
 });
 
-describe('PaymentsService — getById', () => {
+describe('PaymentsService - getById', () => {
   it('returns PaymentDetail with attempts from audit', async () => {
     const repo = makeMockRepo();
     const gateway = makeMockGateway({ status: 'succeeded' as const, replayed: false });
@@ -261,7 +261,7 @@ describe('PaymentsService — getById', () => {
   });
 });
 
-describe('PaymentsService — list', () => {
+describe('PaymentsService - list', () => {
   it('passes filter to repository', async () => {
     const repo = makeMockRepo();
     repo.list = jest.fn(async () => [makePayment({ id: 'p1' }), makePayment({ id: 'p2' })]);
@@ -275,7 +275,7 @@ describe('PaymentsService — list', () => {
   });
 });
 
-describe('PaymentsService — audit graceful degradation', () => {
+describe('PaymentsService - audit graceful degradation', () => {
   it('audit.recordAttempt throws -> service tetap selesai (tidak propagate)', async () => {
     const repo = makeMockRepo();
     const gateway = makeMockGateway({
@@ -302,7 +302,7 @@ describe('PaymentsService — audit graceful degradation', () => {
   });
 });
 
-describe('PaymentsService — trace ID per execution cycle', () => {
+describe('PaymentsService - trace ID per execution cycle', () => {
   it('executePayment generates unique traceId', async () => {
     const repo = makeMockRepo();
     const traceIds: string[] = [];

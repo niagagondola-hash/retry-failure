@@ -1,7 +1,7 @@
-# TASK-01 — Scaffolding: pnpm workspaces + NestJS monorepo + config
+# TASK-01 - Scaffolding: pnpm workspaces + NestJS monorepo + config
 
 > **Task ID**: 1
-> **Depends on**: —
+> **Depends on**: -
 > **Estimated effort**: S (~45 min)
 > **Plan reference**: Section 3 (Stack), Section 4 (Struktur Monorepo), Section 15 (Configuration)
 
@@ -16,7 +16,7 @@ Menyiapkan monorepo pnpm workspaces di `/home/z/my-project/retry-failure/` denga
 **In scope**:
 - Enable `pnpm` via corepack.
 - Buat root files: `package.json`, `pnpm-workspace.yaml`, `tsconfig.base.json`, `.env.example`, `.gitignore`.
-- Scaffolding 3 NestJS apps (payment-api, payment-gateway-mock, frontend-vue — Vue app, bukan NestJS) + 1 package (`packages/resilience`).
+- Scaffolding 3 NestJS apps (payment-api, payment-gateway-mock, frontend-vue - Vue app, bukan NestJS) + 1 package (`packages/resilience`).
 - Shared config: `apps/payment-api/src/config/` dengan `@nestjs/config` + Joi.
 - Common tsconfig extends.
 - Root scripts: `dev`, `build`, `test`, `test:e2e`, `lint`, `db:migrate`, `docker:up`, `docker:down`, `frontend:vue:dev`, `frontend:vue:build`.
@@ -26,41 +26,41 @@ Menyiapkan monorepo pnpm workspaces di `/home/z/my-project/retry-failure/` denga
 - Implementasi module NestJS apapun (di task berikutnya).
 - Schema database (di TASK-02).
 - Cockatiel policies (di TASK-05).
-- Docker compose (di TASK-15 — minimal stub di sini).
+- Docker compose (di TASK-15 - minimal stub di sini).
 
 ## Files to create
 
 - `/home/z/my-project/retry-failure/package.json`
 - `/home/z/my-project/retry-failure/pnpm-workspace.yaml`
 - `/home/z/my-project/retry-failure/tsconfig.base.json`
-- `/home/z/my-project/retry-failure/.gitignore` — ignore `.env`, allow `.env.example` + `.env.sandbox.example`
-- `/home/z/my-project/retry-failure/.env.example` — **KONDISI LOCAL** (port 3000, gateway 3001, Docker available)
-- `/home/z/my-project/retry-failure/.env.sandbox.example` — **KONDISI SANDBOX** (port 3001, gateway 3002, no Docker)
-- `/home/z/my-project/retry-failure/.nvmrc` — pin Node version
+- `/home/z/my-project/retry-failure/.gitignore` - ignore `.env`, allow `.env.example` + `.env.sandbox.example`
+- `/home/z/my-project/retry-failure/.env.example` - **KONDISI LOCAL** (port 3000, gateway 3001, Docker available)
+- `/home/z/my-project/retry-failure/.env.sandbox.example` - **KONDISI SANDBOX** (port 3001, gateway 3002, no Docker)
+- `/home/z/my-project/retry-failure/.nvmrc` - pin Node version
 - `/home/z/my-project/retry-failure/apps/payment-api/package.json`
 - `/home/z/my-project/retry-failure/apps/payment-api/tsconfig.json`
 - `/home/z/my-project/retry-failure/apps/payment-api/nest-cli.json`
-- `/home/z/my-project/retry-failure/apps/payment-api/src/main.ts` — minimal bootstrap
-- `/home/z/my-project/retry-failure/apps/payment-api/src/app.module.ts` — empty root module
+- `/home/z/my-project/retry-failure/apps/payment-api/src/main.ts` - minimal bootstrap
+- `/home/z/my-project/retry-failure/apps/payment-api/src/app.module.ts` - empty root module
 - `/home/z/my-project/retry-failure/apps/payment-api/src/config/config.module.ts`
 - `/home/z/my-project/retry-failure/apps/payment-api/src/config/configuration.ts`
-- `/home/z/my-project/retry-failure/apps/payment-api/src/config/validation.schema.ts` — Joi
+- `/home/z/my-project/retry-failure/apps/payment-api/src/config/validation.schema.ts` - Joi
 - `/home/z/my-project/retry-failure/apps/payment-gateway-mock/package.json`
 - `/home/z/my-project/retry-failure/apps/payment-gateway-mock/tsconfig.json`
 - `/home/z/my-project/retry-failure/apps/payment-gateway-mock/nest-cli.json`
 - `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/main.ts`
 - `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/app.module.ts`
-- `/home/z/my-project/retry-failure/apps/frontend-vue/package.json` — Vite + Vue
+- `/home/z/my-project/retry-failure/apps/frontend-vue/package.json` - Vite + Vue
 - `/home/z/my-project/retry-failure/apps/frontend-vue/tsconfig.json`
 - `/home/z/my-project/retry-failure/apps/frontend-vue/vite.config.ts`
 - `/home/z/my-project/retry-failure/apps/frontend-vue/index.html`
-- `/home/z/my-project/retry-failure/apps/frontend-vue/src/main.ts` — empty Vue bootstrap
-- `/home/z/my-project/retry-failure/apps/frontend-vue/src/App.vue` — placeholder
+- `/home/z/my-project/retry-failure/apps/frontend-vue/src/main.ts` - empty Vue bootstrap
+- `/home/z/my-project/retry-failure/apps/frontend-vue/src/App.vue` - placeholder
 - `/home/z/my-project/retry-failure/packages/resilience/package.json`
 - `/home/z/my-project/retry-failure/packages/resilience/tsconfig.json`
-- `/home/z/my-project/retry-failure/packages/resilience/src/index.ts` — barrel placeholder
-- `/home/z/my-project/retry-failure/docker-compose.yml` — minimal stub (postgres only)
-- `/home/z/my-project/retry-failure/README.md` — short overview
+- `/home/z/my-project/retry-failure/packages/resilience/src/index.ts` - barrel placeholder
+- `/home/z/my-project/retry-failure/docker-compose.yml` - minimal stub (postgres only)
+- `/home/z/my-project/retry-failure/README.md` - short overview
 
 ## Implementation steps
 
@@ -74,7 +74,7 @@ Menyiapkan monorepo pnpm workspaces di `/home/z/my-project/retry-failure/` denga
    corepack prepare pnpm@9.12.0 --activate
    pnpm --version  # verify
    ```
-2. Buat root `package.json` — **WAJIB pin `packageManager` dan `engines`** agar kedua kondisi (LOCAL & SANDBOX) memakai pnpm v9.12.0 yang identik via corepack. Lockfile akan compatible di kedua lingkungan.
+2. Buat root `package.json` - **WAJIB pin `packageManager` dan `engines`** agar kedua kondisi (LOCAL & SANDBOX) memakai pnpm v9.12.0 yang identik via corepack. Lockfile akan compatible di kedua lingkungan.
    ```json
    {
      "name": "retry-failure",
@@ -103,9 +103,9 @@ Menyiapkan monorepo pnpm workspaces di `/home/z/my-project/retry-failure/` denga
      }
    }
    ```
-   - **`packageManager: "pnpm@9.12.0"`** — Node corepack membaca field ini dan otomatis activate pnpm v9.12.0 saat `pnpm` dipanggil. Kedua kondisi (LOCAL dengan pnpm global terinstall, SANDBOX dengan pnpm via corepack) akan resolve ke versi yang sama -> `pnpm-lock.yaml` compatible, tidak ada drift.
-   - **`engines.node: ">=20"`** — Node v20, v22, v24 semua OK. Plan minta v20.19.0; kita pakai floor `>=20` agar sandbox (yang sering dapat v24) tetap jalan tanpa API breaking. Document caveat Node 24 vs 20 di TASK-15.
-   - **`engines.pnpm: ">=9"`** — pelengkap pin `packageManager`; memberi error jelas bila ada dev yang masih pakai pnpm v8.
+   - **`packageManager: "pnpm@9.12.0"`** - Node corepack membaca field ini dan otomatis activate pnpm v9.12.0 saat `pnpm` dipanggil. Kedua kondisi (LOCAL dengan pnpm global terinstall, SANDBOX dengan pnpm via corepack) akan resolve ke versi yang sama -> `pnpm-lock.yaml` compatible, tidak ada drift.
+   - **`engines.node: ">=20"`** - Node v20, v22, v24 semua OK. Plan minta v20.19.0; kita pakai floor `>=20` agar sandbox (yang sering dapat v24) tetap jalan tanpa API breaking. Document caveat Node 24 vs 20 di TASK-15.
+   - **`engines.pnpm: ">=9"`** - pelengkap pin `packageManager`; memberi error jelas bila ada dev yang masih pakai pnpm v8.
 3. `pnpm-workspace.yaml`:
    ```yaml
    packages:
@@ -113,12 +113,12 @@ Menyiapkan monorepo pnpm workspaces di `/home/z/my-project/retry-failure/` denga
      - 'packages/*'
    ```
 4. `tsconfig.base.json` strict mode, extends NestJS defaults.
-5. **Buat dua env example files** — strategi Opsi B (lihat `docs/tasks/SANDBOX_NOTES.md` section 5):
-   - `.env.example` — KONDISI LOCAL: `PORT=3000`, `GATEWAY_URL=http://localhost:3001`, DB credentials default untuk `docker compose postgres`.
-   - `.env.sandbox.example` — KONDISI SANDBOX: `PORT=3001`, `GATEWAY_URL=http://localhost:3002`, DB credentials sama (asumsi external PostgreSQL) atau skip DB.
-   - **Tidak buat `.env` di sini** — user/agent akan copy salah satu saat menjalankan task (lihat TASK-02 step 1).
+5. **Buat dua env example files** - strategi Opsi B (lihat `docs/tasks/SANDBOX_NOTES.md` section 5):
+   - `.env.example` - KONDISI LOCAL: `PORT=3000`, `GATEWAY_URL=http://localhost:3001`, DB credentials default untuk `docker compose postgres`.
+   - `.env.sandbox.example` - KONDISI SANDBOX: `PORT=3001`, `GATEWAY_URL=http://localhost:3002`, DB credentials sama (asumsi external PostgreSQL) atau skip DB.
+   - **Tidak buat `.env` di sini** - user/agent akan copy salah satu saat menjalankan task (lihat TASK-02 step 1).
    - Kedua file sudah committed (template). `.env` (aktual) di-gitignore.
-6. **`.gitignore`** — pattern:
+6. **`.gitignore`** - pattern:
    ```gitignore
    .env
    .env.local
@@ -181,13 +181,13 @@ Menyiapkan monorepo pnpm workspaces di `/home/z/my-project/retry-failure/` denga
      }
    }
    ```
-6. `apps/payment-api/src/main.ts` — bootstrap NestJS, listen port 3001, enable Swagger.
-7. `apps/payment-api/src/app.module.ts` — root module, import `ConfigModule.forRoot({ validationSchema })`.
-8. `apps/payment-api/src/config/configuration.ts` — `() => ({...})` env loader.
-9. `apps/payment-api/src/config/validation.schema.ts` — Joi schema untuk semua env dari plan section 15.
-10. `apps/payment-api/src/config/config.module.ts` — `Global`, `ConfigModule.forRoot({ isGlobal: true })`.
-11. `apps/payment-gateway-mock/` — same NestJS scaffolding, port 3002.
-12. `apps/frontend-vue/` — Vite + Vue 3 + PrimeVue minimal:
+6. `apps/payment-api/src/main.ts` - bootstrap NestJS, listen port 3001, enable Swagger.
+7. `apps/payment-api/src/app.module.ts` - root module, import `ConfigModule.forRoot({ validationSchema })`.
+8. `apps/payment-api/src/config/configuration.ts` - `() => ({...})` env loader.
+9. `apps/payment-api/src/config/validation.schema.ts` - Joi schema untuk semua env dari plan section 15.
+10. `apps/payment-api/src/config/config.module.ts` - `Global`, `ConfigModule.forRoot({ isGlobal: true })`.
+11. `apps/payment-gateway-mock/` - same NestJS scaffolding, port 3002.
+12. `apps/frontend-vue/` - Vite + Vue 3 + PrimeVue minimal:
     ```json
     {
       "name": "frontend-vue",
@@ -245,7 +245,7 @@ Menyiapkan monorepo pnpm workspaces di `/home/z/my-project/retry-failure/` denga
       }
     }
     ```
-14. `docker-compose.yml` — stub minimal:
+14. `docker-compose.yml` - stub minimal:
     ```yaml
     services:
       postgres:
@@ -328,14 +328,14 @@ cd /home/z/my-project/retry-failure/apps/payment-api
 PORT=3000 pnpm start:dev > /tmp/payment-api.log 2>&1 &
 sleep 5
 tail -n 20 /tmp/payment-api.log
-curl -s http://localhost:3000/ 2>&1 || echo "no route yet — OK if NestJS default 404"
+curl -s http://localhost:3000/ 2>&1 || echo "no route yet - OK if NestJS default 404"
 
 # KONDISI SANDBOX (port 3000 dipakai Next.js preview):
 cd /home/z/my-project/retry-failure/apps/payment-api
 PORT=3001 pnpm start:dev > /tmp/payment-api.log 2>&1 &
 sleep 5
 tail -n 20 /tmp/payment-api.log
-curl -s http://localhost:3001/ 2>&1 || echo "no route yet — OK if NestJS default 404"
+curl -s http://localhost:3001/ 2>&1 || echo "no route yet - OK if NestJS default 404"
 
 # 5. Start gateway-mock (background)
 # KONDISI LOCAL:
@@ -350,24 +350,24 @@ PORT=3002 pnpm start:dev > /tmp/gateway-mock.log 2>&1 &
 sleep 5
 tail -n 20 /tmp/gateway-mock.log
 
-# 6. Start Vue frontend (background) — sama kedua kondisi (port 5173)
+# 6. Start Vue frontend (background) - sama kedua kondisi (port 5173)
 cd /home/z/my-project/retry-failure/apps/frontend-vue
 pnpm dev > /tmp/frontend-vue.log 2>&1 &
 sleep 5
 tail -n 20 /tmp/frontend-vue.log
 curl -s http://localhost:5173/ | head -20
 
-# 7. Lint & typecheck — sama kedua kondisi
+# 7. Lint & typecheck - sama kedua kondisi
 cd /home/z/my-project/retry-failure
 pnpm lint
 pnpm typecheck
 
-# 8. Test config validation (start with missing env) — sama kedua kondisi
+# 8. Test config validation (start with missing env) - sama kedua kondisi
 cd /home/z/my-project/retry-failure/apps/payment-api
 unset DB_HOST DB_PORT DB_USER DB_PASS DB_NAME
 pnpm start:dev 2>&1 | head -20  # expected: Joi validation error
 
-# 9. Cleanup background services — sama kedua kondisi
+# 9. Cleanup background services - sama kedua kondisi
 pkill -f "nest start" 2>/dev/null
 pkill -f "vite" 2>/dev/null
 
@@ -386,9 +386,9 @@ docker compose -f /home/z/my-project/retry-failure/docker-compose.yml down
 
 ## Notes
 
-- **Node version**: sandbox punya Node v24. Plan minta v20.19.0. Pakai `engines.node: ">=20"` di root untuk fleksibel; di TASK-15 document ini sebagai caveat (Node 24 vs 20 — fitur ES yang dipakai tetap compatible).
+- **Node version**: sandbox punya Node v24. Plan minta v20.19.0. Pakai `engines.node: ">=20"` di root untuk fleksibel; di TASK-15 document ini sebagai caveat (Node 24 vs 20 - fitur ES yang dipakai tetap compatible).
 - **pnpm via corepack**: lebih reliable daripada `npm i -g pnpm`.
 - **NestJS CLI**: install sebagai devDependency di payment-api & gateway-mock (sudah ada di `devDependencies`).
-- **TypeORM CLI**: ada di `node_modules/typeorm`; perlu `ts-node` untuk run migration yang masih `.ts`. Pakai `tsx` atau `ts-node` — pilih `ts-node` (lebih stabil dengan TypeORM).
-- **Vue app**: Vite dev server di port 5173. Bila akses via preview panel sandbox gagal (port bukan 3000), tetap OK karena Vue dashboard adalah "resmi" bukan "sandbox preview" — diakses via tab baru.
+- **TypeORM CLI**: ada di `node_modules/typeorm`; perlu `ts-node` untuk run migration yang masih `.ts`. Pakai `tsx` atau `ts-node` - pilih `ts-node` (lebih stabil dengan TypeORM).
+- **Vue app**: Vite dev server di port 5173. Bila akses via preview panel sandbox gagal (port bukan 3000), tetap OK karena Vue dashboard adalah "resmi" bukan "sandbox preview" - diakses via tab baru.
 - Setelah task ini selesai, sub-agent berikutnya bisa mulai paralel di TASK-02, TASK-03, TASK-04.

@@ -22,7 +22,7 @@ const als = new AsyncLocalStorage<TraceContext>();
 
 const IS_OTEL = process.env.IS_OTEL === 'true';
 
-// Pre-load @opentelemetry/api bila IS_OTEL=true (CJS require — synchronous)
+// Pre-load @opentelemetry/api bila IS_OTEL=true (CJS require - synchronous)
 interface OtelApi {
   trace: {
     getSpan(ctx: unknown): { spanContext(): { traceId: string } } | undefined;

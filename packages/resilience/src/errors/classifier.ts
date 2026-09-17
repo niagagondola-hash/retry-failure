@@ -121,7 +121,7 @@ function classifyHttp(input: Extract<ClassifiableInput, { kind: 'http' }>): Erro
     };
   }
 
-  // 2xx/3xx -> success (caller should ignore — but return non-retryable)
+  // 2xx/3xx -> success (caller should ignore - but return non-retryable)
   if (status >= 200 && status < 400) {
     return {
       retryable: false,

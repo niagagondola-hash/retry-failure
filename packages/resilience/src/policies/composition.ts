@@ -16,7 +16,7 @@
  *   - classifyError dipanggil di onFailure callback untuk determine retryable
  *   - Retry policy pakai handleAll (retry on any error), tapi classifier
  *     dipanggil untuk audit + server-directed delay.
- *   - Permanen error (4xx selain 429) — Cockatiel akan retry semua error karena
+ *   - Permanen error (4xx selain 429) - Cockatiel akan retry semua error karena
  *     handleAll. Bila ingin skip retry untuk permanent error, caller harus
  *     throw error yang sudah di-mark permanent.
  *
@@ -66,7 +66,7 @@ export interface ExecuteOptions<T> {
 export async function executeWithResilience<T>(opts: ExecuteOptions<T>): Promise<ResilienceOutcome<T>> {
   const { dependencyName, fn, config, onAttempt, onStateChange } = opts;
 
-  // Get singleton breaker — pass onStateChange so breaker state transitions
+  // Get singleton breaker - pass onStateChange so breaker state transitions
   // (CLOSED -> OPEN -> HALF_OPEN -> CLOSED) propagate to MetricsService.
   // NOTE: onStateChange is captured in closure on FIRST creation only.
   // Subsequent calls pass the same callback (adapter is singleton, so stable).
@@ -117,7 +117,7 @@ export async function executeWithResilience<T>(opts: ExecuteOptions<T>): Promise
     const breakerTripped = isBrokenCircuitError(err);
 
     if (breakerTripped) {
-      // Breaker was open — record circuit_open attempt
+      // Breaker was open - record circuit_open attempt
       attemptNumber += 1;
       const detail: AttemptDetail = {
         attemptNumber,
@@ -143,7 +143,7 @@ export async function executeWithResilience<T>(opts: ExecuteOptions<T>): Promise
     const classification = classifyError(toClassifiableInput(err));
 
     // Check if exhausted (retry policy exhausted all attempts)
-    // Cockatiel throws the last error after retry exhaustion — no explicit "exhausted" exception
+    // Cockatiel throws the last error after retry exhaustion - no explicit "exhausted" exception
     const exhausted = attemptNumber >= config.retryMaxAttempts;
 
     return {

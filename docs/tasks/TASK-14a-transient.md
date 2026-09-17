@@ -1,4 +1,4 @@
-# TASK-14a-transient — Skenario 1: Transient Failure (fail-first-n=2)
+# TASK-14a-transient - Skenario 1: Transient Failure (fail-first-n=2)
 
 > **Parent**: [TASK-14a-e2e-verification.md](./TASK-14a-e2e-verification.md)
 > **Spec file**: `apps/payment-api/tests/e2e/payments.transient.e2e-spec.ts`
@@ -106,7 +106,7 @@ sequenceDiagram
 ☐ PostgreSQL running + migrated
 ☐ payment-api :3001 listening (curl http://localhost:3001/health -> 200)
 ☐ gateway-mock :3002 listening (curl http://localhost:3002/admin/config -> 200)
-☐ DB bersih dari payment dengan orderId `E2E-S1-*` (optional — beforeAll cleanDb() akan handle)
+☐ DB bersih dari payment dengan orderId `E2E-S1-*` (optional - beforeAll cleanDb() akan handle)
 ```
 
 ---
@@ -116,7 +116,7 @@ sequenceDiagram
 ### L1: HTTP response
 Otomatis oleh Jest. Lihat output test: jika assertion gagal, Jest akan tampilkan diff.
 
-### L2: DB state — queryAttempts
+### L2: DB state - queryAttempts
 ```sql
 SELECT attempt_number, outcome, http_status, trace_id, gateway_reference, duration_ms
 FROM payment_attempts
@@ -157,7 +157,7 @@ Cari baris:
 [retry] attempt 2 of 3 -> HttpError 500
 [retry] attempt 3 of 3 -> success
 ```
-Atau format yang dipakai `@retry-failure/resilience` — lihat implementasinya.
+Atau format yang dipakai `@retry-failure/resilience` - lihat implementasinya.
 
 ---
 
@@ -180,11 +180,11 @@ Atau format yang dipakai `@retry-failure/resilience` — lihat implementasinya.
 | Gejala | Kemungkinan cause | Fix |
 |---|---|---|
 | Test timeout 60s tanpa assertion jalan | Gateway mode tidak ter-set (masih `always-success`) | Cek `beforeAll` -> pastikan `setGatewayMode('fail-first-n', {n:2})` dipanggil sebelum `createPayment` |
-| `attemptCount = 1` padahal expect 3 | Cockatiel tidak retry karena error classification salah — mungkin 500 dianggap permanent | Cek `classifyError` di `packages/resilience` — 500 harus return `retryable` |
+| `attemptCount = 1` padahal expect 3 | Cockatiel tidak retry karena error classification salah - mungkin 500 dianggap permanent | Cek `classifyError` di `packages/resilience` - 500 harus return `retryable` |
 | `trace_id` beda di attempts | Scheduler ikut retry, bukan Cockatiel inline | Pastikan `nextRetryAt` masih NULL selama inline retry. Scheduler hanya boleh pick up kalau status=`scheduled_for_retry` |
-| Test pass tapi metrics counter tidak naik | `MetricsService` tidak di-inject ke `PaymentsService` | Cek `PaymentsModule` providers — `MetricsService` harus ada di `providers: [...]` |
+| Test pass tapi metrics counter tidak naik | `MetricsService` tidak di-inject ke `PaymentsService` | Cek `PaymentsModule` providers - `MetricsService` harus ada di `providers: [...]` |
 | `ECONNREFUSED localhost:3002` | Gateway mock belum start | `cd apps/payment-gateway-mock && pnpm start:dev` |
-| `Jest did not exit` | pg Client tidak ditutup di `afterAll` | Pastikan `closeDb()` dipanggil — sudah ada di `afterAll` |
+| `Jest did not exit` | pg Client tidak ditutup di `afterAll` | Pastikan `closeDb()` dipanggil - sudah ada di `afterAll` |
 
 ---
 

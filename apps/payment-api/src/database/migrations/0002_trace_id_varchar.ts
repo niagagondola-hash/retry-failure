@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 /**
- * Migration 0002 — Fix trace_id column type (TASK-14a follow-up).
+ * Migration 0002 - Fix trace_id column type (TASK-14a follow-up).
  *
  * Bug context:
  *   - Schema 0001 defined `trace_id char(32)`.

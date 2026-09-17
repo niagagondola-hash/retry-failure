@@ -1,8 +1,8 @@
 /**
- * SCENARIO 4 (HERO) — Anti Double-Charge (succeed-but-drop-response)
+ * SCENARIO 4 (HERO) - Anti Double-Charge (succeed-but-drop-response)
  * =================================================================
  *
- * ⚠️  HERO SCENARIO — if this fails, plan DoD section 22 fails. MUST pass.
+ * ⚠️  HERO SCENARIO - if this fails, plan DoD section 22 fails. MUST pass.
  *
  * Goal:
  *   Verify that Idempotency-Key prevents double-charging when gateway
@@ -23,14 +23,14 @@
  *   - gateway-mock :3002 listening + idempotency store EMPTY (restart mock if unsure)
  *   - Breaker CLOSED (resetBreaker() in beforeAll)
  *
- * ⚠️ IMPORTANT — cleanDb() in beforeAll:
+ * ⚠️ IMPORTANT - cleanDb() in beforeAll:
  *   Gateway mock `actualChargesCount` is a CUMULATIVE counter from gateway-mock start.
  *   If DB still has payments from previous tests (S3/S6/S7) with status=scheduled_for_retry,
  *   scheduler will pick them up during this test -> each success = +1 actualCharges.
  *   This would cause assertion `actualChargesCount delta === 1` to fail.
  *   Solution: cleanDb() before resetBreaker() to wipe all old payments.
  *
- * ⚠️ IMPORTANT — delta-based assertion:
+ * ⚠️ IMPORTANT - delta-based assertion:
  *   `actualChargesCount` is cumulative (no reset endpoint in gateway mock).
  *   Test uses delta-based assertion: snapshot baseline AFTER resetBreaker (which
  *   creates 1 success payment for breaker reset), BEFORE createPayment(S4).
@@ -40,7 +40,7 @@
  *   - HTTP: 201 Created, payment.status='succeeded', attemptCount >= 2
  *   - attempts[1].replayed === true
  *   - attempts[1].gatewayReference truthy (same as payment.gateway_reference)
- *   - ⭐ Gateway stats: actualChargesCount delta === 1 (HERO assertion — no double charge)
+ *   - ⭐ Gateway stats: actualChargesCount delta === 1 (HERO assertion - no double charge)
  *   - Gateway stats: requestCount delta >= 2 (at least 1 charge + 1 replay)
  *   - Metrics: gateway_idempotent_replays_total increased by >= 1
  *
@@ -63,12 +63,12 @@ import { queryAttempts } from './helpers/db';
 import { resetBreaker } from './helpers/breaker';
 import { resetGatewayToHealthy, ensureDbConnected, cleanDb, closeDb } from './helpers/setup';
 
-describe('Scenario 4 — Anti double-charge HERO (succeed-but-drop-response)', () => {
+describe('Scenario 4 - Anti double-charge HERO (succeed-but-drop-response)', () => {
   const orderId = `E2E-S4-HERO-${Date.now()}`;
 
   beforeAll(async () => {
     await ensureDbConnected();
-    // Clean DB FIRST — wipe all payments from previous tests (S3/S6/S7).
+    // Clean DB FIRST - wipe all payments from previous tests (S3/S6/S7).
     // Without this, scheduler picks up old scheduled_for_retry payments during
     // this test -> +1 actualCharges per old payment that succeeds -> assertion fails.
     await cleanDb();

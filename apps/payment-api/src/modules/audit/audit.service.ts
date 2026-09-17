@@ -54,7 +54,7 @@ export class AuditService implements AuditPort {
           attemptNumber: input.attemptNumber,
           outcome: input.outcome,
         },
-        'AuditService.recordAttempt failed — swallowing to preserve payment flow',
+        'AuditService.recordAttempt failed - swallowing to preserve payment flow',
       );
     }
   }

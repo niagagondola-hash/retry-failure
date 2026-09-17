@@ -1,10 +1,10 @@
 /**
- * ChargesController — POST /v1/charges.
+ * ChargesController - POST /v1/charges.
  *
  * Uses `@Res({ passthrough: true })` so we can set custom HTTP status + headers
  * (Retry-After for 429) while letting NestJS serialize the returned body.
  *
- * Idempotency-Key header is optional at the HTTP level — service auto-generates
+ * Idempotency-Key header is optional at the HTTP level - service auto-generates
  * a random UUID when absent. (For proper replay semantics, clients should
  * always send a stable key.)
  */

@@ -1,6 +1,6 @@
-# Plan 1 — Cockatiel Retry/Failure Scenario — Subtask Index (rev 2)
+# Plan 1 - Cockatiel Retry/Failure Scenario - Subtask Index (rev 2)
 
-> **Source plan**: `upload/PLAN1_Cockatiel_Retry_Failure_Scenario.md` (rev 2 — PostgreSQL + dual frontend)
+> **Source plan**: `upload/PLAN1_Cockatiel_Retry_Failure_Scenario.md` (rev 2 - PostgreSQL + dual frontend)
 > **Execution model**: satu per satu (sequential, dengan checkpoint command di setiap task)
 > **Stack target**: NestJS 11 + TypeORM 0.3 + PostgreSQL 16 + Cockatiel + pnpm workspaces + dual frontend (Next.js + Vue+PrimeVue)
 > **Monorepo root**: `/home/z/my-project/retry-failure/`
@@ -12,9 +12,9 @@
 **Sebelum menjalankan task apapun, baca [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md).**
 
 File tersebut berisi:
-- **Pre-flight Check** — script untuk deteksi kondisi lingkungan (local vs sandbox)
-- **Command Matrix** — command alternatif per kondisi (pnpm/docker/port)
-- **Keyword Quick Reference** — tabel cek command + output + tindakan
+- **Pre-flight Check** - script untuk deteksi kondisi lingkungan (local vs sandbox)
+- **Command Matrix** - command alternatif per kondisi (pnpm/docker/port)
+- **Keyword Quick Reference** - tabel cek command + output + tindakan
 - **Default env values** per kondisi
 - **Quick Decision Tree**
 
@@ -55,8 +55,8 @@ Plan rev 2 ditulis ulang untuk stack yang faithful dengan plan asli:
 - **Config**: `@nestjs/config` + schema validation.
 - **Container**: Docker multi-stage + docker-compose.
 - **Frontend (dual)**:
-  - **Next.js** — dashboard ringkas.
-  - **Vue 3 + PrimeVue** di `apps/frontend-vue/` — dashboard resmi lengkap.
+  - **Next.js** - dashboard ringkas.
+  - **Vue 3 + PrimeVue** di `apps/frontend-vue/` - dashboard resmi lengkap.
 
 Adaptasi lingkungan spesifik (port conflict, pnpm availability, Docker availability, dll.) TIDAK ditulis di plan maupun task files. Semua hal lingkungan-specific didokumentasikan di [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md).
 
@@ -66,7 +66,7 @@ Adaptasi lingkungan spesifik (port conflict, pnpm availability, Docker availabil
 
 | Task ID | File | Title | Depends on | Est. |
 |---|---|---|---|---|
-| 1 | `TASK-01-scaffolding.md` | pnpm workspaces + NestJS monorepo + config | — | S |
+| 1 | `TASK-01-scaffolding.md` | pnpm workspaces + NestJS monorepo + config | - | S |
 | 2-a | `TASK-02-database.md` | PostgreSQL + TypeORM entities + migrations | 1 | M |
 | 2-b | `TASK-03-gateway-mock.md` | Payment gateway mock (NestJS app) | 1 | M |
 | 2-c | `TASK-04-error-classification.md` | Error classification + Retry-After parsing | 1 | S |
@@ -89,7 +89,7 @@ Adaptasi lingkungan spesifik (port conflict, pnpm availability, Docker availabil
 1 (pnpm workspaces + NestJS monorepo)
 ├── 2-a (PostgreSQL + TypeORM entities + migrations)
 ├── 2-b (gateway mock NestJS app)
-└── 2-c (error classification — pure TS)
+└── 2-c (error classification - pure TS)
         │
         └── 3 (cockatiel policies, packages/resilience)
                 │
@@ -127,12 +127,12 @@ Adaptasi lingkungan spesifik (port conflict, pnpm availability, Docker availabil
 
 Setiap file task memakai template yang sama:
 
-1. **Goal** — apa yang dicapai
-2. **Scope** — in/out of scope
-3. **Files to create/modify** — path absolut (relatif ke `/home/z/my-project/retry-failure/` bila di monorepo, atau parent root untuk Next.js sandbox)
-4. **Implementation steps** — urutan konkret
-5. **Acceptance criteria** — checklist
-6. **Useful commands** — command yang WAJIB dijalankan setelah task selesai
+1. **Goal** - apa yang dicapai
+2. **Scope** - in/out of scope
+3. **Files to create/modify** - path absolut (relatif ke `/home/z/my-project/retry-failure/` bila di monorepo, atau parent root untuk Next.js sandbox)
+4. **Implementation steps** - urutan konkret
+5. **Acceptance criteria** - checklist
+6. **Useful commands** - command yang WAJIB dijalankan setelah task selesai
 
 ### Command umum (tersedia di seluruh task)
 
@@ -166,7 +166,7 @@ cd /home/z/my-project/retry-failure/apps/payment-api && pnpm db:migrate:revert
 # Dev mode (semua apps)
 cd /home/z/my-project/retry-failure && pnpm dev
 
-# Dev mode per-app (port tergantung kondisi — lihat SANDBOX_NOTES.md)
+# Dev mode per-app (port tergantung kondisi - lihat SANDBOX_NOTES.md)
 cd /home/z/my-project/retry-failure/apps/payment-api && pnpm start:dev
 cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && pnpm start:dev
 cd /home/z/my-project/retry-failure/apps/frontend-vue && pnpm dev
@@ -193,7 +193,7 @@ cd /home/z/my-project && bun run dev
 
 ### Akses cross-service
 
-Untuk komunikasi antar service, gunakan env variable (`process.env.GATEWAY_URL`, `process.env.PAYMENT_API_URL`, dst.). JANGAN hardcode port di kode aplikasi. Bila di lingkungan tertentu ada gateway/proxy (mis. Caddy dengan `?XTransformPort`), ikuti konvensi lingkungan tersebut — lihat [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section "Cross-service fetch".
+Untuk komunikasi antar service, gunakan env variable (`process.env.GATEWAY_URL`, `process.env.PAYMENT_API_URL`, dst.). JANGAN hardcode port di kode aplikasi. Bila di lingkungan tertentu ada gateway/proxy (mis. Caddy dengan `?XTransformPort`), ikuti konvensi lingkungan tersebut - lihat [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section "Cross-service fetch".
 
 ---
 
@@ -202,7 +202,7 @@ Untuk komunikasi antar service, gunakan env variable (`process.env.GATEWAY_URL`,
 - Original plan (rev 2): `/home/z/my-project/upload/PLAN1_Cockatiel_Retry_Failure_Scenario.md`
 - Subtask files: `/home/z/my-project/retry-failure/docs/tasks/TASK-*.md`
 - Sandbox notes (lingkungan-specific): `/home/z/my-project/retry-failure/docs/tasks/SANDBOX_NOTES.md`
-- Worklog (cross-agent): `/home/z/my-project/worklog.md` — **setiap sub-agent WAJIB membaca & menambahkan entry di sini**.
+- Worklog (cross-agent): `/home/z/my-project/worklog.md` - **setiap sub-agent WAJIB membaca & menambahkan entry di sini**.
 
 ---
 
@@ -218,7 +218,7 @@ Untuk komunikasi antar service, gunakan env variable (`process.env.GATEWAY_URL`,
 - [ ] Exhausted execution cycle -> `scheduled_for_retry`.
 - [ ] Scheduler memproses due payment (scenario 6).
 - [ ] `MAX_TOTAL_RETRIES` mengakhiri payment menjadi `failed` (scenario 7).
-- [ ] Idempotency menjamin `actualCharges <= 1` walaupun `calls >= 2` (scenario 4 — hero).
+- [ ] Idempotency menjamin `actualCharges <= 1` walaupun `calls >= 2` (scenario 4 - hero).
 - [ ] Audit attempt tersimpan di PostgreSQL (`payment_attempts`).
 - [ ] Metrics tersedia di `/metrics`.
 - [ ] Grafana dashboard tersedia.

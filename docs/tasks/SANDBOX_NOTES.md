@@ -1,10 +1,10 @@
-# Sandbox Notes — Adaptasi Implementasi per Lingkungan
+# Sandbox Notes - Adaptasi Implementasi per Lingkungan
 
 > **File ini WAJIB dibaca sebelum menjalankan task apapun.**
 > Plan asli (`upload/PLAN1_Cockatiel_Retry_Failure_Scenario.md`) menjelaskan arsitektur ideal tanpa anotasi lingkungan.
 > File ini berisi kondisional command untuk menyesuaikan implementasi dengan kondisi tempat task dijalankan:
-> - **Kondisi Local** — environment development user (Docker, pnpm, PostgreSQL native tersedia)
-> - **Kondisi Sandbox** — environment cloud Z.ai (keterbatasan port, tidak ada Docker, pnpm via corepack)
+> - **Kondisi Local** - environment development user (Docker, pnpm, PostgreSQL native tersedia)
+> - **Kondisi Sandbox** - environment cloud Z.ai (keterbatasan port, tidak ada Docker, pnpm via corepack)
 
 ---
 
@@ -38,7 +38,7 @@ fi
 echo ""
 echo "=== 2. Node version ==="
 node --version
-# Plan minta v20.19.0. Bila dapat v24.x (sandbox), acceptable — fitur ES kompatibel.
+# Plan minta v20.19.0. Bila dapat v24.x (sandbox), acceptable - fitur ES kompatibel.
 
 echo ""
 echo "=== 3. Docker ==="
@@ -70,7 +70,7 @@ fi
 echo ""
 echo "=== 6. Port 3000 availability ==="
 if curl -s http://localhost:3000 >/dev/null 2>&1; then
-  echo "✗ port 3000 sudah dipakai (KONDISI SANDBOX — ada Next.js preview)"
+  echo "✗ port 3000 sudah dipakai (KONDISI SANDBOX - ada Next.js preview)"
   PORT_OFFSET=1  # payment-api -> 3001, gateway-mock -> 3002
 else
   echo "✓ port 3000 kosong (KONDISI LOCAL)"
@@ -303,17 +303,17 @@ Setiap task di `retry-failure/docs/tasks/TASK-*.md` punya section "Useful comman
 - KONDISI SANDBOX: `PORT=3002 pnpm start:dev` (port 3001 mungkin dipakai payment-api)
 
 ### TASK-05 (Cockatiel Resilience)
-- Tidak ada adaptasi — pure TypeScript package
+- Tidak ada adaptasi - pure TypeScript package
 
 ### TASK-09 (API Routes)
 - KONDISI LOCAL: payment-api di port 3000 -> curl `http://localhost:3000/api/payments`
 - KONDISI SANDBOX: payment-api di port 3001 -> curl `http://localhost:3001/api/payments`
 
 ### TASK-10 (Retry Scheduler)
-- Tidak ada adaptasi — scheduler in-process di NestJS, tidak butuh port terpisah
+- Tidak ada adaptasi - scheduler in-process di NestJS, tidak butuh port terpisah
 
 ### TASK-11 (Observability)
-- Tidak ada adaptasi — prom-client + pino jalan di proses yang sama
+- Tidak ada adaptasi - prom-client + pino jalan di proses yang sama
 
 ### TASK-12 (Next.js Frontend)
 - KONDISI LOCAL: `cd /path/to/nextjs && bun run dev` (port 3000)
@@ -336,16 +336,16 @@ Setiap task di `retry-failure/docs/tasks/TASK-*.md` punya section "Useful comman
 
 | Cek command | Output "ada" | Output "tidak ada" |
 |---|---|---|
-| `command -v pnpm` | KONDISI LOCAL — `pnpm install` langsung | KONDISI SANDBOX — `corepack enable pnpm` dulu |
-| `command -v docker` | KONDISI LOCAL — `docker compose up -d postgres` | KONDISI SANDBOX — butuh external PG atau mock |
+| `command -v pnpm` | KONDISI LOCAL - `pnpm install` langsung | KONDISI SANDBOX - `corepack enable pnpm` dulu |
+| `command -v docker` | KONDISI LOCAL - `docker compose up -d postgres` | KONDISI SANDBOX - butuh external PG atau mock |
 | `command -v psql` | verifikasi schema via psql CLI | verifikasi via Node script `pg.Client` |
-| `command -v bun` | KONDISI LOCAL — `bun run dev` untuk Next.js | install via `npm i -g bun` atau skip Next.js |
-| `curl -s localhost:3000` | KONDISI SANDBOX — port 3000 sibuk, payment-api ke 3001 | KONDISI LOCAL — port 3000 bebas untuk payment-api |
+| `command -v bun` | KONDISI LOCAL - `bun run dev` untuk Next.js | install via `npm i -g bun` atau skip Next.js |
+| `curl -s localhost:3000` | KONDISI SANDBOX - port 3000 sibuk, payment-api ke 3001 | KONDISI LOCAL - port 3000 bebas untuk payment-api |
 | `node --version` | check >= v20 (plan pin) | bila < v20, upgrade dulu |
 
 ---
 
-## 5. Env File Strategy (Opsi B — Dua Example Files)
+## 5. Env File Strategy (Opsi B - Dua Example Files)
 
 Project menggunakan strategi **dua env example files** yang di-commit ke repository:
 
@@ -405,7 +405,7 @@ pnpm start:dev    # payment-api di port 3001 (port 3000 dipakai Next.js preview)
 
 1. **Kedua file example di-commit** ke repository. File `.env` (aktual) di-gitignore.
 2. **Tidak ada edit manual** bila default sesuai. User/agent cukup `cp` salah satu.
-3. **Bila DB credentials berbeda** dari default (mis. external PostgreSQL di sandbox pakai password lain), edit `.env` setelah copy. Jangan edit file `.example` — itu adalah template.
+3. **Bila DB credentials berbeda** dari default (mis. external PostgreSQL di sandbox pakai password lain), edit `.env` setelah copy. Jangan edit file `.example` - itu adalah template.
 4. **`.env.local`** (opsional) untuk personal override user. Juga di-gitignore.
 5. **Jangan hardcode** port atau URL di kode aplikasi. Selalu baca dari env (`process.env.PORT`, `process.env.GATEWAY_URL`, dst.). Ini memungkinkan aplikasi jalan di kedua kondisi tanpa perubahan kode.
 

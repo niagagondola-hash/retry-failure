@@ -1,5 +1,5 @@
 /**
- * MetricsService — 7 Prometheus metrics (plan section 13.2).
+ * MetricsService - 7 Prometheus metrics (plan section 13.2).
  *
  * Anti-pattern: NO high-cardinality labels (payment_id, order_id, trace_id,
  * raw error_message). Those are log fields only.

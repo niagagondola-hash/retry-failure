@@ -83,7 +83,7 @@ export class PaymentsController {
     } catch (err) {
       if (err instanceof InvalidTransitionError) {
         throw new ConflictException(
-          `Payment is in state '${err.from}' — retry not allowed`,
+          `Payment is in state '${err.from}' - retry not allowed`,
         );
       }
       throw err;

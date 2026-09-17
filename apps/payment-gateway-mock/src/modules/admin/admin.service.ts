@@ -1,7 +1,7 @@
 /**
- * AdminService — exposes MockState mutations + stats snapshot.
+ * AdminService - exposes MockState mutations + stats snapshot.
  *
- * Stateless helper — every operation goes through the singleton MockState
+ * Stateless helper - every operation goes through the singleton MockState
  * provided by SharedModule.
  */
 

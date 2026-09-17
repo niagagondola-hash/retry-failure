@@ -1,5 +1,5 @@
 /**
- * LoggerModule — nestjs-pino setup with pino-pretty for dev.
+ * LoggerModule - nestjs-pino setup with pino-pretty for dev.
  * Injects traceId via mixin (getTraceIdSync).
  */
 

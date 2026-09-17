@@ -1,4 +1,4 @@
-# TASK-05 — Cockatiel Resilience Adapter
+# TASK-05 - Cockatiel Resilience Adapter
 
 > **Task ID**: 3
 > **Depends on**: 2-c (TASK-04 error classification)
@@ -16,12 +16,12 @@ Setelah task ini selesai, TASK-06 (HTTP adapter) cukup membungkus `axios.call` d
 ## Scope
 
 **In scope**:
-- `packages/resilience/src/policies/types.ts` — `ResilienceConfig`, `ResilienceOutcome<T>`.
-- `packages/resilience/src/policies/policies.ts` — `buildRetryPolicy`, `buildTimeoutPolicy`, `buildBreakerPolicy`.
-- `packages/resilience/src/policies/breaker-store.ts` — singleton breaker per dependency name.
-- `packages/resilience/src/policies/composition.ts` — `executeWithResilience<T>()`.
-- `packages/resilience/src/policies/server-directed-backoff.ts` — custom `Backoff` untuk Retry-After override.
-- `packages/resilience/src/policies/index.ts` — barrel.
+- `packages/resilience/src/policies/types.ts` - `ResilienceConfig`, `ResilienceOutcome<T>`.
+- `packages/resilience/src/policies/policies.ts` - `buildRetryPolicy`, `buildTimeoutPolicy`, `buildBreakerPolicy`.
+- `packages/resilience/src/policies/breaker-store.ts` - singleton breaker per dependency name.
+- `packages/resilience/src/policies/composition.ts` - `executeWithResilience<T>()`.
+- `packages/resilience/src/policies/server-directed-backoff.ts` - custom `Backoff` untuk Retry-After override.
+- `packages/resilience/src/policies/index.ts` - barrel.
 - Jest unit tests di `packages/resilience/test/policies/`.
 
 **Out of scope**:
@@ -120,7 +120,7 @@ const composed = wrap(breakerPolicy, retryPolicy, timeoutPolicy);
 
 ## Config (plan section 15)
 
-Berikut nilai default yang dipakai policy builder. Konfigurasi dilewatkan sebagai `ResilienceConfig` object (bukan env string) — env -> config mapping dilakukan di TASK-01 (`apps/payment-api/src/config/`) dan TASK-06.
+Berikut nilai default yang dipakai policy builder. Konfigurasi dilewatkan sebagai `ResilienceConfig` object (bukan env string) - env -> config mapping dilakukan di TASK-01 (`apps/payment-api/src/config/`) dan TASK-06.
 
 | Key                         | Default | Diterapkan ke                                  |
 |-----------------------------|---------|------------------------------------------------|
@@ -356,7 +356,7 @@ export async function executeWithResilience<T>(
 
   // Singleton breaker
   const breakerPolicy = getBreaker(opts.dependencyName, config);
-  // Attach listeners (idempotent — guard via Set agar tidak dobel saat reuse)
+  // Attach listeners (idempotent - guard via Set agar tidak dobel saat reuse)
   attachBreakerListenersOnce(opts.dependencyName, breakerPolicy);
 
   // Retry + timeout: fresh setiap call (tidak singleton)
@@ -415,7 +415,7 @@ let metricsHook: ((e: unknown) => void) | null = null;
 export function setMetricsHook(hook: ((e: unknown) => void) | null): void { metricsHook = hook; }
 ```
 
-Helper `extractRetryAfterMs(event)`: introspeksi `event.reason` atau `event.handledReason` untuk mencari object dengan properti `retryAfterMs` (dari `classifyError` TASK-04 yang dilempar sebagai error property). Implementasi eksak bergantung pada shape yang dilempar TASK-06 — di-scaffold di sini, finalize saat TASK-06.
+Helper `extractRetryAfterMs(event)`: introspeksi `event.reason` atau `event.handledReason` untuk mencari object dengan properti `retryAfterMs` (dari `classifyError` TASK-04 yang dilempar sebagai error property). Implementasi eksak bergantung pada shape yang dilempar TASK-06 - di-scaffold di sini, finalize saat TASK-06.
 
 ### 6. `index.ts`
 
@@ -495,15 +495,15 @@ cd /home/z/my-project/retry-failure
 corepack enable pnpm  # hanya bila belum di-enable; no-op bila sudah
 pnpm install
 
-# 2. Run Jest tests untuk packages/resilience — sama kedua kondisi
+# 2. Run Jest tests untuk packages/resilience - sama kedua kondisi
 cd /home/z/my-project/retry-failure
 pnpm --filter @retry-failure/resilience test
 
-# 3. Lint & typecheck — sama kedua kondisi
+# 3. Lint & typecheck - sama kedua kondisi
 pnpm --filter @retry-failure/resilience lint
 pnpm --filter @retry-failure/resilience typecheck
 
-# 4. Quick sanity check via ts-node — mock fn yang gagal 2x lalu sukses (sama kedua kondisi, pure TS, no port)
+# 4. Quick sanity check via ts-node - mock fn yang gagal 2x lalu sukses (sama kedua kondisi, pure TS, no port)
 cd /home/z/my-project/retry-failure/packages/resilience
 pnpm exec ts-node -e '
 import { executeWithResilience } from "./src/policies";
@@ -544,16 +544,16 @@ import { executeWithResilience, resetBreakerStore } from "./src/policies";
 # Expected: call #1, #2, #3 -> exhausted=true (breaker still CLOSED)
 #           call #4 -> breakerTripped=true, duration < 50ms (breaker OPEN, fast-fail)
 
-# 6. Verifikasi signature Cockatiel di node_modules — sama kedua kondisi
+# 6. Verifikasi signature Cockatiel di node_modules - sama kedua kondisi
 cat /home/z/my-project/retry-failure/node_modules/cockatiel/dist/index.d.ts | head -200
 ```
 
 ## Notes
 
 - **Cockatiel API verification**: sebelum menulis kode, **wajib** membaca `/home/z/my-project/retry-failure/node_modules/cockatiel/dist/index.d.ts` untuk konfirmasi:
-  - Signature `retry(handler, options)` — `options.maxAttempts`, `options.backoff`.
-  - Signature `circuitBreaker(handler, options)` — `options.halfOpenAfter`, `options.breaker` (instance dari `ConsecutiveBreaker` / `SampledBreaker`).
-  - Signature `timeout(durationMs, options)` — `options.strategy: 'absolute' | 'aggressive'`.
+  - Signature `retry(handler, options)` - `options.maxAttempts`, `options.backoff`.
+  - Signature `circuitBreaker(handler, options)` - `options.halfOpenAfter`, `options.breaker` (instance dari `ConsecutiveBreaker` / `SampledBreaker`).
+  - Signature `timeout(durationMs, options)` - `options.strategy: 'absolute' | 'aggressive'`.
   - Signature `wrap(...policies)` -> `Policy` yang `.execute(fn)`.
   - `BrokenCircuitError` export tersedia.
   - `Backoff` interface (`next(): number`, `reset(): void`).
@@ -571,15 +571,15 @@ cat /home/z/my-project/retry-failure/node_modules/cockatiel/dist/index.d.ts | he
 - **Retry-After override trade-offs**:
   - **Pendekatan yang dipilih**: custom `Backoff` class yang membaca closure `getServerDelay()` setiap `next()` call. Delay server menang jika tersedia, exponential backoff sebaliknya.
   - **Kelebihan**: tidak mengubah domain semantics Cockatiel; backoff tetap satu sumber kebenaran; reset otomatis saat retry cycle selesai.
-  - **Kekurangan**: closure mutable state per-call — harus di-reset antar `executeWithResilience` call (sudah ditangani karena closure dibuat fresh setiap call di composition layer).
+  - **Kekurangan**: closure mutable state per-call - harus di-reset antar `executeWithResilience` call (sudah ditangani karena closure dibuat fresh setiap call di composition layer).
   - **Alternatif yang ditolak**: (a) post-retry sleep manual -> bypass Cockatiel entirely, hilangkan observability hooks. (b) two-policy composition dengan conditional retry -> lebih kompleks, testing lebih sulit.
   - **Trade-off accept**: tidak ada pengecekan bahwa `Retry-After` tidak ekstrem (mis. 1 jam). Production harus clamp `retryAfterMs` ke `RETRY_MAX_DELAY_MS`. Document di TASK-15.
 
-- **`handleAll` vs `handleWhen`**: default `handleAll` menangkap semua exception -> semua di-retry sampai `maxAttempts`. Untuk payment case, classifier sudah berjalan di TASK-06 (HTTP adapter) yang melempar `PermanentError` TIDAK ditangkap retry — tetapi ini butuh `handleWhen`. Trade-off:
+- **`handleAll` vs `handleWhen`**: default `handleAll` menangkap semua exception -> semua di-retry sampai `maxAttempts`. Untuk payment case, classifier sudah berjalan di TASK-06 (HTTP adapter) yang melempar `PermanentError` TIDAK ditangkap retry - tetapi ini butuh `handleWhen`. Trade-off:
   - **Pakai `handleAll` (recommended awal)**: sederhana; classifier meng-throw `PermanentError` yang **tidak retryable** dengan marker (mis. `error.permanent = true`); composition mengecek marker di `onFailure` untuk membatalkan retry cycle via `throw` dari dalam callback.
   - **Pakai `handleWhen`**: lebih idiomatic Cockatiel; classifier dipanggil di predicate. Tapi classifier butuh akses ke HTTP response shape -> leak abstraction ke package ini.
   - **Decision untuk TASK-05**: scaffold `buildRetryPolicy` dengan `handleAll` + comment bahwa TASK-06 dapat meng-override dengan `handleWhen` bila perlu.
 
-- **Setelah task ini selesai**: TASK-06 bisa langsung `import { executeWithResilience } from '@retry-failure/resilience'` dan membungkus `axios.post()` ke gateway. Tidak ada perubahan API breaking yang diharapkan di TASK-05 saat TASK-06/11 berjalan — hanya penambahan hook emit.
+- **Setelah task ini selesai**: TASK-06 bisa langsung `import { executeWithResilience } from '@retry-failure/resilience'` dan membungkus `axios.post()` ke gateway. Tidak ada perubahan API breaking yang diharapkan di TASK-05 saat TASK-06/11 berjalan - hanya penambahan hook emit.
 
 - **Logging di composition**: pakai `console` SEMENTARA untuk debug. TASK-11 akan meng-inject pino via `setLogHook`. Jangan import `nestjs-pino` di package ini.

@@ -1,4 +1,4 @@
-# E2E Test Results — Cockatiel Retry/Failure
+# E2E Test Results - Cockatiel Retry/Failure
 
 > **Generated**: Manual (run `pnpm test:e2e` to generate actual results)
 > **Test env**: NestJS payment-api (port 3001) + gateway-mock (port 3002) + PostgreSQL 16
@@ -40,25 +40,25 @@ cd apps/payment-api && pnpm test:e2e
 
 | Demo | Scenario | Status | Screenshot |
 |---|---|---|---|
-| A | Retry saves transient failure | PENDING | — |
-| B | Don't retry permanent error | PENDING | — |
-| C | Circuit breaker protects | PENDING | — |
-| D | Idempotency prevents double charge (HERO) | PENDING | — |
-| E | Server-directed retry timing | PENDING | — |
+| A | Retry saves transient failure | PENDING | - |
+| B | Don't retry permanent error | PENDING | - |
+| C | Circuit breaker protects | PENDING | - |
+| D | Idempotency prevents double charge (HERO) | PENDING | - |
+| E | Server-directed retry timing | PENDING | - |
 
 ### Next.js sandbox (port 3000)
 
 | Demo | Scenario | Status | Screenshot |
 |---|---|---|---|
-| A | Retry saves transient failure | PENDING | — |
-| B | Don't retry permanent error | PENDING | — |
-| C | Circuit breaker protects | PENDING | — |
-| D | Idempotency prevents double charge (HERO) | PENDING | — |
-| E | Server-directed retry timing | PENDING | — |
+| A | Retry saves transient failure | PENDING | - |
+| B | Don't retry permanent error | PENDING | - |
+| C | Circuit breaker protects | PENDING | - |
+| D | Idempotency prevents double charge (HERO) | PENDING | - |
+| E | Server-directed retry timing | PENDING | - |
 
 ## Failures & follow-up
 
-(none — run tests to populate)
+(none - run tests to populate)
 
 ## Environment notes
 
@@ -82,10 +82,10 @@ cd apps/payment-api && pnpm test:e2e
 - [x] Exhausted execution cycle -> scheduled_for_retry (scenario 1, 6)
 - [x] Scheduler memproses due payment (scenario 6)
 - [x] MAX_TOTAL_RETRIES mengakhiri payment menjadi failed (scenario 7)
-- [x] Idempotency menjamin actualCharges <= 1 (scenario 4 — HERO)
+- [x] Idempotency menjamin actualCharges <= 1 (scenario 4 - HERO)
 - [x] Audit attempt tersimpan di PostgreSQL (semua scenario)
 - [x] Metrics tersedia di /metrics (semua scenario)
-- [ ] Grafana dashboard tersedia (TASK-11 — sample queries only)
+- [ ] Grafana dashboard tersedia (TASK-11 - sample queries only)
 - [ ] Trace payment dapat ditemukan di Jaeger (TASK-11 simplified, TASK-11b for full OTel)
 - [ ] Docker full stack berjalan (user local with Docker)
 - [x] Dev mode berjalan tanpa Docker (sandbox verified)

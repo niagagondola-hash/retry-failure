@@ -2,7 +2,7 @@
   "name": "payment-gateway-mock",
   "version": "0.1.0",
   "private": true,
-  "description": "Payment gateway mock — NestJS 11 (simulated gateway with failure modes)",
+  "description": "Payment gateway mock - NestJS 11 (simulated gateway with failure modes)",
   "scripts": {
     "start:dev": "nest start --watch",
     "start": "node dist/main.js",

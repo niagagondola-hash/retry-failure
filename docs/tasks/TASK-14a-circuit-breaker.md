@@ -1,4 +1,4 @@
-# TASK-14a-circuit-breaker — Skenario 3: Circuit Breaker (always-timeout)
+# TASK-14a-circuit-breaker - Skenario 3: Circuit Breaker (always-timeout)
 
 > **Parent**: [TASK-14a-e2e-verification.md](./TASK-14a-e2e-verification.md)
 > **Spec file**: `apps/payment-api/tests/e2e/payments.circuit-breaker.e2e-spec.ts`
@@ -9,7 +9,7 @@
 
 Gateway mock diset mode `always-timeout` (timeout 5s). Setiap request charge akan timeout. Cockatiel circuit breaker akan OPEN setelah threshold (3 `policy.execute()` failures).
 
-⚠️ **Penting — Cockatiel v4 `maxAttempts` semantics**: `maxAttempts=3` artinya "maksimal 3 RETRY" (bukan total attempts). Jadi per payment ada **4 total fn() calls** = 1 initial + 3 retries. Lihat section 1.A di bawah untuk penjelasan detail.
+⚠️ **Penting - Cockatiel v4 `maxAttempts` semantics**: `maxAttempts=3` artinya "maksimal 3 RETRY" (bukan total attempts). Jadi per payment ada **4 total fn() calls** = 1 initial + 3 retries. Lihat section 1.A di bawah untuk penjelasan detail.
 
 **Dua sub-test**:
 1. **3 payments pertama**: masing-masing gagal timeout 4× (sesuai Cockatiel v4 `maxAttempts=3` = 4 total fn() calls), status akhir `scheduled_for_retry`, `attemptCount=4`. Setelah payment ke-3 (3 × 4 = 12 cumulative failures), breaker OPEN.
@@ -248,8 +248,8 @@ Di `classifyOutcome()`:
 #### Kapan dapat `retryable_failure`?
 
 `retryable_failure` muncul saat gateway **merespons dengan HTTP 5xx** (misal 500, 503). Contoh di skenario 1 (`fail-first-n`) dan skenario 7 (`server-error`). Lihat:
-- `TASK-14a-transient.md` — outcome `retryable_failure` (HTTP 500 dari gateway)
-- `TASK-14a-exhaustion.md` — outcome `retryable_failure` (HTTP 500 dari gateway)
+- `TASK-14a-transient.md` - outcome `retryable_failure` (HTTP 500 dari gateway)
+- `TASK-14a-exhaustion.md` - outcome `retryable_failure` (HTTP 500 dari gateway)
 
 Jadi `timeout` dan `retryable_failure` **sama-sama retryable**, tapi `timeout` lebih spesifik (client-side timeout), sedangkan `retryable_failure` adalah fallback untuk server-side error 5xx. Klasifikasi ini berguna untuk debugging: dari outcome saja, kita sudah tahu apakah gateway merespons atau tidak.
 
@@ -297,7 +297,7 @@ ORDER BY payment_id, attempt_number;
 | id4        | 1               | circuit_open  | NULL        | circuit_open | 0           | open          |
 
 **Kunci**:
-- Payment ke-4 hanya 1 baris dengan outcome=`circuit_open` — tidak ada gateway call.
+- Payment ke-4 hanya 1 baris dengan outcome=`circuit_open` - tidak ada gateway call.
 - 4 attempts per payment (bukan 3) karena Cockatiel v4 `maxAttempts=3` = 4 total fn() calls. Lihat section 1.A untuk penjelasan detail.
 - `outcome='timeout'` (bukan `retryable_failure`) karena error dari axios (`ECONNABORTED`) diklasifikasikan lebih spesifik daripada 5xx HTTP. Lihat section 3 "Catatan tentang perbedaan outcome" untuk detail.
 
@@ -336,7 +336,7 @@ Cari di log:
 ☐ Sub-test 2: payment ke-4 dengan attemptCount=1, outcome=circuit_open
 ☐ DB: payment ke-4 hanya 1 baris di payment_attempts (bukan 4)
 ☐ Metrics: circuit_breaker_state=1 (OPEN)
-☐ Gateway stats: requestCount naik 12 (bukan 16) — bukti breaker short-circuit payment ke-4
+☐ Gateway stats: requestCount naik 12 (bukan 16) - bukti breaker short-circuit payment ke-4
 ☐ Log: ada "circuit breaker OPEN" transition
 ☐ Test selesai dalam < 60 detik
 ```
@@ -380,12 +380,12 @@ Test scenario 3 menggunakan **6 jenis timeout berlapis**. Tanpa memahami semuany
 
 - **Lokasi**: Cockatiel `CircuitBreakerPolicy` `halfOpenAfter` di `policies.ts`
 - **Fungsi**: Setelah breaker OPEN, tunggu 10 detik sebelum boleh HALF_OPEN (trial call).
-- **Di test**: helper `resetBreaker()` di `tests/e2e/helpers/breaker.ts` line 7 menggunakan `setTimeout(11000)` — 11 detik — supaya cooldown berlalu + 1s buffer, lalu membuat 1 payment sukses untuk memicu `onReset` -> breaker CLOSED.
+- **Di test**: helper `resetBreaker()` di `tests/e2e/helpers/breaker.ts` line 7 menggunakan `setTimeout(11000)` - 11 detik - supaya cooldown berlalu + 1s buffer, lalu membuat 1 payment sukses untuk memicu `onReset` -> breaker CLOSED.
 
 #### Timeout #5: `waitForScheduledForRetry(id, 30000)` (test line 72, 83)
 
 - **Lokasi**: Helper `payments.ts` line 63-71
-- **Fungsi**: Polling loop — cek `GET /payments/:id` setiap 200ms, sampai status berubah menjadi `scheduled_for_retry` atau timeout 30 detik.
+- **Fungsi**: Polling loop - cek `GET /payments/:id` setiap 200ms, sampai status berubah menjadi `scheduled_for_retry` atau timeout 30 detik.
 - **Tanpa ini**: test tidak tahu kapan payment selesai diproses (Cockatiel asynchronous).
 - **Kenapa 30 detik?** Karena 1 payment butuh:
   - 4 attempts × ~1.8s (axios timeout) = 7.2s
@@ -410,7 +410,7 @@ Test scenario 3 menggunakan **6 jenis timeout berlapis**. Tanpa memahami semuany
 |---|---|---|---|
 | `RETRY_BASE_DELAY_MS=500` | Cockatiel internal | "Wait backoff" antara Attempt 1->2, 2->3, 3->4 | Delay antar INSERT payment_attempts |
 | `GATEWAY_TIMEOUT_MS=2000` (axios 1800ms) | Cockatiel + http-adapter | `AX--x RB: timeout at 1800ms` | 1 INSERT per attempt (outcome='timeout') |
-| Gateway mock `timeoutMs:5000` | `setGatewayMode(...)` line 60 | `GW: sleep 5s` (tidak pernah sampai client) | Tidak langsung — hanya supaya axios timeout fire |
+| Gateway mock `timeoutMs:5000` | `setGatewayMode(...)` line 60 | `GW: sleep 5s` (tidak pernah sampai client) | Tidak langsung - hanya supaya axios timeout fire |
 | `BREAKER_COOLDOWN_MS=10000` | resetBreaker helper | Tidak ada di sub-test 1 diagram (hanya pada reset) | Setelah 10s, breaker HALF_OPEN -> trial call |
 | `waitForScheduledForRetry(30000)` | line 72, 83 | Test menunggu step "UPDATE payment SET status=scheduled_for_retry" selesai | Setelah ini, test bisa query `payment_attempts` yang sudah complete |
 | Jest `120000/60000` | line 79, 90 | Safety net untuk seluruh diagram | Kill test jika diagram tidak complete dalam waktu |
@@ -421,7 +421,7 @@ Test ini **tidak bisa sinkron** karena:
 
 1. **Cockatiel asynchronous**: Retry + backoff terjadi di background. Test tidak bisa langsung `expect` setelah `createPayment()` karena payment masih `processing`.
 2. **State transition async**: Payment status `processing -> scheduled_for_retry` membutuhkan waktu (4 attempts × 1.8s + 3 backoffs). Test harus polling.
-3. **Breaker state async**: Breaker OPEN tidak instant — butuh 3 payments × 4 failures = 12 cumulative. Test harus menjalankan 3 payments dulu sebelum expect metric=1.
+3. **Breaker state async**: Breaker OPEN tidak instant - butuh 3 payments × 4 failures = 12 cumulative. Test harus menjalankan 3 payments dulu sebelum expect metric=1.
 4. **Audit insert async**: `AuditService.recordAttempt` memanggil `attemptRepo.save()` yang asynchronous. Walaupun sudah di-`await` di `onAttempt` callback, ada jendela kecil antara "fn body selesai" dan "audit row tersimpan di DB". `waitForScheduledForRetry` polling memberi waktu ini.
 
 ### 7.4 Hubungan dengan Visualisasi Alur (Mermaid)
@@ -438,7 +438,7 @@ Diagram mermaid di section 3 adalah **blueprint** yang menjelaskan **kenapa** te
 
 ## 8. Algoritma Test Script Walkthrough
 
-Section ini berbeda dari diagram di section 3 — diagram menjelaskan **apa yang terjadi di sistem**; section ini menjelaskan **apa yang dilakukan test code** untuk memverifikasi sistem tersebut. Pseudocode algoritmik, bukan pengulangan diagram.
+Section ini berbeda dari diagram di section 3 - diagram menjelaskan **apa yang terjadi di sistem**; section ini menjelaskan **apa yang dilakukan test code** untuk memverifikasi sistem tersebut. Pseudocode algoritmik, bukan pengulangan diagram.
 
 ### 8.1 Algoritma `beforeAll` (setup)
 
@@ -494,9 +494,9 @@ function test_sub1():
 ```
 
 **Algoritma penting di sub-test 1**:
-- Loop **sequential** (bukan `Promise.all`) — supaya urutan failure deterministik dan breaker trip tepat di payment ke-3 (bukan paralel yang bisa trip di payment ke-1).
-- `waitForScheduledForRetry` adalah **active polling** dengan interval 200ms — bukan event-driven. Ini sederhana tapi tidak optimal untuk test yang sangat panjang.
-- Assertion `attemptCount === 4` di dalam loop, bukan di luar — supaya kalau payment ke-2 gagal, test fail cepat dengan pesan yang spesifik.
+- Loop **sequential** (bukan `Promise.all`) - supaya urutan failure deterministik dan breaker trip tepat di payment ke-3 (bukan paralel yang bisa trip di payment ke-1).
+- `waitForScheduledForRetry` adalah **active polling** dengan interval 200ms - bukan event-driven. Ini sederhana tapi tidak optimal untuk test yang sangat panjang.
+- Assertion `attemptCount === 4` di dalam loop, bukan di luar - supaya kalau payment ke-2 gagal, test fail cepat dengan pesan yang spesifik.
 
 ### 8.3 Algoritma Sub-test 2: "4th payment -> circuit_open in first attempt"
 
@@ -519,7 +519,7 @@ function test_sub2():
      # Total: <1s
 
   3. assert finalPayment.status === 'scheduled_for_retry'
-  4. assert finalPayment.attemptCount === 1             # NOT 4 — breaker short-circuited
+  4. assert finalPayment.attemptCount === 1             # NOT 4 - breaker short-circuited
 
   5. attempts = queryAttempts(payment.id)               # SELECT * FROM payment_attempts WHERE payment_id=...
      └── direct pg query (bukan via HTTP API)
@@ -529,7 +529,7 @@ function test_sub2():
 ```
 
 **Algoritma penting di sub-test 2**:
-- Tidak ada loop — cuma 1 payment.
+- Tidak ada loop - cuma 1 payment.
 - `queryAttempts` pakai **direct pg query** (bukan via HTTP API). Sebabnya: kita perlu verifikasi struktur audit row yang spesifik (`outcome`, `breaker_state`), bukan hanya `attemptCount` yang di-expose di API response.
 - Assertion ganda: `attemptCount === 1` di HTTP response **dan** `attempts.length === 1` di DB. Kalau keduanya konsisten, sistem benar. Kalau beda, ada bug caching atau race condition.
 
@@ -585,21 +585,21 @@ function afterAll():
 
 | Gejala | Kemungkinan cause | Fix |
 |---|---|---|
-| Sub-test 1: payment 2 atau 3 dapat `attemptCount=1` | Breaker OPEN lebih awal dari threshold | Cek konfigurasi `BREAKER_FAILURE_THRESHOLD` — harus ≥ 3. Atau cek apakah per payment menghasilkan 4 audit rows (Cockatiel v4 `maxAttempts=3` = 4 total fn() calls, lihat section 1.A) |
-| Sub-test 1: `attemptCount=3` (bukan 4) | Test expectation salah — masih pakai asumsi `maxAttempts=3` = 3 total attempts | Update assertion ke `toBe(4)`. Cockatiel v4 `maxAttempts` = "max retries", bukan total attempts |
+| Sub-test 1: payment 2 atau 3 dapat `attemptCount=1` | Breaker OPEN lebih awal dari threshold | Cek konfigurasi `BREAKER_FAILURE_THRESHOLD` - harus ≥ 3. Atau cek apakah per payment menghasilkan 4 audit rows (Cockatiel v4 `maxAttempts=3` = 4 total fn() calls, lihat section 1.A) |
+| Sub-test 1: `attemptCount=3` (bukan 4) | Test expectation salah - masih pakai asumsi `maxAttempts=3` = 3 total attempts | Update assertion ke `toBe(4)`. Cockatiel v4 `maxAttempts` = "max retries", bukan total attempts |
 | Sub-test 2: payment ke-4 dapat `attemptCount=4` (bukan 1) | Breaker tidak OPEN setelah 12 failures | Cek `BREAKER_FAILURE_THRESHOLD` total. Pastikan threshold=3 supaya 3 payments × 4 attempts = 12 cumulative failures cukup untuk trip breaker |
 | Sub-test 2: outcome bukan `circuit_open` | `mapOutcome` di `resilient-adapter.ts` tidak handle `breakerTripped`, atau `onAttempt` post-outcome tidak di-invoke | Cek method `mapOutcome()` dan post-outcome handler di `resilient-adapter.ts` |
-| Outcome `retryable_failure` padahal expect `timeout` | Klasifikasi error — cek `classifyOutcome()` di `payments.service.ts:281`. `ECONNABORTED`/`ETIMEDOUT` -> `TIMEOUT`, 5xx HTTP -> `RETRYABLE_FAILURE` | Tidak perlu fix — `timeout` lebih spesifik dari `retryable_failure`. Lihat section 3 "Catatan tentang perbedaan outcome" |
-| Breaker tidak reset di afterAll | `resetBreaker()` di afterAll tidak dipanggil / gagal | Test sudah panggil. Kalau gagal, cek `breaker.ts` helper — butuh 11s cooldown |
+| Outcome `retryable_failure` padahal expect `timeout` | Klasifikasi error - cek `classifyOutcome()` di `payments.service.ts:281`. `ECONNABORTED`/`ETIMEDOUT` -> `TIMEOUT`, 5xx HTTP -> `RETRYABLE_FAILURE` | Tidak perlu fix - `timeout` lebih spesifik dari `retryable_failure`. Lihat section 3 "Catatan tentang perbedaan outcome" |
+| Breaker tidak reset di afterAll | `resetBreaker()` di afterAll tidak dipanggil / gagal | Test sudah panggil. Kalau gagal, cek `breaker.ts` helper - butuh 11s cooldown |
 | Timeout test 120s | Timeout gateway terlalu lama (4 attempts × 1.8s + 3 backoffs + cooldown 11s ≈ 25s per payment, masih aman) | Kurangi `timeoutMs` gateway mock jadi 2s kalau ingin cepat |
-| Payment ke-4 status=failed (bukan scheduled_for_retry) | State machine tidak handle transition `processing -> scheduled_for_retry` saat circuit_open | Cek `state-machine.ts` — `circuit_open` harus diizinkan masuk ke scheduled_for_retry |
+| Payment ke-4 status=failed (bukan scheduled_for_retry) | State machine tidak handle transition `processing -> scheduled_for_retry` saat circuit_open | Cek `state-machine.ts` - `circuit_open` harus diizinkan masuk ke scheduled_for_retry |
 
 ---
 
 ## 10. Catatan Edge Case
 
 - **Cooldown breaker**: kalau test berjalan > 30s, breaker bisa otomatis HALF_OPEN dan attempt ke-4 akan call gateway lagi. Konfigurasi default `CIRCUIT_BREAKER_COOLDOWN_MS` harus > 60s untuk test ini aman.
-- **3 payments di sub-test 1 dijalankan sequential** (loop await), bukan paralel — supaya urutan timeout deterministik. `--runInBand` di Jest sudah memastikan tidak ada paralelisme.
-- **Total gateway calls = 12** (3 payments × 4 attempts per payment, per Cockatiel v4 maxAttempts=3 = 4 total fn() calls). Ini berbeda dari plan awal yang menyebut 9 (3×3) — Cockatiel v4 maxAttempts adalah "max retries", bukan "total attempts". Payment ke-4 tidak call gateway (breaker OPEN short-circuit), jadi total requestCount di gateway mock naik 12, bukan 16.
+- **3 payments di sub-test 1 dijalankan sequential** (loop await), bukan paralel - supaya urutan timeout deterministik. `--runInBand` di Jest sudah memastikan tidak ada paralelisme.
+- **Total gateway calls = 12** (3 payments × 4 attempts per payment, per Cockatiel v4 maxAttempts=3 = 4 total fn() calls). Ini berbeda dari plan awal yang menyebut 9 (3×3) - Cockatiel v4 maxAttempts adalah "max retries", bukan "total attempts". Payment ke-4 tidak call gateway (breaker OPEN short-circuit), jadi total requestCount di gateway mock naik 12, bukan 16.
 - **Reset breaker di afterAll** wajib, supaya skenario berikutnya (4, 5, 6, 7) tidak terpengaruh state OPEN.
-- **Payment ke-4 tetap dischedule untuk retry** (`status=scheduled_for_retry`) — bukan terminal `failed`. Ini karena circuit_open dianggap transient (mungkin nanti breaker udah close lagi). Scheduler akan retry di cycle berikutnya.
+- **Payment ke-4 tetap dischedule untuk retry** (`status=scheduled_for_retry`) - bukan terminal `failed`. Ini karena circuit_open dianggap transient (mungkin nanti breaker udah close lagi). Scheduler akan retry di cycle berikutnya.

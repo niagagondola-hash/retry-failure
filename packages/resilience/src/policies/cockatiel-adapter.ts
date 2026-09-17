@@ -1,5 +1,5 @@
 /**
- * Cockatiel adapter — wraps cockatiel ESM imports behind a CJS-compatible interface.
+ * Cockatiel adapter - wraps cockatiel ESM imports behind a CJS-compatible interface.
  *
  * Reason: cockatiel v4 is ESM-only ({"type":"module"}). Jest 29 CommonJS cannot
  * load ESM modules directly. This file is the SINGLE place that imports cockatiel.

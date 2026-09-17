@@ -7,7 +7,7 @@ import { PaymentRepository } from './repositories/payment.repository';
 import { PaymentAttemptRepository } from './repositories/payment-attempt.repository';
 
 /**
- * Global TypeORM module — exposes DB connection + custom repositories app-wide.
+ * Global TypeORM module - exposes DB connection + custom repositories app-wide.
  *
  * `synchronize: false` WAJIB. Jangan pernah true di production.
  * Migrations di-handle via TypeORM CLI (`pnpm db:migrate`).

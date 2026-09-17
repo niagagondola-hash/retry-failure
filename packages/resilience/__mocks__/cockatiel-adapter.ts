@@ -2,7 +2,7 @@
  * Manual mock untuk cockatiel-adapter (yang wrap ESM-only cockatiel v4).
  *
  * Mock ini menyediakan implementasi minimal yang cukup untuk test composition.ts.
- * Bukan replacement untuk integration test — untuk itu pakai tsx runtime
+ * Bukan replacement untuk integration test - untuk itu pakai tsx runtime
  * (lihat SANDBOX_NOTES.md "Sanity check").
  */
 
@@ -150,7 +150,7 @@ class MockCircuitBreakerPolicy {
     this.breaker = opts.breaker;
     this.halfOpenAfter = opts.halfOpenAfter;
   }
-  // Cockatiel API: .onBreak(cb) returns IDisposable — callable as method
+  // Cockatiel API: .onBreak(cb) returns IDisposable - callable as method
   onBreak(cb: (e: unknown) => void): IDisposable {
     return this.breakEvent.on(cb);
   }

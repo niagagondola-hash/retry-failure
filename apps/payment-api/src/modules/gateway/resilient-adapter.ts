@@ -56,7 +56,7 @@ export class ResilientPaymentGateway implements PaymentGatewayPort, AttemptObser
         const finishedAt = new Date();
 
         // For success and retryable_failure: invoke onAttempt with full context.
-        // (has gatewayReference, replayed — fields not available in AttemptDetail)
+        // (has gatewayReference, replayed - fields not available in AttemptDetail)
         // breakerState read from singleton store for accurate audit trail.
         if (this.onAttempt) {
           await this.onAttempt({
@@ -79,9 +79,9 @@ export class ResilientPaymentGateway implements PaymentGatewayPort, AttemptObser
           //     so Cockatiel retries.
           const classification = classifyChargeResult(innerResult);
           if (!classification.retryable) {
-            return innerResult;  // permanent — no retry
+            return innerResult;  // permanent - no retry
           }
-          throw new GatewayChargeError(innerResult);  // retryable — throw for retry
+          throw new GatewayChargeError(innerResult);  // retryable - throw for retry
         }
 
         return innerResult;
@@ -95,7 +95,7 @@ export class ResilientPaymentGateway implements PaymentGatewayPort, AttemptObser
 
     // Handle circuit_open case: breaker was OPEN, fn body never executed,
     // so onAttempt was NOT called during fn execution.
-    // Manually invoke onAttempt here (AWAITED — no race condition) so audit
+    // Manually invoke onAttempt here (AWAITED - no race condition) so audit
     // records 1 row with outcome='circuit_open' before payment transitions
     // to scheduled_for_retry.
     //
@@ -112,7 +112,7 @@ export class ResilientPaymentGateway implements PaymentGatewayPort, AttemptObser
           status: 'failed',
           replayed: false,
           errorCode: 'circuit_open',
-          errorMessage: 'circuit breaker open — fast-fail without calling gateway',
+          errorMessage: 'circuit breaker open - fast-fail without calling gateway',
         },
         breakerState: 'open',
       } as GatewayAttemptContext);
@@ -134,7 +134,7 @@ export class ResilientPaymentGateway implements PaymentGatewayPort, AttemptObser
         status: 'failed',
         replayed: false,
         errorCode: 'circuit_open',
-        errorMessage: 'circuit breaker open — fast-fail without calling gateway',
+        errorMessage: 'circuit breaker open - fast-fail without calling gateway',
         attempts: outcome.attempts,
       };
     }
@@ -175,7 +175,7 @@ export class GatewayChargeError extends Error {
  * Used by fn body to decide: throw (retry) vs return (no retry).
  */
 function classifyChargeResult(result: ChargeResult) {
-  // Network error (no HTTP status) — classify by errorCode
+  // Network error (no HTTP status) - classify by errorCode
   if (result.httpStatus === undefined) {
     const input: ClassifiableInput = {
       kind: 'network',
@@ -185,7 +185,7 @@ function classifyChargeResult(result: ChargeResult) {
     return classifyError(input);
   }
 
-  // HTTP response — classify by status code + body
+  // HTTP response - classify by status code + body
   const input: ClassifiableInput = {
     kind: 'http',
     status: result.httpStatus,

@@ -25,7 +25,7 @@ function makeResponse(status: number, data: unknown, headers: Record<string, str
   return { status, data, headers, statusText: '', config: {} as never };
 }
 
-describe('HttpPaymentGateway — success path', () => {
+describe('HttpPaymentGateway - success path', () => {
   it('maps 200 with gateway_reference + replayed=false', async () => {
     const http = mockHttpService();
     const gw = new HttpPaymentGateway(http as never, mockConfigService() as never);
@@ -52,7 +52,7 @@ describe('HttpPaymentGateway — success path', () => {
   });
 });
 
-describe('HttpPaymentGateway — HTTP error (axios error with response)', () => {
+describe('HttpPaymentGateway - HTTP error (axios error with response)', () => {
   it('maps 400 client-error with error_code', async () => {
     const http = mockHttpService();
     const gw = new HttpPaymentGateway(http as never, mockConfigService() as never);
@@ -103,7 +103,7 @@ describe('HttpPaymentGateway — HTTP error (axios error with response)', () => 
   });
 });
 
-describe('HttpPaymentGateway — network error (no response)', () => {
+describe('HttpPaymentGateway - network error (no response)', () => {
   it('maps ECONNREFUSED without httpStatus', async () => {
     const http = mockHttpService();
     const gw = new HttpPaymentGateway(http as never, mockConfigService() as never);
@@ -135,7 +135,7 @@ describe('HttpPaymentGateway — network error (no response)', () => {
   });
 });
 
-describe('HttpPaymentGateway — sends correct headers', () => {
+describe('HttpPaymentGateway - sends correct headers', () => {
   it('sends Idempotency-Key derived from paymentId', async () => {
     const http = mockHttpService();
     const gw = new HttpPaymentGateway(http as never, mockConfigService() as never);

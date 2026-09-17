@@ -58,7 +58,7 @@ function makeMockRepo(duePayments: Payment[] = []) {
   } as unknown as PaymentRepository;
 }
 
-describe('RetrySchedulerService — poll', () => {
+describe('RetrySchedulerService - poll', () => {
   it('does nothing when no due payments', async () => {
     const svc = new RetrySchedulerService(
       makeMockPaymentsService(),
@@ -171,7 +171,7 @@ describe('RetrySchedulerService — poll', () => {
   });
 });
 
-describe('RetrySchedulerService — getStats', () => {
+describe('RetrySchedulerService - getStats', () => {
   it('returns initial stats before any poll', () => {
     const svc = new RetrySchedulerService(
       makeMockPaymentsService(),
@@ -222,7 +222,7 @@ describe('RetrySchedulerService — getStats', () => {
   });
 });
 
-describe('RetrySchedulerService — onApplicationBootstrap', () => {
+describe('RetrySchedulerService - onApplicationBootstrap', () => {
   it('registers interval via SchedulerRegistry', async () => {
     const schedulerRegistry = makeSchedulerRegistry();
     let intervalRef: ReturnType<typeof setInterval> | undefined;

@@ -60,7 +60,7 @@ async function runDemoB() {
     const payment = await createAndWait(`DEMO-B-${Date.now()}`, 100);
     results.value[1].payment = payment;
     if (payment.status !== 'failed') throw new Error(`Expected failed, got ${payment.status}`);
-    toast.add({ severity: 'success', summary: 'Demo B passed', detail: 'Payment failed (permanent — no retry)', life: 5000 });
+    toast.add({ severity: 'success', summary: 'Demo B passed', detail: 'Payment failed (permanent - no retry)', life: 5000 });
     await setMode('always-success');
   });
 }

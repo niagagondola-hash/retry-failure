@@ -163,7 +163,7 @@ export class PaymentsService {
 
     if (result.errorCode === 'circuit_open' || result.attempts !== undefined) {
       // Per PLAN1 section 10.2: totalRetryCount is incremented by the
-      // RetryScheduler when it picks up the payment — NOT here in applyOutcome.
+      // RetryScheduler when it picks up the payment - NOT here in applyOutcome.
       // This method is called for BOTH:
       //   - Initial inline cycle (source='api'): totalRetryCount stays 0
       //   - Scheduler cycle (source='scheduler'): scheduler already incremented
@@ -188,7 +188,7 @@ export class PaymentsService {
     });
     this.metrics?.decPaymentStatus('processing');
     this.metrics?.incPaymentStatus('failed');
-    this.logger.error({ paymentId, traceId: ctx.traceId, result }, 'unknown charge result mapping — fallback to failed');
+    this.logger.error({ paymentId, traceId: ctx.traceId, result }, 'unknown charge result mapping - fallback to failed');
     return (await this.payments.findById(paymentId))!;
   }
 

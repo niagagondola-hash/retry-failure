@@ -1,5 +1,5 @@
 /**
- * ChargesService — orchestrates idempotency, mode application, stats + metrics.
+ * ChargesService - orchestrates idempotency, mode application, stats + metrics.
  *
  * Flow (plan section 9 + TASK-03 spec):
  *   1. requestCount++
@@ -11,7 +11,7 @@
  *   6. Increment successCount or failureCount based on HTTP status.
  *   7. If `shouldDropResponse` -> await sleep(10s) then throw
  *      ServiceUnavailableException (client has already timed out).
- *   8. Return ChargeOutcome — controller maps to res.status().json().
+ *   8. Return ChargeOutcome - controller maps to res.status().json().
  */
 
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
@@ -28,7 +28,7 @@ export interface ChargeOutcome {
   headers?: Record<string, string>;
 }
 
-/** Sleep helper — promisified setTimeout. */
+/** Sleep helper - promisified setTimeout. */
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -49,7 +49,7 @@ export class ChargesService {
     // Step 1: increment request counter (every incoming request, incl. replays).
     this.state.requestCount++;
 
-    // Step 2: replay check — replays short-circuit before mode handler.
+    // Step 2: replay check - replays short-circuit before mode handler.
     const existing = this.idempotencyStore.get(key);
     if (existing) {
       this.state.replayCount++;
@@ -77,7 +77,7 @@ export class ChargesService {
     });
 
     // Step 4: delay (always-timeout mode). Client's GATEWAY_TIMEOUT_MS=2000
-    // will fire before we return 503 — but we still record the outcome.
+    // will fire before we return 503 - but we still record the outcome.
     if (result.delayMs && result.delayMs > 0) {
       this.logger.warn(`delaying ${result.delayMs}ms key=${key} (always-timeout mode)`);
       await sleep(result.delayMs);
@@ -115,11 +115,11 @@ export class ChargesService {
     }
     this.metrics.incrementRequests(isSuccess ? 'success' : 'failure', result.status);
 
-    // Step 7: drop-response — charge already captured, now hang long enough
+    // Step 7: drop-response - charge already captured, now hang long enough
     // for the client to time out, then throw so NestJS closes the socket.
     if (result.shouldDropResponse) {
       this.logger.warn(
-        `dropping response key=${key} (charge already captured) — hanging 10s`,
+        `dropping response key=${key} (charge already captured) - hanging 10s`,
       );
       await sleep(10_000);
       throw new ServiceUnavailableException('response dropped (simulated)');

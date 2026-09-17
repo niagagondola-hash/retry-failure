@@ -1,5 +1,5 @@
 /**
- * SCENARIO 3 — Circuit Breaker (always-timeout, threshold=3)
+ * SCENARIO 3 - Circuit Breaker (always-timeout, threshold=3)
  * ==========================================================
  *
  * Goal:

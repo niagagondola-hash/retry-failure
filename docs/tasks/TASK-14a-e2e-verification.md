@@ -1,20 +1,20 @@
-# TASK-14a — Manual E2E Verification Guide
+# TASK-14a - Manual E2E Verification Guide
 
 > **Task ID**: 14a (parent)
 > **Depends on**: TASK-14 (E2E specs created)
-> **Purpose**: Memberikan prosedur verifikasi manual per-skenario, supaya kamu tidak hanya percaya "green tick" Jest, tapi bisa **membuktikan** bahwa test benar-benar mengeksekusi alur yang diharapkan — dari input HTTP sampai side-effect di PostgreSQL, metrics, dan gateway mock.
+> **Purpose**: Memberikan prosedur verifikasi manual per-skenario, supaya kamu tidak hanya percaya "green tick" Jest, tapi bisa **membuktikan** bahwa test benar-benar mengeksekusi alur yang diharapkan - dari input HTTP sampai side-effect di PostgreSQL, metrics, dan gateway mock.
 
 ---
 
 ## 1. Apakah perlu log ke file dari tiap proses?
 
-**Jawaban: Ya, sangat disarankan.** Tapi tidak perlu mengubah kode aplikasi untuk menulis log sendiri — cukup redirect stdout/stderr saat menjalankan test.
+**Jawaban: Ya, sangat disarankan.** Tapi tidak perlu mengubah kode aplikasi untuk menulis log sendiri - cukup redirect stdout/stderr saat menjalankan test.
 
 ### Kenapa perlu?
 
 | Tanpa log file | Dengan log file |
 |---|---|
-| Test pass/fail saja — kalau gagal, kamu harus run ulang untuk lihat error | Punya evidence lengkap untuk inspeksi ulang |
+| Test pass/fail saja - kalau gagal, kamu harus run ulang untuk lihat error | Punya evidence lengkap untuk inspeksi ulang |
 | Susah bandingkan run ke-1 vs ke-2 (apa bedanya?) | Bisa `diff` antar run |
 | Tidak bisa dilampirkan ke `docs/e2e-evidence/` | Bisa dilampirkan sebagai bukti DoD |
 
@@ -32,22 +32,22 @@ pnpm test:e2e:transient 2>&1 | tee ../logs/e2e/S1-transient-$(date +%s).log
 
 Untuk satu skenario yang dijalankan manual, idealnya simpan log dari **3 sumber**:
 
-1. **payment-api** (port 3001) — untuk lihat Cockatiel retry event, state machine transition, audit write
-2. **gateway-mock** (port 3002) — untuk lihat charge request masuk, mode handler, idempotency replay
-3. **jest runner** — output assertion pass/fail
+1. **payment-api** (port 3001) - untuk lihat Cockatiel retry event, state machine transition, audit write
+2. **gateway-mock** (port 3002) - untuk lihat charge request masuk, mode handler, idempotency replay
+3. **jest runner** - output assertion pass/fail
 
 ```bash
-# Terminal 1 — payment-api + log
+# Terminal 1 - payment-api + log
 cd apps/payment-api && PORT=3001 pnpm start:dev 2>&1 | tee ../../logs/e2e/payment-api-$(date +%s).log
 
 cd apps/payment-api; $env:PORT=3001; pnpm start:dev 2>&1 | Tee-Object -FilePath "..\logs\e2e\payment-api-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
 
-# Terminal 2 — gateway-mock + log
+# Terminal 2 - gateway-mock + log
 cd apps/payment-gateway-mock && PORT=3002 pnpm start:dev 2>&1 | tee ../../logs/e2e/gateway-mock-$(date +%s).log
 
 cd apps/payment-gateway-mock; $env:PORT=3002; pnpm start:dev 2>&1 | Tee-Object -FilePath "..\logs\e2e\gateway-mock-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
 
-# Terminal 3 — jest + log
+# Terminal 3 - jest + log
 cd apps/payment-api && pnpm test:e2e:transient 2>&1 | tee ../logs/e2e/S1-transient-$(date +%s).log
 ```
 
@@ -55,9 +55,9 @@ cd apps/payment-api && pnpm test:e2e:transient 2>&1 | tee ../logs/e2e/S1-transie
 
 ---
 
-## 2. Arsiptektur Sistem — Visualisasi Umum
+## 2. Arsiptektur Sistem - Visualisasi Umum
 
-Diagram ini menunjukkan **semua komponen yang terlibat** dari input HTTP sampai PostgreSQL. Setiap skenario akan melalui subset jalur yang berbeda — detailnya di file subtask `TASK-14a-<scenario>.md`.
+Diagram ini menunjukkan **semua komponen yang terlibat** dari input HTTP sampai PostgreSQL. Setiap skenario akan melalui subset jalur yang berbeda - detailnya di file subtask `TASK-14a-<scenario>.md`.
 
 ```mermaid
 flowchart TB
@@ -130,7 +130,7 @@ flowchart TB
 
 ---
 
-## 3. Lapisan Verifikasi — 5 Lapis Bukan 1
+## 3. Lapisan Verifikasi - 5 Lapis Bukan 1
 
 **Jangan hanya lihat "Tests: 1 passed"**. Untuk membuktikan test benar-benar menguji skenario, verifikasi di **5 lapis**:
 
@@ -164,20 +164,20 @@ Untuk setiap skenario, file subtask `TASK-14a-<scenario>.md` akan menjelaskan **
 
 Setelah update `package.json` (lihat bawah), 3 cara bisa dipakai:
 
-### Cara A — pakai named script (paling mudah)
+### Cara A - pakai named script (paling mudah)
 ```bash
 cd apps/payment-api
 pnpm test:e2e:transient
 ```
 
-### Cara B — pakai generic script + pattern
+### Cara B - pakai generic script + pattern
 ```bash
 cd apps/payment-api
 pnpm test:e2e:file payments.transient
 ```
 (`jest` akan match `payments.transient` sebagai path-pattern.)
 
-### Cara C — pakai jest langsung
+### Cara C - pakai jest langsung
 ```bash
 cd apps/payment-api
 pnpm exec jest --config ./tests/e2e/jest-e2e.json --runInBand tests/e2e/payments.transient.e2e-spec.ts
@@ -235,4 +235,4 @@ pnpm exec jest --config ./tests/e2e/jest-e2e.json --runInBand \
 ☐ Untuk skenario 6: SCHEDULER_INTERVAL_MS=5000 diset di env payment-api
 ```
 
-Jika salah satu hilang, test akan fail dengan error yang **bukan menunjukkan masalah test**, tapi masalah infrastruktur. Jangan dipaksakan — perbaiki dulu.
+Jika salah satu hilang, test akan fail dengan error yang **bukan menunjukkan masalah test**, tapi masalah infrastruktur. Jangan dipaksakan - perbaiki dulu.

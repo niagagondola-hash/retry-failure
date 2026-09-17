@@ -1,5 +1,5 @@
 /**
- * SCENARIO 5 — Server-Directed Retry (Retry-After header)
+ * SCENARIO 5 - Server-Directed Retry (Retry-After header)
  * =======================================================
  *
  * Goal:
@@ -11,10 +11,10 @@
  * Gateway mode 'rate-limited' with retryAfterSeconds=3:
  *   - Every charge request returns 429 with header `Retry-After: 3`
  *   - Cockatiel must override default backoff and wait 3000ms before next attempt
- *   - Mode does NOT auto-recover — payment will eventually exhaust retries & fail
+ *   - Mode does NOT auto-recover - payment will eventually exhaust retries & fail
  *
  * Note: This test does NOT assert terminal status (succeeded/failed).
- * It only verifies TIMING — the delay between attempts.
+ * It only verifies TIMING - the delay between attempts.
  *
  * Preconditions:
  *   - PostgreSQL running + migrated
@@ -45,7 +45,7 @@ import { queryAttempts } from './helpers/db';
 import { resetBreaker } from './helpers/breaker';
 import { resetGatewayToHealthy, ensureDbConnected, cleanDb, closeDb } from './helpers/setup';
 
-describe('Scenario 5 — Retry-After (rate-limited, retryAfterSeconds=3)', () => {
+describe('Scenario 5 - Retry-After (rate-limited, retryAfterSeconds=3)', () => {
   const orderId = `E2E-S5-${Date.now()}`;
 
   beforeAll(async () => {

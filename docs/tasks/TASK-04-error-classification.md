@@ -1,4 +1,4 @@
-# TASK-04 — Error Classification & Retry-After Parsing
+# TASK-04 - Error Classification & Retry-After Parsing
 
 > **Task ID**: 2-c
 > **Depends on**: 1 (scaffolding)
@@ -19,10 +19,10 @@ Function ini adalah **application policy** (bukan Cockatiel concern), sesuai res
 ## Scope
 
 **In scope**:
-- `packages/resilience/src/errors/types.ts` — `ErrorClassification` type + `ClassifiableInput` union.
-- `packages/resilience/src/errors/classifier.ts` — `classifyError(input): ErrorClassification`.
-- `packages/resilience/src/errors/retry-after.ts` — `parseRetryAfter(value, now?): number | null`.
-- `packages/resilience/src/errors/index.ts` — barrel export.
+- `packages/resilience/src/errors/types.ts` - `ErrorClassification` type + `ClassifiableInput` union.
+- `packages/resilience/src/errors/classifier.ts` - `classifyError(input): ErrorClassification`.
+- `packages/resilience/src/errors/retry-after.ts` - `parseRetryAfter(value, now?): number | null`.
+- `packages/resilience/src/errors/index.ts` - barrel export.
 - Jest unit tests untuk classifier & retry-after parser.
 
 **Out of scope**:
@@ -117,7 +117,7 @@ NEVER sum Retry-After + exponential backoff. Pilih salah satu:
 5. Jest tests:
    - `classifier.spec.ts`: cover semua case di acceptance criteria.
    - `retry-after.spec.ts`: delta-seconds, HTTP-date, null, invalid.
-6. `jest.config.js` di `packages/resilience` — preset `ts-jest`.
+6. `jest.config.js` di `packages/resilience` - preset `ts-jest`.
 
 ## Acceptance criteria
 
@@ -156,14 +156,14 @@ pnpm install
 # (lihat SANDBOX_NOTES.md section 2.1). Setelah root package.json dipin ke
 # `packageManager: "pnpm@9.12.0"` (TASK-01), corepack akan otomatis activate versi yang sama.
 
-# 2. Run Jest tests — sama kedua kondisi
+# 2. Run Jest tests - sama kedua kondisi
 pnpm --filter @retry-failure/resilience test
 
-# 3. Lint & typecheck — sama kedua kondisi
+# 3. Lint & typecheck - sama kedua kondisi
 pnpm --filter @retry-failure/resilience lint
 pnpm --filter @retry-failure/resilience typecheck
 
-# 4. Quick sanity check via ts-node (bila mau cek manual) — sama kedua kondisi
+# 4. Quick sanity check via ts-node (bila mau cek manual) - sama kedua kondisi
 cd /home/z/my-project/retry-failure/packages/resilience
 pnpm exec ts-node -e '
 import { classifyError, parseRetryAfter } from "./src/errors";
@@ -177,8 +177,8 @@ console.log(parseRetryAfter(null));
 
 ## Notes
 
-- **Pure functions**: tidak ada side effect atau I/O — mudah diuji & di-reuse.
-- **No framework dependency**: package ini tidak import NestJS — bisa dipakai di apps manapun.
+- **Pure functions**: tidak ada side effect atau I/O - mudah diuji & di-reuse.
+- **No framework dependency**: package ini tidak import NestJS - bisa dipakai di apps manapun.
 - **Error code dari body**: hanya diekstrak bila body punya shape `{ error_code: string }` (mock gateway contract dari TASK-03). Generic snake_case dipakai.
 - **HTTP-date parsing**: gunakan `new Date(value)` bawaan JS. Handle invalid dengan cek `isNaN(date.getTime())`.
 - **Jest config**: `packages/resilience/jest.config.js` pakai `preset: 'ts-jest'`, `testEnvironment: 'node'`, `roots: ['<rootDir>/test']`.

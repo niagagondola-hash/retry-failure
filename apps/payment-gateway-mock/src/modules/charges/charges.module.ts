@@ -1,5 +1,5 @@
 /**
- * ChargesModule — wires ChargesController + ChargesService with shared
+ * ChargesModule - wires ChargesController + ChargesService with shared
  * MockState/IdempotencyStore providers and MetricsService.
  */
 
