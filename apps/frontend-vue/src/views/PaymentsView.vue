@@ -1,20 +1,16 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue';
+import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { usePaymentsStore } from '../stores/payments';
-import { usePolling } from '../composables/usePolling';
 import CreatePaymentDialog from '../components/CreatePaymentDialog.vue';
 import StatusTag from '../components/StatusTag.vue';
 
 const router = useRouter();
 const paymentsStore = usePaymentsStore();
 const statusFilter = ref<string | null>(null);
-const { start } = usePolling(() => paymentsStore.fetchList(), 3000);
 
-onMounted(async () => {
-  await paymentsStore.fetchList();
-  start();
-});
+// NOTE: polling lifecycle is owned by global polling store (started in App.vue).
+// PaymentsView just reads paymentsStore.list which gets updated by the global timer.
 
 const filteredList = computed(() => {
   if (!statusFilter.value) return paymentsStore.list;

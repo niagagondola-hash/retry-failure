@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { onMounted, computed, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useMetricsStore } from '../stores/metrics';
-import { usePolling } from '../composables/usePolling';
+import { usePollingStore } from '../stores/polling';
 
 const metricsStore = useMetricsStore();
+const pollingStore = usePollingStore();
 const showRaw = ref(false);
-const { isPolling, start, stop } = usePolling(() => metricsStore.refresh(), 5000);
 
-onMounted(() => start());
+// NOTE: polling lifecycle is owned by global polling store.
+// MetricsView only exposes the toggle UI + manual refresh button.
 
 // Status colors mapping
 const statusColors: Record<string, string> = {
@@ -129,28 +130,29 @@ const retryAttemptsData = computed(() => {
       <!-- Polling controls -->
       <div class="flex items-center gap-2">
         <span
-          v-if="metricsStore.lastUpdated"
+          v-if="pollingStore.lastMetricsRefreshAt"
           class="text-xs text-gray-500"
         >
-          Updated: {{ metricsStore.lastUpdated.toLocaleTimeString() }}
+          Updated: {{ pollingStore.lastMetricsRefreshAt.toLocaleTimeString() }}
         </span>
 
-        <!-- On/Off polling toggle -->
+        <!-- On/Off polling toggle (global state shared with Home) -->
         <Button
-          :label="isPolling ? 'Auto: ON' : 'Auto: OFF'"
-          :icon="isPolling ? 'pi pi-pause' : 'pi pi-play'"
-          :severity="isPolling ? 'success' : 'secondary'"
+          :label="pollingStore.isPolling ? 'Auto: ON' : 'Auto: OFF'"
+          :icon="pollingStore.isPolling ? 'pi pi-pause' : 'pi pi-play'"
+          :severity="pollingStore.isPolling ? 'success' : 'secondary'"
           size="small"
-          @click="isPolling ? stop() : start()"
+          @click="pollingStore.toggle()"
         />
 
-        <!-- Manual refresh -->
+        <!-- Manual refresh (refreshes both payments + metrics) -->
         <Button
           label="Refresh"
           icon="pi pi-refresh"
           size="small"
-          :loading="metricsStore.loading"
-          @click="metricsStore.refresh()"
+          :loading="pollingStore.isRefreshingMetrics"
+          :disabled="pollingStore.isRefreshingMetrics"
+          @click="pollingStore.refreshNow()"
         />
       </div>
     </div>

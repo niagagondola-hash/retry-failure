@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, computed } from 'vue';
+import { computed } from 'vue';
 import { usePaymentsStore } from '../stores/payments';
-import { useGatewayStore } from '../stores/gateway';
-import { usePolling } from '../composables/usePolling';
+import { usePollingStore } from '../stores/polling';
 import GatewayModeSelector from '../components/GatewayModeSelector.vue';
 import CreatePaymentDialog from '../components/CreatePaymentDialog.vue';
 import CircuitBreakerCard from '../components/CircuitBreakerCard.vue';
@@ -10,33 +9,21 @@ import DemoScenarioRunner from '../components/DemoScenarioRunner.vue';
 import StatusTag from '../components/StatusTag.vue';
 
 const paymentsStore = usePaymentsStore();
-const gatewayStore = useGatewayStore();
+const pollingStore = usePollingStore();
 
-const {
-  isPolling,
-  isRefreshing,
-  lastRefreshedAt,
-  start: startPaymentsPoll,
-  stop: stopPaymentsPoll,
-  toggle: togglePaymentsPoll,
-  refreshNow: refreshPaymentsNow,
-} = usePolling(() => paymentsStore.fetchList(), 3000);
-
-onMounted(async () => {
-  await paymentsStore.fetchList();
-  await gatewayStore.fetchConfig();
-  startPaymentsPoll();
-});
-
-onUnmounted(() => stopPaymentsPoll());
+// NOTE: polling lifecycle (start/stop) is owned by App.vue + global store.
+// HomeView only exposes the toggle UI + manual refresh button.
+const isRefreshing = computed(
+  () => pollingStore.isRefreshingPayments || pollingStore.isRefreshingMetrics,
+);
 
 const succeededCount = computed(() => paymentsStore.list.filter(p => p.status === 'succeeded').length);
 const failedCount = computed(() => paymentsStore.list.filter(p => p.status === 'failed').length);
 const scheduledCount = computed(() => paymentsStore.list.filter(p => p.status === 'scheduled_for_retry').length);
 
 const lastRefreshedLabel = computed(() => {
-  if (!lastRefreshedAt.value) return 'never';
-  return lastRefreshedAt.value.toLocaleTimeString();
+  if (!pollingStore.lastPaymentsRefreshAt) return 'never';
+  return pollingStore.lastPaymentsRefreshAt.toLocaleTimeString();
 });
 </script>
 
@@ -104,13 +91,13 @@ const lastRefreshedLabel = computed(() => {
           <div class="flex flex-wrap items-center gap-3">
             <div class="flex items-center gap-2">
               <ToggleSwitch
-                :model-value="isPolling"
-                @update:model-value="togglePaymentsPoll"
+                :model-value="pollingStore.isPolling"
+                @update:model-value="pollingStore.toggle()"
               />
               <span class="text-sm">
                 Polling: <Tag
-                  :severity="isPolling ? 'success' : 'secondary'"
-                  :value="isPolling ? 'ON' : 'OFF'"
+                  :severity="pollingStore.isPolling ? 'success' : 'secondary'"
+                  :value="pollingStore.isPolling ? 'ON' : 'OFF'"
                 />
               </span>
             </div>
@@ -121,7 +108,7 @@ const lastRefreshedLabel = computed(() => {
               severity="info"
               :loading="isRefreshing"
               :disabled="isRefreshing"
-              @click="refreshPaymentsNow"
+              @click="pollingStore.refreshNow()"
             />
             <div class="text-xs text-gray-500">
               Last refreshed: {{ lastRefreshedLabel }}

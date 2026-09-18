@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed } from 'vue';
 import { useMetricsStore } from '../stores/metrics';
-import { usePolling } from '../composables/usePolling';
+import { usePollingStore } from '../stores/polling';
 
 const metricsStore = useMetricsStore();
-const { start } = usePolling(() => metricsStore.refresh(), 5000);
+const pollingStore = usePollingStore();
 
-onMounted(() => start());
+// NOTE: polling lifecycle is owned by global polling store (started in App.vue).
+// This component just reads metricsStore which gets updated by the global timer.
 
 const breakerState = computed(() => {
   const val = metricsStore.parsed?.circuitBreakerState;
@@ -37,10 +38,10 @@ const replayCount = computed(() => metricsStore.parsed?.gatewayIdempotentReplays
           <span class="font-bold">{{ replayCount }}</span>
         </div>
         <div
-          v-if="metricsStore.lastUpdated"
+          v-if="pollingStore.lastMetricsRefreshAt"
           class="text-xs text-gray-500"
         >
-          Updated: {{ metricsStore.lastUpdated.toLocaleTimeString() }}
+          Updated: {{ pollingStore.lastMetricsRefreshAt.toLocaleTimeString() }}
         </div>
       </div>
     </template>

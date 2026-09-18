@@ -1,9 +1,28 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useGatewayStore } from './stores/gateway';
+import { usePollingStore } from './stores/polling';
 
 const router = useRouter();
 const isDark = ref(false);
+
+const gatewayStore = useGatewayStore();
+const pollingStore = usePollingStore();
+
+onMounted(async () => {
+  // Fetch gateway config once on app boot (mode, n, probability, ...)
+  await gatewayStore.fetchConfig().catch(() => {
+    // Gateway down is non-fatal — UI can still render in default mode
+  });
+  // Start global polling (payments @ 3s + metrics @ 5s)
+  pollingStore.start();
+});
+
+onUnmounted(() => {
+  // Cleanup timers (rarely fires in SPA, but good hygiene)
+  pollingStore.stop();
+});
 
 function toggleDark() {
   isDark.value = !isDark.value;
