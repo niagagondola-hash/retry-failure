@@ -16,6 +16,7 @@ import type { ClassifiableInput, ErrorClassification } from './types';
 const RETRYABLE_NETWORK_CODES: Record<string, string> = {
   ECONNREFUSED: 'connection_refused',
   ECONNRESET: 'connection_reset',
+  ECONNABORTED: 'connection_aborted',  // axios timeout (GATEWAY_TIMEOUT_MS exceeded)
   ETIMEDOUT: 'timeout',
   ENOTFOUND: 'dns_failure',
   EAI_AGAIN: 'dns_failure',
