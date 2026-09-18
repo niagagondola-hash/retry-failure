@@ -54,8 +54,11 @@ pnpm test:e2e:exhaustion      # S7
 
 ## Backend E2E (Jest + axios + TypeORM DataSource)
 
-> **All scenarios PASSED** in sandbox run with SQLite (2026-09-18).
-> Total time: ~201s (3.3 minutes) for all 7 suites, 8 tests.
+### Sandbox Results (SQLite, `DB_TYPE=sqlite`)
+
+> **Run date**: 2026-09-18
+> **Total time**: ~201s (3.3 minutes) for all 7 suites, 8 tests.
+> **Command**: `DB_TYPE=sqlite jest --config ./tests/e2e/jest-e2e.json --runInBand --forceExit`
 
 | # | Scenario | Spec file | Status | Duration | Notes |
 |---|---|---|---|---|---|
@@ -66,6 +69,36 @@ pnpm test:e2e:exhaustion      # S7
 | 5 | Retry-After (rate-limited) | payments.retry-after.e2e-spec.ts | ✅ PASS | ~21s | delta created_at ≥ 2500ms (Retry-After 3000ms honored via DelegateBackoff) |
 | 6 | Durable scheduler retry | payments.durable-scheduler.e2e-spec.ts | ✅ PASS | ~25s | scheduled_for_retry → scheduler picks → succeeded, 2 trace IDs (T1≠T2) |
 | 7 | Total retry exhaustion | payments.exhaustion.e2e-spec.ts | ✅ PASS | ~72s | 6 cycles × 4 attempts = 24 total → failed, totalRetryCount=5, nextRetryAt=null |
+
+### Lokal Results (PostgreSQL, `DB_TYPE=postgres`)
+
+> **Run date**: _(isi tanggal run)_
+> **Total time**: _(isi total waktu)_
+> **Command**: `pnpm test:e2e -- --forceExit`
+
+| # | Scenario | Spec file | Status | Duration | Notes |
+|---|---|---|---|---|---|
+| 1 | Transient failure (fail-first-n=2) | payments.transient.e2e-spec.ts | _(isi)_ | _(isi)_ | 3 attempts, trace ID consistent |
+| 2 | Permanent failure (client-error) | payments.permanent.e2e-spec.ts | _(isi)_ | _(isi)_ | 1 attempt, invalid_card |
+| 3 | Circuit breaker (always-timeout) | payments.circuit-breaker.e2e-spec.ts | _(isi)_ | _(isi)_ | 3×4=12 attempts → breaker OPEN |
+| 4 | Anti double-charge HERO (succeed-but-drop-response) | payments.idempotency.e2e-spec.ts | _(isi)_ | _(isi)_ | delta actualCharges=1, replays≥1 |
+| 5 | Retry-After (rate-limited) | payments.retry-after.e2e-spec.ts | _(isi)_ | _(isi)_ | delta ≥ 2500ms (DelegateBackoff) |
+| 6 | Durable scheduler retry | payments.durable-scheduler.e2e-spec.ts | _(isi)_ | _(isi)_ | 2 trace IDs, totalRetryCount=1 |
+| 7 | Total retry exhaustion | payments.exhaustion.e2e-spec.ts | _(isi)_ | _(isi)_ | 24 attempts, totalRetryCount=5 |
+
+#### Perbedaan yang perlu diperhatikan PostgreSQL vs SQLite
+
+| Aspek | SQLite (sandbox) | PostgreSQL (lokal) | Impact ke test |
+|---|---|---|---|
+| **Boolean storage** | Integer (1/0) | Boolean (true/false) | S4: `dbAttempts[1].replayed` → `1` di SQLite, `true` di PostgreSQL. Test pakai `Boolean()` coercion → work di kedua |
+| **Number formatting** | String dengan comma (`"3,000"`) | Number native | S5: `delay_before_next_ms` → `"3,000"` di SQLite, `3000` di PostgreSQL. Test pakai `replace(/,/g, '')` → work di kedua |
+| **Timestamp precision** | Second precision (`datetime`) | Millisecond precision (`timestamp(3)`) | S5: delta timing → SQLite hanya second precision, PostgreSQL ms. Tolerance 500ms sudah mengakomodasi |
+| **UUID storage** | `varchar(36)` via helper | `uuid` native | Tidak ada impact ke test — TypeORM handle konversi |
+| **Enum storage** | `varchar(30)` | `varchar(30)` (changed from native enum) | Tidak ada impact — kedua driver pakai varchar |
+| **Migration** | Skip (`synchronize: true`) | `pnpm db:migrate` (hardcoded SQL) | PostgreSQL butuh migration run sebelum test |
+| **DB cleanup** | `DELETE FROM` via DataSource | `DELETE FROM` via DataSource | Sama — DataSource query driver-agnostic |
+| **Schema creation** | Auto via `synchronize: true` | Via migration SQL | SQLite auto-create, PostgreSQL manual migrate |
+| **`test.db` file** | Ada di `apps/payment-api/test.db` | Tidak ada (pakai PostgreSQL) | SQLite butuh hapus `test.db` sebelum run untuk clean state |
 
 ### Test isolation
 
