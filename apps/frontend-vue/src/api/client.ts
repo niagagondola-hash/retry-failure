@@ -4,7 +4,9 @@ const baseURL = import.meta.env.VITE_PAYMENT_API_URL ?? 'http://localhost:3001';
 
 export const apiClient = axios.create({
   baseURL,
-  timeout: 10000,
+  // 30s to accommodate demo scenarios that involve many retries with delays
+  // (e.g., Demo E rate-limited: 4 attempts × 3s Retry-After = ~12s)
+  timeout: 30000,
   headers: { 'Content-Type': 'application/json' },
 });
 

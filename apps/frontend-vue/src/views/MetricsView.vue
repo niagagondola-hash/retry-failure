@@ -5,7 +5,7 @@ import { usePolling } from '../composables/usePolling';
 
 const metricsStore = useMetricsStore();
 const showRaw = ref(false);
-const { start } = usePolling(() => metricsStore.refresh(), 5000);
+const { isPolling, start, stop } = usePolling(() => metricsStore.refresh(), 5000);
 
 onMounted(() => start());
 
@@ -121,23 +121,38 @@ const retryAttemptsData = computed(() => {
 
 <template>
   <div class="p-4">
-    <h2 class="text-xl font-bold mb-4">
-      Metrics
-    </h2>
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-xl font-bold">
+        Metrics
+      </h2>
 
-    <div
-      v-if="metricsStore.lastUpdated"
-      class="text-xs text-gray-500 mb-3"
-    >
-      Last updated: {{ metricsStore.lastUpdated.toLocaleTimeString() }}
-      <Button
-        label="Refresh"
-        icon="pi pi-refresh"
-        size="small"
-        text
-        :loading="metricsStore.loading"
-        @click="metricsStore.refresh()"
-      />
+      <!-- Polling controls -->
+      <div class="flex items-center gap-2">
+        <span
+          v-if="metricsStore.lastUpdated"
+          class="text-xs text-gray-500"
+        >
+          Updated: {{ metricsStore.lastUpdated.toLocaleTimeString() }}
+        </span>
+
+        <!-- On/Off polling toggle -->
+        <Button
+          :label="isPolling ? 'Auto: ON' : 'Auto: OFF'"
+          :icon="isPolling ? 'pi pi-pause' : 'pi pi-play'"
+          :severity="isPolling ? 'success' : 'secondary'"
+          size="small"
+          @click="isPolling ? stop() : start()"
+        />
+
+        <!-- Manual refresh -->
+        <Button
+          label="Refresh"
+          icon="pi pi-refresh"
+          size="small"
+          :loading="metricsStore.loading"
+          @click="metricsStore.refresh()"
+        />
+      </div>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">

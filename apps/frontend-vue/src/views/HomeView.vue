@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, computed } from 'vue';
+import { onMounted, onUnmounted, computed } from 'vue';
 import { usePaymentsStore } from '../stores/payments';
 import { useGatewayStore } from '../stores/gateway';
 import { usePolling } from '../composables/usePolling';
@@ -11,7 +11,16 @@ import StatusTag from '../components/StatusTag.vue';
 
 const paymentsStore = usePaymentsStore();
 const gatewayStore = useGatewayStore();
-const { start: startPaymentsPoll } = usePolling(() => paymentsStore.fetchList(), 3000);
+
+const {
+  isPolling,
+  isRefreshing,
+  lastRefreshedAt,
+  start: startPaymentsPoll,
+  stop: stopPaymentsPoll,
+  toggle: togglePaymentsPoll,
+  refreshNow: refreshPaymentsNow,
+} = usePolling(() => paymentsStore.fetchList(), 3000);
 
 onMounted(async () => {
   await paymentsStore.fetchList();
@@ -19,9 +28,16 @@ onMounted(async () => {
   startPaymentsPoll();
 });
 
+onUnmounted(() => stopPaymentsPoll());
+
 const succeededCount = computed(() => paymentsStore.list.filter(p => p.status === 'succeeded').length);
 const failedCount = computed(() => paymentsStore.list.filter(p => p.status === 'failed').length);
 const scheduledCount = computed(() => paymentsStore.list.filter(p => p.status === 'scheduled_for_retry').length);
+
+const lastRefreshedLabel = computed(() => {
+  if (!lastRefreshedAt.value) return 'never';
+  return lastRefreshedAt.value.toLocaleTimeString();
+});
 </script>
 
 <template>
@@ -74,6 +90,46 @@ const scheduledCount = computed(() => paymentsStore.list.filter(p => p.status ==
       </Card>
     </div>
     <CircuitBreakerCard />
+
+    <!-- Polling Controls -->
+    <div class="col-span-full">
+      <Card>
+        <template #title>
+          Auto-Refresh Controls
+        </template>
+        <template #subtitle>
+          Live payment list polling — toggle on/off or refresh manually
+        </template>
+        <template #content>
+          <div class="flex flex-wrap items-center gap-3">
+            <div class="flex items-center gap-2">
+              <ToggleSwitch
+                :model-value="isPolling"
+                @update:model-value="togglePaymentsPoll"
+              />
+              <span class="text-sm">
+                Polling: <Tag
+                  :severity="isPolling ? 'success' : 'secondary'"
+                  :value="isPolling ? 'ON' : 'OFF'"
+                />
+              </span>
+            </div>
+            <Button
+              label="Refresh Now"
+              icon="pi pi-refresh"
+              size="small"
+              severity="info"
+              :loading="isRefreshing"
+              :disabled="isRefreshing"
+              @click="refreshPaymentsNow"
+            />
+            <div class="text-xs text-gray-500">
+              Last refreshed: {{ lastRefreshedLabel }}
+            </div>
+          </div>
+        </template>
+      </Card>
+    </div>
 
     <!-- Demo Scenarios -->
     <div class="col-span-full">
