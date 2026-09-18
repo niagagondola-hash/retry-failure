@@ -1,4 +1,6 @@
+/* Tailwind v4 — dark mode menggunakan .app-dark class (sinkron dengan PrimeVue) */
 @import "tailwindcss";
+@custom-variant dark (&:where(.app-dark, .app-dark *));
 
 /* Custom styles for Cockatiel Retry Dashboard */
 
