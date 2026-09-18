@@ -27,6 +27,8 @@ cd apps/payment-api
 mkdir -p ../logs/e2e
 
 pnpm test:e2e:permanent 2>&1 | tee ../logs/e2e/S2-permanent-$(date +%s).log
+
+pnpm test:e2e:permanent 2>&1 | Tee-Object -FilePath "..\logs\e2e\S2-permanent-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
 ```
 
 **Atau tanpa named script**:

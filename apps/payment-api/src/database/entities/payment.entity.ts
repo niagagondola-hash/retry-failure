@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { PaymentStatus } from './enums';
 import { PaymentAttempt } from './payment-attempt.entity';
+import { getTimestampColumnType } from '../helpers/db-types.helper';
 
 /**
  * Payment entity (plan section 11.1 rev 2 - PostgreSQL-native).
@@ -35,10 +36,10 @@ export class Payment {
   @Column({ type: 'numeric', precision: 12, scale: 2 })
   amount!: string; // numeric returns string to preserve precision
 
-  @Column({ type: 'char', length: 3, default: 'IDR' })
+  @Column({ type: 'varchar', length: 3, default: 'IDR' })
   currency!: string;
 
-  @Column({ type: 'enum', enum: PaymentStatus, default: PaymentStatus.PROCESSING })
+  @Column({ type: 'varchar', length: 30, default: PaymentStatus.PROCESSING })
   status!: PaymentStatus;
 
   @Column({ name: 'gateway_reference', type: 'varchar', length: 64, nullable: true })
@@ -50,16 +51,20 @@ export class Payment {
   @Column({ name: 'total_retry_count', type: 'int', default: 0 })
   totalRetryCount!: number;
 
-  @Column({ name: 'next_retry_at', type: 'timestamp', precision: 3, nullable: true })
+  // Note: 'date' type is supported by both PostgreSQL and SQLite drivers.
+  // It stores date+time as ISO string. Precision is second-level (no ms).
+  // For ms precision, PostgreSQL migration uses timestamp(3) (hardcoded SQL).
+  // Entity type 'date' is only used for runtime validation, not schema creation.
+  @Column({ name: 'next_retry_at', type: getTimestampColumnType(), nullable: true })
   nextRetryAt: Date | null = null;
 
   @Column({ name: 'failure_reason', type: 'varchar', length: 500, nullable: true })
   failureReason: string | null = null;
 
-  @CreateDateColumn({ name: 'created_at', type: 'timestamp', precision: 3 })
+  @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;
 
-  @UpdateDateColumn({ name: 'updated_at', type: 'timestamp', precision: 3 })
+  @UpdateDateColumn({ name: 'updated_at' })
   updatedAt!: Date;
 
   @OneToMany(() => PaymentAttempt, (a) => a.payment)

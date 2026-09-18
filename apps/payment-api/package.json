@@ -19,9 +19,9 @@
     "test:e2e:retry-after": "jest --config ./tests/e2e/jest-e2e.json --runInBand tests/e2e/payments.retry-after.e2e-spec.ts",
     "test:e2e:durable-scheduler": "jest --config ./tests/e2e/jest-e2e.json --runInBand tests/e2e/payments.durable-scheduler.e2e-spec.ts",
     "test:e2e:exhaustion": "jest --config ./tests/e2e/jest-e2e.json --runInBand tests/e2e/payments.exhaustion.e2e-spec.ts",
-    "db:migrate": "tsx node_modules/typeorm/cli.js migration:run -d src/database/data-source.ts",
-    "db:migrate:revert": "tsx node_modules/typeorm/cli.js migration:revert -d src/database/data-source.ts",
-    "db:migration:generate": "tsx node_modules/typeorm/cli.js migration:generate -d src/database/data-source.ts"
+    "db:migrate": "tsx --env-file=../../.env node_modules/typeorm/cli.js migration:run -d src/database/data-source.ts",
+    "db:migrate:revert": "tsx --env-file=../../.env node_modules/typeorm/cli.js migration:revert -d src/database/data-source.ts",
+    "db:migration:generate": "tsx --env-file=../../.env node_modules/typeorm/cli.js migration:generate -d src/database/data-source.ts"
   },
   "dependencies": {
     "@nestjs/axios": "^3.1.0",
@@ -34,6 +34,7 @@
     "@nestjs/typeorm": "^10.0.2",
     "@retry-failure/resilience": "workspace:^",
     "axios": "^1.7.0",
+    "better-sqlite3": "^13.0.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
     "cockatiel": "^4.0.0",

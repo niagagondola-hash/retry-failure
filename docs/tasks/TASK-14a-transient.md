@@ -26,6 +26,8 @@ mkdir -p ../logs/e2e
 
 # Run + log ke file
 pnpm test:e2e:transient 2>&1 | tee ../logs/e2e/S1-transient-$(date +%s).log
+
+pnpm test:e2e:transient 2>&1 | Tee-Object -FilePath "..\logs\e2e\S1-transient-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
 ```
 
 **Atau tanpa named script**:

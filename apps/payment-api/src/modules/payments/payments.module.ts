@@ -4,6 +4,7 @@ import { Payment } from '../../database/entities';
 import { PaymentRepository } from '../../database/repositories/payment.repository';
 import { GatewayModule } from '../gateway';
 import { AuditModule } from '../audit';
+import { ObservabilityModule } from '../observability';
 import { PaymentsService } from './payments.service';
 import { PaymentsController } from './payments.controller';
 
@@ -12,6 +13,7 @@ import { PaymentsController } from './payments.controller';
     TypeOrmModule.forFeature([Payment]),
     GatewayModule,
     AuditModule,
+    ObservabilityModule,
   ],
   controllers: [PaymentsController],
   providers: [

@@ -262,6 +262,16 @@ export class PaymentsService {
       };
       try {
         await this.audit.recordAttempt(input);
+
+        // TASK-14b: Increment retry_attempts_total metric.
+        // outcome 'success' → incRetryAttempt('success', payment.status)
+        // outcome lainnya → incRetryAttempt('failure', payment.status)
+        const isSuccess = input.outcome === AttemptOutcome.SUCCESS;
+        const paymentStatus = isSuccess ? 'succeeded' : 'processing';
+        this.metrics?.incRetryAttempt(
+          isSuccess ? 'success' : 'failure',
+          paymentStatus,
+        );
       } catch (err) {
         this.logger.error({ err, paymentId: ctx.paymentId, attemptNumber: ctx.attemptNumber }, 'audit.recordAttempt failed');
       }

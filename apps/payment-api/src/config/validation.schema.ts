@@ -35,6 +35,9 @@ export const validationSchema = Joi.object({
   // Scheduler
   SCHEDULER_INTERVAL_MS: Joi.number().integer().positive().default(5000),
 
+  // Database driver — 'postgres' (default, production) atau 'sqlite' (sandbox/test)
+  DB_TYPE: Joi.string().valid('postgres', 'sqlite').default('postgres'),
+
   // PostgreSQL
   DB_HOST: Joi.string().default('localhost'),
   DB_PORT: Joi.number().port().default(5432),
@@ -42,6 +45,8 @@ export const validationSchema = Joi.object({
   DB_PASS: Joi.string().allow('').default('retry_failure'),
   DB_NAME: Joi.string().default('retry_failure'),
   DB_SCHEMA: Joi.string().default('public'),
+
+  DB_SQLITE_PATH: Joi.string().default('./test.db'),
 
   // Observability
   OTEL_EXPORTER_OTLP_ENDPOINT: Joi.string().uri().default('http://localhost:4318'),

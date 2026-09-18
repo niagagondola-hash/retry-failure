@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { AttemptOutcome } from './enums';
 import { Payment } from './payment.entity';
+import { getUuidColumnType } from '../helpers/db-types.helper';
 
 /**
  * PaymentAttempt entity (plan section 11.2 rev 2 - PostgreSQL-native).
@@ -28,13 +29,13 @@ export class PaymentAttempt {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ name: 'payment_id', type: 'uuid' })
+  @Column({ name: 'payment_id', type: getUuidColumnType() })
   paymentId!: string;
 
   @Column({ name: 'attempt_number', type: 'int' })
   attemptNumber!: number;
 
-  @Column({ type: 'enum', enum: AttemptOutcome })
+  @Column({ type: 'varchar', length: 30 })
   outcome!: AttemptOutcome;
 
   @Column({ name: 'http_status', type: 'int', nullable: true })
@@ -67,7 +68,7 @@ export class PaymentAttempt {
   @Column({ name: 'replayed', type: 'boolean', default: false })
   replayed: boolean = false;
 
-  @CreateDateColumn({ name: 'created_at', type: 'timestamp', precision: 3 })
+  @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;
 
   @ManyToOne(() => Payment, (p) => p.attempts, { onDelete: 'CASCADE' })
