@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import { fetchMetrics, fetchMetricsRaw } from '../api/metrics';
+import { fetchMetricsRaw, parsePrometheusText } from '../api/metrics';
 import type { ParsedMetrics } from '../api/metrics';
 
 export const useMetricsStore = defineStore('metrics', () => {
@@ -12,9 +12,13 @@ export const useMetricsStore = defineStore('metrics', () => {
   async function refresh() {
     loading.value = true;
     try {
-      const [rawText, parsedData] = await Promise.all([fetchMetricsRaw(), fetchMetrics()]);
+      // Single GET /metrics — parse locally to avoid duplicate HTTP request.
+      // (Previously Promise.all([fetchMetricsRaw(), fetchMetrics()])
+      //  triggered 2 identical /metrics calls because fetchMetrics()
+      //  internally calls fetchMetricsRaw() again.)
+      const rawText = await fetchMetricsRaw();
       raw.value = rawText;
-      parsed.value = parsedData;
+      parsed.value = parsePrometheusText(rawText);
       lastUpdated.value = new Date();
     } catch (e) {
       console.error('[metrics] fetch failed:', e);
