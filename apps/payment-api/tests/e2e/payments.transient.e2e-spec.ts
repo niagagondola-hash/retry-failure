@@ -40,7 +40,7 @@ import { setGatewayMode } from './helpers/gateway';
 import { createPayment, waitForTerminalStatus } from './helpers/payments';
 import { getMetric } from './helpers/metrics';
 import { queryAttempts } from './helpers/db';
-import { resetGatewayToHealthy, ensureDbConnected, cleanDb, closeDb } from './helpers/setup';
+import { resetGatewayState, resetGatewayToHealthy, ensureDbConnected, cleanDb, closeDb } from './helpers/setup';
 
 describe('Scenario 1 - Transient failure (fail-first-n=2)', () => {
   const orderId = `E2E-S1-${Date.now()}`;
@@ -48,6 +48,7 @@ describe('Scenario 1 - Transient failure (fail-first-n=2)', () => {
   beforeAll(async () => {
     await ensureDbConnected();
     await cleanDb();
+    await resetGatewayState();
     await setGatewayMode('fail-first-n', { n: 2 });
   });
 

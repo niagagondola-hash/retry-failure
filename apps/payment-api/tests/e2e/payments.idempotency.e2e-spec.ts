@@ -61,7 +61,7 @@ import { createPayment, waitForTerminalStatus } from './helpers/payments';
 import { getMetric } from './helpers/metrics';
 import { queryAttempts } from './helpers/db';
 import { resetBreaker } from './helpers/breaker';
-import { resetGatewayToHealthy, ensureDbConnected, cleanDb, closeDb } from './helpers/setup';
+import { resetGatewayState, resetGatewayToHealthy, ensureDbConnected, cleanDb, closeDb } from './helpers/setup';
 
 describe('Scenario 4 - Anti double-charge HERO (succeed-but-drop-response)', () => {
   const orderId = `E2E-S4-HERO-${Date.now()}`;
@@ -72,6 +72,7 @@ describe('Scenario 4 - Anti double-charge HERO (succeed-but-drop-response)', () 
     // Without this, scheduler picks up old scheduled_for_retry payments during
     // this test -> +1 actualCharges per old payment that succeeds -> assertion fails.
     await cleanDb();
+    await resetGatewayState();
     await resetBreaker();
     await setGatewayMode('succeed-but-drop-response');
   });
@@ -121,6 +122,8 @@ describe('Scenario 4 - Anti double-charge HERO (succeed-but-drop-response)', () 
 
     const dbAttempts = await queryAttempts(payment.id);
     expect(dbAttempts.length).toBeGreaterThanOrEqual(2);
-    expect(dbAttempts[1].replayed).toBe(true);
+    // Note: SQLite stores boolean as integer (1/0), PostgreSQL as boolean (true/false).
+    // Use truthy check for cross-driver compatibility.
+    expect(Boolean(dbAttempts[1].replayed)).toBe(true);
   }, 120000);
 });

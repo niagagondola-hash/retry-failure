@@ -83,4 +83,7 @@ cd apps/frontend-vue && pnpm dev
 
 #run test single file
 pnpm --filter payment-api test tests\modules\retry-scheduler\retry-scheduler.service.spec.ts
+
+#run integration test with log
+pnpm test:e2e 2>&1 | Tee-Object -FilePath "apps\logs\e2e\S-e2e-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
 ```

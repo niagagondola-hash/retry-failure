@@ -49,7 +49,7 @@ import { setGatewayMode } from './helpers/gateway';
 import { createPayment } from './helpers/payments';
 import { queryAttempts } from './helpers/db';
 import { resetBreaker } from './helpers/breaker';
-import { resetGatewayToHealthy, ensureDbConnected, cleanDb, closeDb } from './helpers/setup';
+import { resetGatewayState, resetGatewayToHealthy, ensureDbConnected, cleanDb, closeDb } from './helpers/setup';
 
 describe('Scenario 5 - Retry-After (rate-limited, retryAfterSeconds=3)', () => {
   const orderId = `E2E-S5-${Date.now()}`;
@@ -57,6 +57,7 @@ describe('Scenario 5 - Retry-After (rate-limited, retryAfterSeconds=3)', () => {
   beforeAll(async () => {
     await ensureDbConnected();
     await cleanDb();
+    await resetGatewayState();
     await resetBreaker();
     await setGatewayMode('rate-limited', { retryAfterSeconds: 3 });
   });

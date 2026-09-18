@@ -57,6 +57,10 @@ export async function cleanDb(): Promise<void> {
   await ds.query('DELETE FROM payments');
 }
 
+export async function resetGatewayState(): Promise<void> {
+  await gatewayClient.post('/admin/reset');
+}
+
 export async function resetGatewayToHealthy(): Promise<void> {
   await gatewayClient.put('/admin/config', { mode: 'always-success' });
 }

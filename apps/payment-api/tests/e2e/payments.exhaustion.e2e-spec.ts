@@ -53,7 +53,7 @@ import { setGatewayMode } from './helpers/gateway';
 import { createPayment, waitForFailed } from './helpers/payments';
 import { queryAttempts } from './helpers/db';
 import { resetBreaker } from './helpers/breaker';
-import { resetGatewayToHealthy, ensureDbConnected, cleanDb, closeDb } from './helpers/setup';
+import { resetGatewayState, resetGatewayToHealthy, ensureDbConnected, cleanDb, closeDb } from './helpers/setup';
 
 describe('Scenario 7 - Total retry exhaustion (MAX_TOTAL_RETRIES=5)', () => {
   const orderId = `E2E-S7-${Date.now()}`;
@@ -63,6 +63,7 @@ describe('Scenario 7 - Total retry exhaustion (MAX_TOTAL_RETRIES=5)', () => {
   beforeAll(async () => {
     await ensureDbConnected();
     await cleanDb();
+    await resetGatewayState();
     await resetBreaker();
     await setGatewayMode('server-error');
   });
