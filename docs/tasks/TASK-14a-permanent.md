@@ -176,6 +176,7 @@ Tidak boleh ada baris `[retry] attempt 2 of N` - kalau ada, berarti retry terjad
 | Test timeout 30s | Status `failed` tidak terdeteksi oleh `waitForTerminalStatus` | Cek `payments.ts` helper - `['succeeded', 'failed'].includes(...)` sudah benar |
 | Masih 500 bukan 400 | Gateway mock mode tidak terganti ke `client-error` | Cek `beforeAll` -> `setGatewayMode('client-error')`. Verifikasi via `GET /admin/config` |
 | `ECONNREFUSED` | Service belum start | Start payment-api + gateway-mock |
+| `Jest did not exit` | DataSource tidak di-destroy di `afterAll` | Pastikan `closeDb()` dipanggil. `closeDb()` sekarang pakai `dataSource.destroy()` (bukan `pgClient.end()`) |
 
 ---
 
@@ -189,6 +190,9 @@ Tidak boleh ada baris `[retry] attempt 2 of N` - kalau ada, berarti retry terjad
 ---
 
 ## 9. Bug History: Permanent Error Di-Retry (FIXED)
+
+> **Note**: Bug 1-5 di bawah berhubungan dengan skenario ini.
+> Bug 6 berhubungan dengan metrics counter yang juga terdampak di skenario ini.
 
 ### Gejala Sebelum Fix
 
@@ -295,6 +299,24 @@ Di `resilient-adapter.ts`:
 | S5 retry-after | rate-limited | 429 | ✅ retryable | TIDAK terdampak |
 | S6 durable | server-error | 500 | ✅ retryable | TIDAK terdampak |
 | S7 exhaustion | server-error | 500 | ✅ retryable | TIDAK terdampak |
+
+### Bug 6: `incRetryAttempt` tidak terpanggil + `ObservabilityModule` tidak di-import (FIXED)
+
+**Gejala**: `retry_attempts_total` counter kosong di `/metrics` endpoint. Meskipun `audit.recordAttempt` sukses (INSERT query terlihat di log), metrics counter tidak ter-increment.
+
+**Root cause**:
+1. `attachAuditCallback` di `payments.service.ts` tidak panggil `this.metrics?.incRetryAttempt()` setelah `audit.recordAttempt`
+2. `PaymentsModule` tidak meng-import `ObservabilityModule` → `MetricsService` tidak ter-inject → `this.metrics` = `undefined` → `this.metrics?.incRetryAttempt()` no-op
+
+**Fix**:
+1. Tambah call `incRetryAttempt` setelah `audit.recordAttempt` di `payments.service.ts`
+2. Tambah `ObservabilityModule` ke `PaymentsModule` imports
+
+**Impact**: Bug ini berdampak ke **semua test** yang mengandalkan metrics assertion (S1, S3, S5, S6, S7). Untuk S2 (permanent), test tidak assert metrics counter naik (permanent error tidak retry), tapi `payments_current_status{status="failed"}` counter juga tidak ter-increment. Setelah fix, semua metrics berfungsi.
+
+**File**: `apps/payment-api/src/modules/payments/payments.service.ts` + `apps/payment-api/src/modules/payments/payments.module.ts`
+
+**Lihat juga**: `TASK-14a-transient.md` section 9 untuk dokumentasi lengkap bug ini.
 
 ---
 

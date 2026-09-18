@@ -10,8 +10,9 @@ export function getUuidColumnType(): ColumnType {
 
 /**
  * Helper untuk tipe timestamp/datetime.
- * 'timestamp' didukung secara native baik oleh PostgreSQL maupun SQLite di TypeORM.
+ * PostgreSQL menggunakan 'timestamp' (native, dengan precision via migration SQL).
+ * SQLite (better-sqlite3) menggunakan 'datetime' (karena tidak support 'timestamp').
  */
 export function getTimestampColumnType(): ColumnType {
-  return 'timestamp';
+  return process.env.DB_TYPE === 'sqlite' ? 'datetime' : 'timestamp';
 }

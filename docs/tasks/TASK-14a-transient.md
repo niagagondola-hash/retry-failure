@@ -184,9 +184,9 @@ Atau format yang dipakai `@retry-failure/resilience` - lihat implementasinya.
 | Test timeout 60s tanpa assertion jalan | Gateway mode tidak ter-set (masih `always-success`) | Cek `beforeAll` -> pastikan `setGatewayMode('fail-first-n', {n:2})` dipanggil sebelum `createPayment` |
 | `attemptCount = 1` padahal expect 3 | Cockatiel tidak retry karena error classification salah - mungkin 500 dianggap permanent | Cek `classifyError` di `packages/resilience` - 500 harus return `retryable` |
 | `trace_id` beda di attempts | Scheduler ikut retry, bukan Cockatiel inline | Pastikan `nextRetryAt` masih NULL selama inline retry. Scheduler hanya boleh pick up kalau status=`scheduled_for_retry` |
-| Test pass tapi metrics counter tidak naik | `MetricsService` tidak di-inject ke `PaymentsService` | Cek `PaymentsModule` providers - `MetricsService` harus ada di `providers: [...]` |
+| Test pass tapi metrics counter tidak naik | `ObservabilityModule` tidak di-import di `PaymentsModule` -> `MetricsService` undefined -> `this.metrics?.incRetryAttempt()` no-op | Cek `PaymentsModule` imports: tambah `ObservabilityModule` dari `'../observability'`. Lihat section 9 Bug History |
 | `ECONNREFUSED localhost:3002` | Gateway mock belum start | `cd apps/payment-gateway-mock && pnpm start:dev` |
-| `Jest did not exit` | pg Client tidak ditutup di `afterAll` | Pastikan `closeDb()` dipanggil - sudah ada di `afterAll` |
+| `Jest did not exit` | DataSource tidak di-destroy di `afterAll` | Pastikan `closeDb()` dipanggil - sudah ada di `afterAll`. `closeDb()` sekarang pakai `dataSource.destroy()` (bukan `pgClient.end()`) |
 
 ---
 
@@ -195,3 +195,91 @@ Atau format yang dipakai `@retry-failure/resilience` - lihat implementasinya.
 - **Jika `MAX_TOTAL_RETRIES < 2`** (mis. 1), Cockatiel retry hanya boleh sekali -> test akan fail karena attemptCount=2. Default konfigurasi: `MAX_TOTAL_RETRIES=5`, aman.
 - **Jika backoff Cockatiel = 1s fixed**, test akan selesai ~5s. Kalau exponential (default), bisa sampai 10-15s. Sesuaikan timeout Jest (`60000` di test sudah aman).
 - Gateway mock **mode tidak auto-reset**. Kalau skenario 1 diikuti skenario 2 tanpa `resetGatewayToHealthy()`, mode `fail-first-n` akan terus aktif -> skenario 2 akan fail. `afterAll` di test ini sudah handle dengan `resetGatewayToHealthy()`.
+
+---
+
+## 9. Bug History: Metrics Counter Tidak Naik (FIXED)
+
+### Gejala
+
+Test S1 fail pada assertion:
+```
+expect(retryFailAfter - retryFailBefore).toBeGreaterThanOrEqual(2);
+// Received: 0
+```
+
+`retry_attempts_total{outcome="failure"}` counter tidak naik meskipun 3 attempts tercatat di `payment_attempts` table.
+
+### Akar Masalah
+
+**2 bug berurutan**:
+
+#### Bug 1: `incRetryAttempt` tidak dipanggil di `attachAuditCallback`
+
+Di `payments.service.ts` `attachAuditCallback()`, setelah `audit.recordAttempt(input)` sukses, method `this.metrics?.incRetryAttempt()` **tidak pernah dipanggil**. Audit row tersimpan (INSERT query terlihat di log), tapi metrics counter tidak ter-increment.
+
+**Fix**: Tambah call ke `incRetryAttempt` setelah `audit.recordAttempt`:
+```typescript
+try {
+  await this.audit.recordAttempt(input);
+
+  // Increment retry_attempts_total metric
+  const isSuccess = input.outcome === AttemptOutcome.SUCCESS;
+  const paymentStatus = isSuccess ? 'succeeded' : 'processing';
+  this.metrics?.incRetryAttempt(
+    isSuccess ? 'success' : 'failure',
+    paymentStatus,
+  );
+} catch (err) {
+  this.logger.error(...);
+}
+```
+
+**File**: `apps/payment-api/src/modules/payments/payments.service.ts`
+
+#### Bug 2: `ObservabilityModule` tidak di-import di `PaymentsModule` (ROOT CAUSE)
+
+Setelah Bug 1 diperbaiki, counter **masih kosong**. Penyebab sebenarnya: `PaymentsModule` tidak meng-import `ObservabilityModule`, sehingga `MetricsService` tidak ter-inject ke `PaymentsService`.
+
+```typescript
+// payments.module.ts SEBELUM (bug):
+@Module({
+  imports: [
+    TypeOrmModule.forFeature([Payment]),
+    GatewayModule,
+    AuditModule,
+    // ⚠️ TIDAK ADA ObservabilityModule!
+  ],
+  ...
+})
+
+// payments.module.ts SESUDAH (fix):
+@Module({
+  imports: [
+    TypeOrmModule.forFeature([Payment]),
+    GatewayModule,
+    AuditModule,
+    ObservabilityModule,  // ← TAMBAH INI
+  ],
+  ...
+})
+```
+
+Karena `@Optional() private readonly metrics?: MetricsService` di `PaymentsService` constructor, ketika `MetricsService` tidak tersedia, `this.metrics` = `undefined`. Akibatnya `this.metrics?.incRetryAttempt()` menjadi no-op (optional chaining).
+
+**File**: `apps/payment-api/src/modules/payments/payments.module.ts`
+
+### Verifikasi Setelah Fix
+
+Metrics endpoint menunjukkan counter naik dengan benar:
+```
+retry_attempts_total{outcome="failure",payment_status="processing"} 2
+retry_attempts_total{outcome="success",payment_status="succeeded"} 1
+payments_current_status{status="succeeded"} 1
+```
+
+### Impact ke Test Lain
+
+Bug 2 berdampak ke **semua test** yang mengandalkan metrics assertion (S1, S3, S5, S6, S7). Setelah fix, semua metrics counter berfungsi dengan benar.
+
+---

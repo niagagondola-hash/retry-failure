@@ -446,7 +446,91 @@ helpers/db.ts:
 
 ---
 
-## 11. Referensi
+## 11. Pattern: Helper Function untuk Type Compatibility
+
+### Aturan
+
+> Jika ada TypeORM column type yang tidak support di kedua driver (PostgreSQL + SQLite), buat **helper function** dengan conditional return berdasarkan `process.env.DB_TYPE`. Jangan hardcode salah satu type di entity decorator.
+
+### Implementasi
+
+File: `apps/payment-api/src/database/helpers/db-types.helper.ts`
+
+```typescript
+import type { ColumnType } from 'typeorm';
+
+/**
+ * UUID: PostgreSQL = 'uuid' (native), SQLite = 'varchar' (36 char).
+ */
+export function getUuidColumnType(): ColumnType {
+  return process.env.DB_TYPE === 'sqlite' ? 'varchar' : 'uuid';
+}
+
+/**
+ * Timestamp: PostgreSQL = 'timestamp' (native), SQLite = 'datetime' (better-sqlite3).
+ */
+export function getTimestampColumnType(): ColumnType {
+  return process.env.DB_TYPE === 'sqlite' ? 'datetime' : 'timestamp';
+}
+```
+
+### Penggunaan di Entity
+
+```typescript
+import { getTimestampColumnType, getUuidColumnType } from '../helpers/db-types.helper';
+
+@Entity('payments')
+export class Payment {
+  @Column({ name: 'next_retry_at', type: getTimestampColumnType(), nullable: true })
+  nextRetryAt: Date | null = null;
+}
+
+@Entity('payment_attempts')
+export class PaymentAttempt {
+  @Column({ name: 'payment_id', type: getUuidColumnType() })
+  paymentId!: string;
+}
+```
+
+### Aturan Tambahan untuk `@CreateDateColumn` / `@UpdateDateColumn`
+
+Decorator ini **tidak perlu** helper function. TypeORM otomatis pilih type berdasarkan driver:
+- PostgreSQL → `timestamp` (via `driver.mappedDataTypes.createDate`)
+- SQLite → `datetime` (via `driver.mappedDataTypes.createDate`)
+
+Cukup pakai tanpa `type` property:
+```typescript
+@CreateDateColumn({ name: 'created_at' })
+createdAt!: Date;
+
+@UpdateDateColumn({ name: 'updated_at' })
+updatedAt!: Date;
+```
+
+### Daftar Type yang Tidak Support di SQLite
+
+| Type | PostgreSQL | SQLite | Solusi |
+|---|---|---|---|
+| `enum` | ✅ native enum | ❌ tidak support | Ganti ke `varchar` + application-layer validation |
+| `timestamp` | ✅ | ❌ tidak support | Helper function: `getTimestampColumnType()` → `datetime` untuk SQLite |
+| `char` | ✅ | ❌ tidak support | Ganti ke `varchar` (functionally equivalent untuk short strings) |
+| `datetime` | ❌ tidak support | ✅ | Helper function: `getTimestampColumnType()` → `timestamp` untuk PostgreSQL |
+| `uuid` (di `@Column`) | ✅ | ❌ tidak support | Helper function: `getUuidColumnType()` → `varchar` untuk SQLite |
+
+### Daftar Type yang Support di Kedua Driver (Tidak Perlu Helper)
+
+| Type | PostgreSQL | SQLite | Note |
+|---|---|---|---|
+| `varchar` | ✅ | ✅ | Generic string type |
+| `int` / `integer` | ✅ | ✅ | Integer type |
+| `boolean` | ✅ | ✅ | Boolean type |
+| `numeric` | ✅ | ✅ | Numeric affinity |
+| `text` | ✅ | ✅ | Large text |
+| `@PrimaryGeneratedColumn('uuid')` | ✅ | ✅ | TypeORM handle UUID generation |
+
+---
+
+## 12. Referensi
 
 - [TypeORM SQLite documentation](https://typeorm.io/data-source-options#sqlite-data-source-options)
 - [TypeORM PostgreSQL documentation](https://typeorm.io/data-source-options#postgres--cockroachdb-data-source-options)
