@@ -38,35 +38,79 @@ async function save() {
 
 <template>
   <Card>
-    <template #title>Gateway Mode Selector</template>
+    <template #title>
+      Gateway Mode Selector
+    </template>
     <template #content>
       <div class="flex flex-col gap-3">
         <div class="flex items-center gap-2">
           <label class="w-32">Mode:</label>
-          <Select v-model="localConfig.mode" :options="modes" class="flex-1" />
+          <Select
+            v-model="localConfig.mode"
+            :options="modes"
+            class="flex-1"
+          />
         </div>
 
-        <div v-if="localConfig.mode === 'fail-first-n'" class="flex items-center gap-2">
+        <div
+          v-if="localConfig.mode === 'fail-first-n'"
+          class="flex items-center gap-2"
+        >
           <label class="w-32">N (fail count):</label>
-          <InputNumber v-model="localConfig.n" :min="0" :max="100" class="flex-1" />
+          <InputNumber
+            v-model="localConfig.n"
+            :min="0"
+            :max="100"
+            class="flex-1"
+          />
         </div>
 
-        <div v-if="localConfig.mode === 'random'" class="flex items-center gap-2">
+        <div
+          v-if="localConfig.mode === 'random'"
+          class="flex items-center gap-2"
+        >
           <label class="w-32">Probability:</label>
-          <InputNumber v-model="localConfig.probability" :min="0" :max="1" :step="0.1" class="flex-1" />
+          <InputNumber
+            v-model="localConfig.probability"
+            :min="0"
+            :max="1"
+            :step="0.1"
+            class="flex-1"
+          />
         </div>
 
-        <div v-if="localConfig.mode === 'rate-limited'" class="flex items-center gap-2">
+        <div
+          v-if="localConfig.mode === 'rate-limited'"
+          class="flex items-center gap-2"
+        >
           <label class="w-32">Retry-After (s):</label>
-          <InputNumber v-model="localConfig.retryAfterSeconds" :min="0" :max="86400" class="flex-1" />
+          <InputNumber
+            v-model="localConfig.retryAfterSeconds"
+            :min="0"
+            :max="86400"
+            class="flex-1"
+          />
         </div>
 
-        <div v-if="localConfig.mode === 'always-timeout'" class="flex items-center gap-2">
+        <div
+          v-if="localConfig.mode === 'always-timeout'"
+          class="flex items-center gap-2"
+        >
           <label class="w-32">Timeout (ms):</label>
-          <InputNumber v-model="localConfig.timeoutMs" :min="0" :max="60000" class="flex-1" />
+          <InputNumber
+            v-model="localConfig.timeoutMs"
+            :min="0"
+            :max="60000"
+            class="flex-1"
+          />
         </div>
 
-        <Button label="Save" icon="pi pi-check" @click="save" :loading="gatewayStore.loading" />
+        <Button
+          label="Save"
+          icon="pi pi-check"
+          :loading="gatewayStore.loading"
+          @click="save"
+        />
       </div>
     </template>
   </Card>

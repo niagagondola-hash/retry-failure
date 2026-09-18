@@ -1,4 +1,4 @@
-import { ref, onUnmounted, type Ref } from 'vue';
+import { ref, onUnmounted } from 'vue';
 
 export function usePolling(fn: () => Promise<void>, intervalMs: number) {
   const isPolling = ref(false);

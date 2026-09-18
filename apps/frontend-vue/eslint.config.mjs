@@ -25,6 +25,7 @@ export default tseslint.config(
       'node_modules/**',
       '*.config.{mjs,js,ts}',
       '**/*.config.{mjs,js,ts}',
+      'components.d.ts',
     ],
   },
   ...tseslint.configs.recommended,

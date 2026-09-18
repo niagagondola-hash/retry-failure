@@ -52,35 +52,72 @@ const retryAttemptsData = computed(() => {
 
 <template>
   <div class="p-4">
-    <h2 class="text-xl font-bold mb-4">Metrics</h2>
+    <h2 class="text-xl font-bold mb-4">
+      Metrics
+    </h2>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
       <Card>
-        <template #title>Payment Status Distribution</template>
+        <template #title>
+          Payment Status Distribution
+        </template>
         <template #content>
-          <Chart v-if="statusData" type="pie" :data="statusData" />
-          <div v-else class="text-gray-500">No data</div>
+          <Chart
+            v-if="statusData"
+            type="pie"
+            :data="statusData"
+          />
+          <div
+            v-else
+            class="text-gray-500"
+          >
+            No data
+          </div>
         </template>
       </Card>
 
       <Card>
-        <template #title>Gateway Requests</template>
+        <template #title>
+          Gateway Requests
+        </template>
         <template #content>
-          <Chart v-if="gatewayRequestsData" type="bar" :data="gatewayRequestsData" />
-          <div v-else class="text-gray-500">No data</div>
+          <Chart
+            v-if="gatewayRequestsData"
+            type="bar"
+            :data="gatewayRequestsData"
+          />
+          <div
+            v-else
+            class="text-gray-500"
+          >
+            No data
+          </div>
         </template>
       </Card>
 
       <Card>
-        <template #title>Retry Attempts</template>
+        <template #title>
+          Retry Attempts
+        </template>
         <template #content>
-          <Chart v-if="retryAttemptsData" type="bar" :data="retryAttemptsData" />
-          <div v-else class="text-gray-500">No data</div>
+          <Chart
+            v-if="retryAttemptsData"
+            type="bar"
+            :data="retryAttemptsData"
+          />
+          <div
+            v-else
+            class="text-gray-500"
+          >
+            No data
+          </div>
         </template>
       </Card>
 
       <Card>
-        <template #title>Raw Metrics</template>
+        <template #title>
+          Raw Metrics
+        </template>
         <template #content>
           <Button
             :label="showRaw ? 'Hide' : 'Show Raw'"

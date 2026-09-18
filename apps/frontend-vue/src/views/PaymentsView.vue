@@ -29,7 +29,9 @@ function onRowClick(event: { data: { id: string } }) {
 <template>
   <div class="p-4">
     <div class="flex items-center justify-between mb-4">
-      <h2 class="text-xl font-bold">Payments</h2>
+      <h2 class="text-xl font-bold">
+        Payments
+      </h2>
       <CreatePaymentDialog @created="paymentsStore.fetchList()" />
     </div>
 
@@ -37,7 +39,7 @@ function onRowClick(event: { data: { id: string } }) {
       <Select
         v-model="statusFilter"
         :options="[null, 'processing', 'succeeded', 'failed', 'scheduled_for_retry']"
-        optionLabel="null"
+        option-label="null"
         placeholder="Filter by status"
         class="w-48"
       />
@@ -48,21 +50,44 @@ function onRowClick(event: { data: { id: string } }) {
       :loading="paymentsStore.loading"
       paginator
       :rows="20"
-      :rowsPerPageOptions="[10, 20, 50]"
-      @row-click="onRowClick"
+      :rows-per-page-options="[10, 20, 50]"
       class="cursor-pointer"
+      @row-click="onRowClick"
     >
-      <Column field="orderId" header="Order ID" sortable />
-      <Column field="amount" header="Amount" sortable />
-      <Column field="currency" header="Currency" />
+      <Column
+        field="orderId"
+        header="Order ID"
+        sortable
+      />
+      <Column
+        field="amount"
+        header="Amount"
+        sortable
+      />
+      <Column
+        field="currency"
+        header="Currency"
+      />
       <Column header="Status">
         <template #body="slotProps">
           <StatusTag :status="slotProps.data.status" />
         </template>
       </Column>
-      <Column field="attemptCount" header="Attempts" sortable />
-      <Column field="totalRetryCount" header="Retries" sortable />
-      <Column field="createdAt" header="Created" sortable>
+      <Column
+        field="attemptCount"
+        header="Attempts"
+        sortable
+      />
+      <Column
+        field="totalRetryCount"
+        header="Retries"
+        sortable
+      />
+      <Column
+        field="createdAt"
+        header="Created"
+        sortable
+      >
         <template #body="slotProps">
           {{ new Date(slotProps.data.createdAt).toLocaleString() }}
         </template>
