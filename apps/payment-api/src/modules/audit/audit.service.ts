@@ -62,7 +62,7 @@ export class AuditService implements AuditPort {
   async listAttempts(paymentId: string): Promise<AttemptView[]> {
     const rows = await this.attemptRepo.find({
       where: { paymentId },
-      order: { attemptNumber: 'ASC' },
+      order: { createdAt: 'ASC' },
     });
     return rows.map((r) => this.toView(r));
   }
