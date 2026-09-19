@@ -121,7 +121,7 @@ describe('PaymentsService - createPayment', () => {
     expect(result.totalRetryCount).toBe(0);
   });
 
-  it('server-error (500) -> status=scheduled_for_retry, totalRetryCount=1', async () => {
+  it('server-error (500) -> status=scheduled_for_retry, totalRetryCount=0 (increment moved to scheduler)', async () => {
     const repo = makeMockRepo();
     const gateway = makeMockGateway({
       status: 'failed' as const,
@@ -136,7 +136,9 @@ describe('PaymentsService - createPayment', () => {
     const result = await svc.createPayment({ orderId: 'ORD-3', amount: 300, currency: 'IDR' });
 
     expect(result.status).toBe(PaymentStatus.SCHEDULED_FOR_RETRY);
-    expect(result.totalRetryCount).toBe(1);
+    // totalRetryCount = 0 because increment moved from PaymentsService to
+    // RetrySchedulerService (PLAN1 section 10.2: scheduler increments durable retry count).
+    expect(result.totalRetryCount).toBe(0);
     expect(result.nextRetryAt).not.toBeNull();
     expect(result.failureReason).toBe('internal server error');
   });
@@ -156,7 +158,9 @@ describe('PaymentsService - createPayment', () => {
     const result = await svc.createPayment({ orderId: 'ORD-4', amount: 400, currency: 'IDR' });
 
     expect(result.status).toBe(PaymentStatus.SCHEDULED_FOR_RETRY);
-    expect(result.totalRetryCount).toBe(1);
+    // totalRetryCount = 0 because increment moved from PaymentsService to
+    // RetrySchedulerService (PLAN1 section 10.2: scheduler increments durable retry count).
+    expect(result.totalRetryCount).toBe(0);
   });
 });
 
@@ -199,8 +203,12 @@ describe('PaymentsService - manualRetry', () => {
   });
 });
 
-describe('PaymentsService - MAX_TOTAL_RETRIES exceeded', () => {
-  it('totalRetryCount=5 + failed result -> status=failed, failureReason=max_total_retries_exceeded', async () => {
+describe('PaymentsService - MAX_TOTAL_RETRIES exceeded (scheduler responsibility)', () => {
+  it('totalRetryCount=5 + failed result -> status=scheduled_for_retry (MAX check is in scheduler, not service)', async () => {
+    // PLAN1 section 10.2: MAX_TOTAL_RETRIES check happens in RetryScheduler.processOne(),
+    // NOT in PaymentsService.executePayment(). The service processes the payment regardless
+    // of totalRetryCount — if the gateway fails, service returns scheduled_for_retry.
+    // The scheduler is responsible for marking as 'failed' when MAX_TOTAL_RETRIES is exceeded.
     const repo = makeMockRepo();
     repo._setPayment(makePayment({ status: PaymentStatus.PROCESSING, totalRetryCount: 5 }));
     const gateway = makeMockGateway({
@@ -214,8 +222,10 @@ describe('PaymentsService - MAX_TOTAL_RETRIES exceeded', () => {
 
     const result = await svc.executePayment('pay-001', { source: 'scheduler' });
 
-    expect(result.status).toBe(PaymentStatus.FAILED);
-    expect(result.failureReason).toBe('max_total_retries_exceeded');
+    // Service returns scheduled_for_retry — does NOT mark as failed
+    // (that's the scheduler's job after this call returns)
+    expect(result.status).toBe(PaymentStatus.SCHEDULED_FOR_RETRY);
+    expect(result.failureReason).toBe('retry_exhausted');
   });
 });
 

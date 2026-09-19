@@ -142,15 +142,18 @@ describe('HttpPaymentGateway - sends correct headers', () => {
     http.post.mockReturnValue(of(makeResponse(200, { gateway_reference: 'ref', replayed: false })));
 
     await gw.charge(SAMPLE_REQ);
+    // Use objectContaining to allow future fields (e.g., timeout) without breaking test.
+    // The adapter now includes `timeout: GATEWAY_TIMEOUT_MS - 200` (=1800ms when GATEWAY_TIMEOUT_MS=2000)
+    // as part of the race condition fix (see worklog 13a-vue-improvements bug #2).
     expect(http.post).toHaveBeenCalledWith(
       'http://localhost:3002/v1/charges',
       { amount: 100, currency: 'IDR', order_id: 'ORD-001' },
-      {
+      expect.objectContaining({
         headers: {
           'Content-Type': 'application/json',
           'Idempotency-Key': 'pay-001',
         },
-      },
+      }),
     );
   });
 });

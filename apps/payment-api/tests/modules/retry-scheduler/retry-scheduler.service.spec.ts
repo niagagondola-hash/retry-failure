@@ -55,6 +55,11 @@ function makeMockPaymentsService() {
 function makeMockRepo(duePayments: Payment[] = []) {
   return {
     findDueRetries: jest.fn(async () => duePayments),
+    // atomicUpdateStatus is called by RetrySchedulerService.processOne()
+    // to increment totalRetryCount and to mark payments as failed when
+    // MAX_TOTAL_RETRIES is exceeded (PLAN1 section 10.2 + section 12).
+    // Returns true to simulate successful conditional update.
+    atomicUpdateStatus: jest.fn(async () => true),
   } as unknown as PaymentRepository;
 }
 
@@ -162,6 +167,13 @@ describe('RetrySchedulerService - poll', () => {
     const firstPoll = svc.poll();
     // Try second poll while first is still running
     await svc.poll();
+
+    // Yield to microtask queue so first poll can progress through:
+    //   findDueRetries (1 hop) -> atomicUpdateStatus (1 hop) -> executePayment
+    // The extra hop is needed because processOne now awaits atomicUpdateStatus
+    // before calling executePayment (PLAN1 section 10.2 + section 12).
+    await Promise.resolve();
+    await Promise.resolve();
 
     expect(paymentsService.executePayment).toHaveBeenCalledTimes(1);
 
