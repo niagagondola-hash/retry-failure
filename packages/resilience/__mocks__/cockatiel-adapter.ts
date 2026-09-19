@@ -193,6 +193,24 @@ class ExponentialBackoff {
   constructor(_opts?: unknown) {}
 }
 
+/**
+ * Mock DelegateBackoff — mirrors cockatiel v4 interface:
+ *   constructor(fn: (context, state?) => { delay: number; state: S } | number)
+ *   .next(context) -> IBackoff<T>
+ *
+ * Used by policies.ts buildRetryPolicy() to wrap a custom backoff function
+ * that reads Retry-After from the error context. The mock just stores the
+ * function; MockRetryPolicy ignores the backoff value (see constructor).
+ */
+class DelegateBackoff<T = unknown, S = void> {
+  constructor(public fn: (context: T, state?: S) => { delay: number; state: S } | number) {}
+  next(context: T): { duration: number; next: (context: T) => unknown } {
+    const result = this.fn(context);
+    const duration = typeof result === 'number' ? result : result.delay;
+    return { duration, next: (ctx: T) => this.next(ctx) };
+  }
+}
+
 const handleAll = Symbol('handleAll');
 
 function retry(_policy: unknown, opts: { maxAttempts: number; backoff: unknown }): MockRetryPolicy {
@@ -239,6 +257,7 @@ export {
   handleAll,
   wrap,
   ExponentialBackoff,
+  DelegateBackoff,
   MockConsecutiveBreaker as ConsecutiveBreaker,
   TIMEOUT_STRATEGY as TimeoutStrategy,
   BrokenCircuitError,
