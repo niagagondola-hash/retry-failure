@@ -37,6 +37,30 @@ Setiap task file (`TASK-*.md`) punya section "Useful commands". Saat menjalankan
 
 ---
 
+### ⚠️ Baca Juga: Development Rules
+
+**[`/CONTRIBUTING.md`](../../CONTRIBUTING.md)** — aturan development (root project). Wajib dibaca sebelum mulai ngoding. Aturan utama:
+
+1. **Setiap commit yang ubah source code WAJIB run `pnpm test` dulu** — jangan commit kondisi broken
+2. **Build `@retry-failure/resilience` sebelum test/app** — `pnpm test` sekarang otomatis build
+3. **Mock file harus maintain parity dengan real adapter** — tambah export di real → update mock juga
+4. **Update test saat refactor behavior** — kalau source behavior berubah, update test assertion
+
+**[`docs/TEST_MAINTENANCE_RULES.md`](../TEST_MAINTENANCE_RULES.md)** — rule khusus test maintenance (pelengkap CONTRIBUTING):
+
+- **Decision framework** saat source vs test conflict (cek PLAN1 dulu!)
+- **Pre-refactor checklist** (cari test yang assert behavior yang akan diubah)
+- **Mock maintenance checklist** (header comment, parity check, dll)
+- **Test coverage tiers** (unit 70% / integration 20% / E2E 10%)
+- **Common pitfalls** (skip tanpa alasan, mock out-of-sync, dll)
+
+**[`docs/PLAN1_Cockatiel_Retry_Failure_Scenario.md`](../PLAN1_Cockatiel_Retry_Failure_Scenario.md)** — **source of truth domain logic**. Saat source vs test konflik, cek PLAN1 untuk tentukan mana yang benar.
+
+**Lihat juga**:
+- [`TASK-test-sync-failures.md`](./TASK-test-sync-failures.md) — catatan 7 test failures yang inspire rule ini (root cause + fix recommendations + cross-check ke PLAN1)
+
+---
+
 ## 1. Ringkasan Eksekusi
 
 Plan rev 2 ditulis ulang untuk stack yang faithful dengan plan asli:
