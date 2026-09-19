@@ -48,9 +48,12 @@ pnpm dev
 
 ## Documentation
 
-- [Plan document](../upload/PLAN1_Cockatiel_Retry_Failure_Scenario.md)
+- [Plan document](../upload/PLAN1_Cockatiel_Retry_Failure_Scenario.md) — **source of truth domain logic**
 - [Task index](docs/tasks/README.md)
 - [Sandbox notes (environment adaptation)](docs/tasks/SANDBOX_NOTES.md)
+- [**CONTRIBUTING — Development Rules**](CONTRIBUTING.md) — wajib baca sebelum ngoding (rule test setelah ubah kode, mock parity, dll)
+- [**Test Maintenance Rules**](docs/TEST_MAINTENANCE_RULES.md) — rule khusus test maintenance + decision framework saat source vs test conflict
+- [Test sync failures — bug analysis](docs/tasks/TASK-test-sync-failures.md) — catatan 7 failures pre-existing + filosofi test maintenance
 
 ## Stack
 
@@ -86,4 +89,13 @@ pnpm --filter payment-api test tests\modules\retry-scheduler\retry-scheduler.ser
 
 #run integration test with log
 pnpm test:e2e 2>&1 | Tee-Object -FilePath "apps\logs\e2e\S-e2e-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
+
+# Run all tests (auto-builds resilience first — see CONTRIBUTING.md Rule #2)
+pnpm test
+
+# Run all tests (skip resilience build — use if resilience dist is already up-to-date)
+pnpm test:fast
 ```
+
+> ⚠️ **Wajib baca [CONTRIBUTING.md](CONTRIBUTING.md)** sebelum mulai ngoding.
+> Aturan utama: setiap commit yang ubah source code WAJIB run `pnpm test` dulu.
