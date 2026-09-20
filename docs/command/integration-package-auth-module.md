@@ -206,3 +206,75 @@ E. Authorization
 F. Klarifikasi
 
     Maksud "auth service akan mengikuti mock dari payment-api"? buatkan saja moct sesuai standard keamanan nanti auth service aja mengikuti standar itu karena kondisi sekarang belum siap, contoh nya link refresh token saja blm ada di auth
+
+maksud saya
+apakah table cache bisa dibuat lebih ringkas saja?
+misal dibuat per session cached_sessions_permissions
+
+**`cached_users`**
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | dari auth |
+| `username` | varchar(64) | |
+| `email` | varchar(128) | nullable |
+| `name` | varchar(128) | |
+| `is_super_admin` | boolean | default false |
+| `last_sync_at` | timestamp(3) | |
+
+**`cached_roles`**
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid PK | dari auth |
+| `name` | varchar(64) | |
+
+**`cached_user_roles`**
+
+| Column | Type | Notes |
+|---|---|---|
+| `user_id` | uuid FK → cached_users | |
+| `role_id` | uuid FK → cached_roles | |
+| PK | (`user_id`, `role_id`) | |
+
+**`sessions`** (jika tidak pakai Redis)
+
+| Column | Type | Notes |
+|---|---|---|
+| `sid` | varchar(64) PK | |
+| `user_id` | uuid | |
+| `role_id` | uuid | |
+| `access_token` | text | encrypted |
+| `refresh_token` | text | encrypted |
+| `access_expires_at` | timestamp(3) | |
+| `refresh_expires_at` | timestamp(3) | |
+| `created_at` | timestamp(3) | |
+| `last_seen_at` | timestamp(3) | |
+
+table baru
+**`cached_sessions_permissions`**
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | int PK | dari auth |
+| `sid` | varchar(64) | dari session|
+| `code` | varchar(64) unique | kode stabil |
+| `name` | varchar(128) | |
+
+cached_sessions_permissions akan sync berdasarkan  last_sync_at pada tabel cached_users
+jadi sync dilakukan persesion user berdasarkan role yang aktif
+
+lalu untuk guards saya setuju dengan anda menggunakan decorator
+
+yg jadi issue buat saya di bagian
+## 8. Strategi Sinkronisasi
+
+### 8.1 Tiga pemicu
+
+| Pemicu | Kapan | Data |
+|---|---|---|
+| Initial sync | Setelah OAuth callback | User + role + menu user tersebut |
+| Background refresh | Scheduled (5–15 menit) | Semua user aktif | => ini di ganti jadi middleware untuk sync data user
+                                                                      per session
+| Webhook | Auth kirim event | Entitas yang berubah |
+apakah semua itu memungkinkan?
