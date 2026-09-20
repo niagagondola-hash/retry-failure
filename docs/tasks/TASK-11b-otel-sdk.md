@@ -4,7 +4,17 @@
 > **Depends on**: 8 (TASK-11 - pino logger + prom-client metrics + AsyncLocalStorage trace context sudah jalan)
 > **Estimated effort**: M (~2-3 jam)
 > **Plan reference**: Section 13.3 (Tracing) + Section 22 (DoD - "Trace payment dapat ditemukan di Jaeger")
-> **Prerequisite**: Docker tersedia (Jaeger + OTLP collector di docker-compose.yml). Tidak bisa di-test di sandbox Z.ai (no Docker).
+> **Prerequisite**: Docker tersedia untuk full verification (Jaeger UI). Sandbox Z.ai (no Docker) hanya bisa verify IS_OTEL=false fallback.
+
+> **Kondisional (penting dibaca)**:
+> - **Sandbox (no Docker)**: IS_OTEL=false default → SDK tidak start, fallback AsyncLocalStorage (TASK-11 simplified). Tidak ada Jaeger export, tidak ada ECONNREFUSED spam. Behavior sama dengan sebelum TASK-11b.
+> - **Local Docker**: set IS_OTEL=true di .env + `docker compose up -d jaeger` → full OTel SDK aktif + Jaeger export + cross-service span tree (payment-api + gateway-mock).
+> - **Test env**: NODE_ENV=test → SDK skip init (test pakai mock, tidak butuh Jaeger).
+>
+> **Revision history**:
+> - v1 (2026-09-13): Initial creation — instrument gateway mock untuk demo cross-service span tree.
+> - v2 (2026-09-20): Revisi remove gateway mock instrumentation (gateway external di production). Scope di-trim ke payment-api only.
+> - **v3 (2026-09-20, current)**: Kembali ke v1 scope (instrument gateway mock) untuk demo cross-service span tree, TAPI preserve v2 conditional notes (sandbox IS_OTEL=false default + local Docker verification). User memutuskan butuh demo cross-service span tree.
 
 ---
 
@@ -353,34 +363,60 @@ jaeger:
 
 ## Acceptance criteria
 
+### Setup (wajib)
+
+- [ ] 6 OTel packages ter-install di `apps/payment-api` (lihat `package.json`).
+- [ ] 6 OTel packages ter-install di `apps/payment-gateway-mock` (lihat `package.json`).
+- [ ] `apps/payment-api/src/otel.ts` dibuat dengan NodeSDK init.
+- [ ] `apps/payment-gateway-mock/src/otel.ts` dibuat dengan NodeSDK init.
+- [ ] `apps/payment-api/src/main.ts` import `./otel` di baris pertama.
+- [ ] `apps/payment-gateway-mock/src/main.ts` import `./otel` di baris pertama.
+- [ ] `.env.example` + `.env.sandbox.example` punya `IS_OTEL=false` default + `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318/v1/traces` default.
+
+### Sandbox verification (IS_OTEL=false, no Docker — Z.ai sandbox)
+
+- [ ] `pnpm test` PASS — OTel SDK tidak aktif (NODE_ENV=test skip init).
+- [ ] `pnpm typecheck` PASS.
+- [ ] `pnpm lint` PASS.
+- [ ] `pnpm --filter payment-api start:dev` start tanpa error (IS_OTEL=false, fallback ALS).
+- [ ] `pnpm --filter payment-gateway-mock start:dev` start tanpa error.
+- [ ] Tidak ada error ECONNREFUSED ke localhost:4318 di log (SDK tidak start karena IS_OTEL=false gating).
+- [ ] `POST /payments` dengan gateway mode `always-success` -> payment succeeded (behavior sama dengan TASK-11 simplified).
+- [ ] `trace_id` di `payment_attempts` DB = UUID format (36 chars, dari ALS fallback `crypto.randomUUID()`).
+
+### Local Docker verification (IS_OTEL=true, with Docker — local machine)
+
 - [ ] `docker compose up -d jaeger` start Jaeger all-in-one di port 16686 + 4318.
+- [ ] Set `IS_OTEL=true` di `apps/payment-api/.env`.
 - [ ] `pnpm --filter payment-api start:dev` start payment-api dengan OTel SDK aktif (log: "SDK started" atau tidak ada error).
+- [ ] `pnpm --filter payment-gateway-mock start:dev` start gateway-mock dengan OTel SDK aktif.
 - [ ] `POST /payments` dengan gateway mode `always-success` -> payment succeeded.
-- [ ] Buka `http://localhost:16686` -> Service dropdown ada `payment-api`.
-- [ ] Cari trace -> lihat span tree:
+- [ ] Buka `http://localhost:16686` -> Service dropdown ada `payment-api` DAN `payment-gateway-mock`.
+- [ ] Cari trace -> lihat span tree (cross-service):
   ```
-  POST /payments (root span, auto by HTTP instrumentation)
-    └── payment.processing (custom span)
-          ├── HTTP POST /v1/charges (attempt #1, auto by axios instrumentation)
-          └── pg.query (INSERT payment_attempts, auto by pg instrumentation)
+  POST /payments (root span, payment-api)
+    └── payment.processing (custom span, payment.id, payment.order_id, payment.source)
+          ├── HTTP POST /v1/charges (attempt #1, payment-api axios span)
+          │     └── POST /v1/charges (gateway-mock child span, cross-service!)
+          └── pg.query (INSERT payment_attempts, payment-api pg span)
   ```
 - [ ] Trace ID di Jaeger = trace ID di `payment_attempts.trace_id` (korelasi terbukti).
 - [ ] Scenario `fail-first-n=2` -> span tree menampilkan 3 attempt spans (2 error + 1 success):
   ```
-  POST /payments
-    └── payment.processing
-          ├── HTTP POST /v1/charges (attempt #1, status: ERROR, http_status=500)
-          ├── HTTP POST /v1/charges (attempt #2, status: ERROR, http_status=500)
-          └── HTTP POST /v1/charges (attempt #3, status: OK, http_status=200)
-  ```
-- [ ] Span error menampilkan exception message + stack trace di Jaeger UI (click span -> "Logs" tab).
-- [ ] (Opsional) Gateway mock juga instrument -> cross-service span tree:
-  ```
   POST /payments (payment-api)
     └── payment.processing
-          └── HTTP POST /v1/charges (payment-api -> gateway-mock)
-                └── POST /v1/charges (gateway-mock, child span)
+          ├── HTTP POST /v1/charges (attempt #1, ERROR 500)
+          │     └── POST /v1/charges (gateway-mock)
+          ├── HTTP POST /v1/charges (attempt #2, ERROR 500)
+          │     └── POST /v1/charges (gateway-mock)
+          └── HTTP POST /v1/charges (attempt #3, OK 200)
+                └── POST /v1/charges (gateway-mock)
   ```
+- [ ] Span error menampilkan exception message + stack trace di Jaeger UI (click span -> "Logs" tab).
+- [ ] Cross-service span tree visible: payment-api spans punya child span dari payment-gateway-mock (via W3C `traceparent` header propagation).
+
+### Quality gates
+
 - [ ] `pnpm typecheck` + `pnpm lint` lulus.
 - [ ] `pnpm test` lulus (OTel SDK tidak aktif di test env - `NODE_ENV=test` skip init).
 
@@ -471,13 +507,28 @@ docker compose down
 
 ## Notes
 
+### Critical implementation notes
+
 - **OTel SDK harus di-import sebelum NestFactory.create()** - auto-instrumentations hook ke Node.js module system (require/import). Bila di-import setelah module system sudah load modules (mis. axios, pg), hook tidak tertangkap -> span tidak dibuat. Pattern: `import './otel'` di baris pertama `main.ts`.
+
+- **IS_OTEL gating di otel.ts (penting)** - File `otel.ts` cek `IS_OTEL === 'true' && NODE_ENV !== 'test'` sebelum start SDK. Ini mencegah:
+  - **Sandbox (no Docker)**: IS_OTEL=false default → SDK tidak start → tidak ada ECONNREFUSED spam ke localhost:4318 (Jaeger tidak running di sandbox).
+  - **Test env**: NODE_ENV=test → SDK skip init → test pakai mock, tidak butuh Jaeger.
+  - **Local Docker**: IS_OTEL=true + Jaeger running → SDK start, full OTel export.
 
 - **NODE_ENV=test skip SDK** - Jest tidak butuh OTel (test pakai mock). `otel.ts` cek `process.env.NODE_ENV !== 'test'` untuk skip init. Test tetap pakai `AsyncLocalStorage` fallback via `getTraceId()`.
 
 - **AsyncLocalStorage tetap dipertahankan** - `getTraceId()` prefer OTel active span, fallback AsyncLocalStorage. Ini untuk backward compatibility dengan TASK-11 code yang pakai `withTrace()`. Bila OTel SDK tidak aktif (test, atau dev tanpa Jaeger), behavior sama dengan TASK-11 simplified.
 
-- **Gateway mock instrumentation opsional** - bila gateway mock TIDAK di-instrument, `traceparent` header tetap di-inject oleh payment-api axios auto-instrumentation, tapi gateway mock tidak create child span. Jaeger UI tetap menampilkan payment-api spans, tapi tidak ada cross-service span. Cross-service span hanya muncul bila kedua service di-instrument.
+### Cross-service span tree (v3 scope)
+
+- **Gateway mock instrument untuk demo** - v3 kembali ke v1 scope: instrument gateway mock supaya Jaeger UI menampilkan cross-service span tree (payment-api + payment-gateway-mock). Ini untuk demo purposes — di production, gateway adalah external service yang tidak bisa di-instrument.
+
+- **Traceparent header propagation** - axios auto-instrumentation di payment-api inject W3C `traceparent` header ke setiap HTTP request ke gateway. HTTP server auto-instrumentation di gateway mock receive header tersebut + create child span. Hasilnya: span tree cross-service di Jaeger UI.
+
+- **Production realitas** - Di production, gateway (Stripe, Midtrans, Xendit) adalah external service. Kita tidak punya akses untuk instrument codebase mereka. Span tree di Jaeger akan berhenti di HTTP client span payment-api (tidak ada child span dari gateway). Untuk demo project ini, gateway mock di-instrument supaya bisa lihat full span tree.
+
+### Other notes
 
 - **Sampling** - demo pakai always-on (100% sampling). Production butuh sampling strategy (head-based 10% atau tail-based dengan adaptive sampling). Document di TASK-15 caveats.
 
@@ -486,6 +537,8 @@ docker compose down
 - **DoD update** - setelah task ini selesai, plan section 22 DoD item "Trace payment dapat ditemukan di Jaeger" -> ✓.
 
 - **TASK-11 tidak perlu di-rerun** - TASK-11b adalah add-on. Bila TASK-11b tidak dieksekusi, TASK-11 simplified tetap berfungsi (trace ID via AsyncLocalStorage, tidak ada Jaeger UI, tapi trace ID di `payment_attempts` + pino log tetap ada).
+
+- **API v2 fix** - @opentelemetry/resources 2.11.0 meng-deprecate `Resource` class. Pakai `resourceFromAttributes()` + `SEMRESATTRS_SERVICE_NAME` (bukan `SemanticResourceAttributes.SERVICE_NAME`).
 
 ---
 

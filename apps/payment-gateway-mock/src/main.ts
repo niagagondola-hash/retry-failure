@@ -8,6 +8,11 @@
  *   (coerce JSON values to DTO types).
  */
 
+// WAJIB: import otel.ts pertama - sebelum apapun yang load modules
+// agar auto-instrumentations hook terpasang sebelum module system load.
+// otel.ts akan cek IS_OTEL + NODE_ENV — sandbox (IS_OTEL=false) skip init.
+import './otel';
+
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';

@@ -22,13 +22,26 @@ const als = new AsyncLocalStorage<TraceContext>();
 
 const IS_OTEL = process.env.IS_OTEL === 'true';
 
+
 // Pre-load @opentelemetry/api bila IS_OTEL=true (CJS require - synchronous)
+interface OtelSpan {
+  recordException(err: Error): void;
+  setStatus(status: { code: number; message?: string }): void;
+  end(): void;
+}
+
 interface OtelApi {
   trace: {
     getSpan(ctx: unknown): { spanContext(): { traceId: string } } | undefined;
+    getTracer(name: string): {
+      startSpan(name: string, opts?: { attributes?: Record<string, unknown> }): OtelSpan;
+    };
+    setSpan(ctx: unknown, span: OtelSpan): unknown;
+    SpanStatusCode: { ERROR: number; OK: number; UNSET: number };
   };
   context: {
     active(): unknown;
+    with<T>(ctx: unknown, fn: () => Promise<T> | T): Promise<T> | T;
   };
 }
 
@@ -39,7 +52,7 @@ if (IS_OTEL) {
     const api = require('@opentelemetry/api');
     otelApi = { trace: api.trace, context: api.context };
   } catch {
-    // @opentelemetry/api tidak ter-install (TASK-11b belum dieksekusi)
+    // @opentelemetry/api tidak ter-install
   }
 }
 
@@ -91,5 +104,52 @@ export function setTracePaymentId(paymentId: string): void {
   const store = als.getStore();
   if (store) {
     store.paymentId = paymentId;
+  }
+}
+
+/**
+ * Wrap fn dengan custom OTel span — kondisional IS_OTEL.
+ *
+ * IS_OTEL=false (sandbox default): just call fn() tanpa span creation.
+ *   Tidak ada overhead OTel API call. Behavior sama dengan TASK-11 simplified.
+ *
+ * IS_OTEL=true (local Docker + Jaeger): create span + wrap fn dengan
+ *   otelApi.context.with(trace.setSpan(...), fn). Span attributes di-set,
+ *   exception di-record kalau error, span.end() di finally.
+ *
+ * Usage di payments.service.ts:
+ *   return withOtelSpan('payment.processing', { 'payment.id': paymentId, ... }, async () => {
+ *     // existing executePayment body (gateway.charge + applyOutcome)
+ *   });
+ */
+export async function withOtelSpan<T>(
+  name: string,
+  attributes: Record<string, string | number>,
+  fn: () => Promise<T>,
+): Promise<T> {
+  // IS_OTEL=false: just run fn tanpa span (no overhead)
+  if (!otelApi) {
+    return fn();
+  }
+
+  // IS_OTEL=true: create span + wrap fn
+  const tracer = otelApi.trace.getTracer('payment-api');
+  const span = tracer.startSpan(name, { attributes });
+
+  try {
+    const result = await otelApi.context.with(
+      otelApi.trace.setSpan(otelApi.context.active(), span),
+      fn,
+    );
+    return result;
+  } catch (err) {
+    span.recordException(err instanceof Error ? err : new Error(String(err)));
+    span.setStatus({
+      code: otelApi.trace.SpanStatusCode.ERROR,
+      message: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
+  } finally {
+    span.end();
   }
 }

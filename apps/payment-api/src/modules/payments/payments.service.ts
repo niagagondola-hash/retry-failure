@@ -16,7 +16,7 @@ import { deriveIdempotencyKey } from '../gateway/idempotency-key';
 import { AUDIT_PORT, type AuditPort, type RecordAttemptInput, type AttemptView } from './audit/audit-port';
 import { assertCanTransition } from './state-machine';
 import type { CreatePaymentDto } from './dto/create-payment.dto';
-import { withTrace, getTraceId, setTracePaymentId } from '../observability/trace-context';
+import { withTrace, getTraceId, setTracePaymentId, withOtelSpan } from '../observability/trace-context';
 import { MetricsService } from '../observability/metrics.service';
 
 export interface ExecuteOptions {
@@ -114,25 +114,40 @@ export class PaymentsService {
 
       this.attachAuditCallback(traceId, idempotencyKey);
 
-      let result: ChargeResult;
-      try {
-        result = await this.gateway.charge({
-          paymentId,
-          orderId: payment.orderId,
-          amount: payment.amount,
-          currency: payment.currency,
-        });
-      } catch (err) {
-        this.logger.error({ paymentId, traceId, err }, 'gateway.charge threw unexpectedly');
-        result = {
-          status: 'failed',
-          replayed: false,
-          errorCode: 'unexpected_exception',
-          errorMessage: err instanceof Error ? err.message : String(err),
-        };
-      }
+      // Custom OTel span 'payment.processing' via withOtelSpan helper.
+      // withOtelSpan is kondisional IS_OTEL:
+      //   - IS_OTEL=false (sandbox default): just call fn() tanpa span creation (no overhead).
+      //   - IS_OTEL=true (local Docker + Jaeger): create span + wrap fn dengan context.with.
+      // Existing executePayment body (gateway.charge + applyOutcome) preserved, hanya di-wrap.
+      return withOtelSpan(
+        'payment.processing',
+        {
+          'payment.id': paymentId,
+          'payment.order_id': payment.orderId,
+          'payment.source': options.source,
+        },
+        async () => {
+          let result: ChargeResult;
+          try {
+            result = await this.gateway.charge({
+              paymentId,
+              orderId: payment.orderId,
+              amount: payment.amount,
+              currency: payment.currency,
+            });
+          } catch (err) {
+            this.logger.error({ paymentId, traceId, err }, 'gateway.charge threw unexpectedly');
+            result = {
+              status: 'failed',
+              replayed: false,
+              errorCode: 'unexpected_exception',
+              errorMessage: err instanceof Error ? err.message : String(err),
+            };
+          }
 
-      return this.applyOutcome(paymentId, result, { traceId, idempotencyKey, source: options.source });
+          return this.applyOutcome(paymentId, result, { traceId, idempotencyKey, source: options.source });
+        },
+      );
     }, { paymentId, source: options.source });
   }
 
