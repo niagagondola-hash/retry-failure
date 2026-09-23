@@ -82,6 +82,7 @@ Adaptasi lingkungan spesifik (port conflict, pnpm availability, Docker availabil
 | 10 | `TASK-13-vue-frontend.md` | Vue 3 + PrimeVue dashboard (`apps/frontend-vue`) | 6-b | L |
 | 11 | `TASK-14-e2e-scenarios.md` | E2E: Jest+supertest + Agent Browser | 7, 8, 9, 10 | M |
 | 12 | `TASK-15-documentation.md` | README + demo guide + production caveats | 11 | S |
+| 13 | `TASK-16-test-scenario-diagrams.md` | Test scenario diagrams (Mermaid) — post-plan | 12 | M |
 
 ### Dependency graph
 
@@ -232,3 +233,31 @@ Untuk komunikasi antar service, gunakan env variable (`process.env.GATEWAY_URL`,
 - [ ] Frontend Vue+PrimeVue dapat menjalankan semua scenario A–E.
 - [ ] Frontend Next.js preview sandbox dapat menampilkan data dari payment-api.
 - [ ] README menjelaskan failure scenarios + business impact.
+
+---
+
+## 6. Post-Plan Documentation (TASK-15 + TASK-16)
+
+Setelah plan rev 2 complete (TASK-01 sampai TASK-15), ada 2 task post-plan yang fokus ke documentation:
+
+### TASK-15 — Documentation, Demo Guide & Production Caveats
+
+> Business-facing docs untuk stakeholder / next engineer / future-self.
+> Plan reference: Section 17 + 19 + 20 + 22
+
+- [`TASK-15-documentation.md`](./TASK-15-documentation.md) — task plan
+- Output files (4): `README.md`, `docs/DEMO_SCENARIOS.md`, `docs/PRODUCTION_CAVEATS.md`, `docs/ADAPTATION_NOTES.md`
+
+### TASK-16 — Test Scenario Diagrams
+
+> Engineering-facing docs untuk developer yang maintain test.
+> Created setelah insiden 7 test failures yang sulit dipahami tanpa visual flow.
+
+- [`TASK-16-test-scenario-diagrams.md`](./TASK-16-test-scenario-diagrams.md) — task plan
+- Output: `docs/skenario/` folder dengan 1 file per spec module + index README
+- Prioritas awal: 4 module paling kompleks (retry-scheduler, idempotency, resilient-adapter, composition)
+- Format: Mermaid diagrams (sequence + flowchart + state — mix sesuai konteks)
+- Lihat juga:
+  - [`docs/skenario/README.md`](../skenario/README.md) — index file semua scenario diagrams
+  - [`docs/TEST_MAINTENANCE_RULES.md`](../TEST_MAINTENANCE_RULES.md) — rule test maintenance + decision framework
+  - [`TASK-test-sync-failures.md`](./TASK-test-sync-failures.md) — bug analysis yang inspire TASK-16
