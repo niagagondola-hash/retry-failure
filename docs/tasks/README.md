@@ -246,7 +246,11 @@ Setelah plan rev 2 complete (TASK-01 sampai TASK-15), ada 2 task post-plan yang 
 > Plan reference: Section 17 + 19 + 20 + 22
 
 - [`TASK-15-documentation.md`](./TASK-15-documentation.md) — task plan
-- Output files (4): `README.md`, `docs/DEMO_SCENARIOS.md`, `docs/PRODUCTION_CAVEATS.md`, `docs/ADAPTATION_NOTES.md`
+- Output files (4):
+  - [`README.md`](../../README.md) — root project README (quick start + services + structure + docs index)
+  - [`docs/DEMO_SCENARIOS.md`](../DEMO_SCENARIOS.md) — narasi 5 demo A-E + business impact + curl steps
+  - [`docs/PRODUCTION_CAVEATS.md`](../PRODUCTION_CAVEATS.md) — production caveats + sandbox adaptation + sample PromQL queries
+  - [`docs/ADAPTATION_NOTES.md`](../ADAPTATION_NOTES.md) — plan vs implementation comparison table (8 preserved + 22 adapted)
 
 ### TASK-16 — Test Scenario Diagrams
 

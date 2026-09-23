@@ -16,8 +16,11 @@
 | 3 | `MetricsService` fat interface (8 method publik) | Medium | M (1-2 jam) | I — Interface Segregation |
 | 4 | Controller depend concrete class, bukan interface | Low | M (1 jam) | D — Dependency Inversion |
 | 5 | `MetricsService` 3 responsibility (setup + record + expose) | Low | M (1-2 jam) | S — Single Responsibility |
+| 6 | `src/data-source.ts` legacy orphan (duplicate dengan `database/data-source.ts`) | Low | S (5 menit) | Clean code — dead code + duplicate |
+| 7 | `src/config/configuration.ts` legacy orphan (typed config tidak dipakai) | Low | S (5 menit) | Clean code — dead code |
+| 8 | `src/config/env.ts` legacy orphan (class-validator tidak dipakai, Joi yang aktif) | Low | S (5 menit) | Clean code — dead code + duplicate validation |
 
-**Total estimasi**: ~3-5 jam kalau semua di-refactor. Tapi bisa incremental.
+**Total estimasi**: ~4-6 jam kalau semua di-refactor. Tapi bisa incremental. Issues 1, 6, 7, 8 adalah quick wins (masing-masing 5 menit delete dead code).
 
 ---
 
@@ -391,6 +394,178 @@ class MetricsExporter {
 
 ---
 
+### Issue 6: `src/data-source.ts` Legacy Orphan (Dead Code)
+
+**Severity**: Low
+**Effort**: S (5 menit)
+**Clean code violation**: Dead code + duplicate
+
+#### Deskripsi
+
+Ada **2 file `data-source.ts`** di folder berbeda:
+
+```
+apps/payment-api/src/
+├── data-source.ts                    ← LEGACY ORPHAN (TIDAK DIPAKAI)
+│   - Hardcoded type: 'postgres'
+│   - Tidak ada dual-driver support (DB_TYPE=sqlite)
+│   - Tidak pakai buildDbConfig() factory
+│
+└── database/
+    └── data-source.ts                ← ACTIVE (DIPAKAI)
+        - Pakai buildDbConfig() dari db-config.ts (TASK-14b dual env)
+        - Support DB_TYPE=postgres + DB_TYPE=sqlite
+```
+
+#### Bukti Tidak Dipakai
+
+```bash
+# Search import di seluruh codebase
+grep -rn "import.*data-source" apps/payment-api/src/
+# Expected: kosong (tidak ada yang import dari src/data-source.ts)
+
+# package.json scripts pakai yang di database/ folder:
+grep "data-source" apps/payment-api/package.json
+# "db:migrate": "... migration:run -d src/database/data-source.ts"
+# "db:migrate:revert": "... migration:revert -d src/database/data-source.ts"
+# "db:migration:generate": "... migration:generate -d src/database/data-source.ts"
+#                                                                    ↑ folder database/
+```
+
+#### Pelanggaran
+
+- ❌ **Dead code** — `src/data-source.ts` tidak di-import siapapun
+- ❌ **Duplicate** — 2 file dengan nama sama, logic berbeda (legacy hardcoded postgres vs active dual-driver)
+- ❌ **Confusion** — developer baru tidak tahu yang mana dipakai
+
+#### Rekomendasi Refactor
+
+```bash
+# Delete legacy orphan
+rm apps/payment-api/src/data-source.ts
+```
+
+**Verify**: `pnpm typecheck` + `pnpm test` tetap PASS setelah delete (tidak ada yang reference file ini).
+
+---
+
+### Issue 7: `src/config/configuration.ts` Legacy Orphan (Dead Code)
+
+**Severity**: Low
+**Effort**: S (5 menit)
+**Clean code violation**: Dead code + naming conflict potential
+
+#### Deskripsi
+
+`configuration.ts` define `AppConfig` interface + `loadConfig()` function, tapi **tidak di-import siapapun**:
+
+```typescript
+// apps/payment-api/src/config/configuration.ts
+export interface AppConfig {
+  nodeEnv: string;
+  port: number;
+  gatewayUrl: string;
+  // ... 14 fields typed
+}
+
+export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
+  // ... typed config loader
+}
+```
+
+**Yang dipakai**:
+- `config.module.ts` → `ConfigModule.forRoot({ validationSchema })` (Joi schema, bukan typed config)
+- `validation.schema.ts` — Joi validation (yang sebenarnya dipakai)
+
+#### Bukti Tidak Dipakai
+
+```bash
+# Search import di seluruh codebase
+grep -rn "from.*config/configuration\|AppConfig\|loadConfig" apps/payment-api/src/
+# Expected: kosong (tidak ada yang import dari configuration.ts)
+# Hanya self-reference di configuration.ts sendiri
+```
+
+#### Pelanggaran
+
+- ❌ **Dead code** — `configuration.ts` tidak di-import siapapun
+- ❌ **Naming conflict potential** — `AppConfig` interface bisa conflict dengan future code
+- ❌ **Confusion** — developer mungkin pakai typed config dari sini, padahal yang aktif Joi schema
+
+#### Rekomendasi Refactor
+
+**Opsi A** (delete — recommended):
+```bash
+rm apps/payment-api/src/config/configuration.ts
+```
+
+**Opsi B** (integrate — kalau mau typed config):
+- Update `config.module.ts` untuk pakai `loadConfig()` sebagai `load: loadConfig`
+- Tapi ini butuh refactor + test sync
+
+**Recommended**: Delete (Opsi A) — Joi schema di `validation.schema.ts` sudah cukup untuk validation, dan ConfigService.get<T>() sudah provide type safety di runtime.
+
+---
+
+### Issue 8: `src/config/env.ts` Legacy Orphan (Dead Code)
+
+**Severity**: Low
+**Effort**: S (5 menit)
+**Clean code violation**: Dead code + duplicate validation logic
+
+#### Deskripsi
+
+`env.ts` define `EnvironmentVariables` class dengan class-validator decorators, tapi **tidak di-integrate ke ConfigModule**:
+
+```typescript
+// apps/payment-api/src/config/env.ts
+class EnvironmentVariables {
+  @IsString() @IsOptional()
+  NODE_ENV: string = 'development';
+
+  @IsInt() @Min(1) @Max(65535)
+  @Type(() => Number)
+  PORT: number = 3001;
+
+  // ... 18 fields dengan class-validator decorators
+}
+```
+
+**Yang dipakai**:
+- `config.module.ts` → `ConfigModule.forRoot({ validationSchema })` (Joi schema)
+- `validation.schema.ts` — Joi validation (yang sebenarnya dipakai)
+
+#### Bukti Tidak Dipakai
+
+```bash
+# Search import di seluruh codebase
+grep -rn "from.*config/env\|EnvironmentVariables" apps/payment-api/src/
+# Expected: kosong (tidak ada yang import dari env.ts)
+# Hanya self-reference di env.ts sendiri
+```
+
+#### Pelanggaran
+
+- ❌ **Dead code** — `env.ts` tidak di-import siapapun
+- ❌ **Duplicate validation logic** — 2 validation system (Joi di validation.schema.ts + class-validator di env.ts)
+- ❌ **Confusion** — developer tidak tahu validation yang mana yang dipakai (answer: Joi)
+
+#### Rekomendasi Refactor
+
+**Opsi A** (delete — recommended):
+```bash
+rm apps/payment-api/src/config/env.ts
+```
+
+**Opsi B** (migrate dari Joi ke class-validator — kalau mau pure typed config):
+- Replace `validation.schema.ts` (Joi) dengan `env.ts` (class-validator)
+- Update `config.module.ts` untuk pakai `validateSync` dari env.ts
+- Tapi ini butuh refactor + test sync, dan Joi sudah work fine
+
+**Recommended**: Delete (Opsi A) — Joi schema di `validation.schema.ts` sudah work, dan class-validator approach duplikat.
+
+---
+
 ## 📊 Analysis: Pure SOLID vs Pragmatic
 
 | Approach | Plus | Minus |
@@ -405,10 +580,24 @@ class MetricsExporter {
 
 ### Priority 1: Quick Wins (do first)
 
-**Issue 1** (delete legacy stub) — **5 menit, no risk**:
+**Issues 1, 6, 7, 8** (delete dead code) — **20 menit total, no risk**:
 ```bash
+# Issue 1: delete legacy metrics stub
 rm apps/payment-api/src/modules/metrics/metrics.service.ts
-# Update index.ts
+# Update apps/payment-api/src/modules/metrics/index.ts (hapus export legacy)
+
+# Issue 6: delete legacy data-source orphan (duplicate dengan database/data-source.ts)
+rm apps/payment-api/src/data-source.ts
+
+# Issue 7: delete legacy configuration.ts (typed config tidak dipakai, Joi yang aktif)
+rm apps/payment-api/src/config/configuration.ts
+
+# Issue 8: delete legacy env.ts (class-validator tidak dipakai, Joi yang aktif)
+rm apps/payment-api/src/config/env.ts
+
+# Verify
+pnpm typecheck  # Expected: PASS (tidak ada yang import file-file ini)
+pnpm test       # Expected: PASS (142/142)
 ```
 
 ### Priority 2: Clean Code Improvement
@@ -452,6 +641,7 @@ rm apps/payment-api/src/modules/metrics/metrics.service.ts
 | Tanggal | Perubahan | Alasan |
 |---|---|---|
 | 2026-09-20 | Initial creation | Code review observability module — ditemukan 5 technical debt issues terkait SOLID + clean code |
+| 2026-09-23 | Tambah Issues 6, 7, 8 | Code review config + data-source files — ditemukan 3 legacy orphan files (dead code): `src/data-source.ts` (duplicate dengan `database/data-source.ts`), `src/config/configuration.ts` (typed config tidak dipakai), `src/config/env.ts` (class-validator tidak dipakai, Joi yang aktif). Semua Low severity, S effort (delete dead code). |
 
 ---
 

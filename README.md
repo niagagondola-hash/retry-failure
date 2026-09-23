@@ -46,17 +46,67 @@ pnpm dev
 | Jaeger UI | 16686 | - | docker-compose |
 | OTel OTLP | 4318 | - | docker-compose |
 
+> **Port shift rationale**: Port 3000 dipakai Next.js sandbox preview di parent root, jadi `payment-api` geser ke 3001 dan `gateway-mock` ke 3002 (sandbox mode). Detail adaptasi plan → implementation lihat [`docs/ADAPTATION_NOTES.md`](docs/ADAPTATION_NOTES.md#7-port-assignments).
+
+## Project structure
+
+```text
+retry-failure/
+├── apps/
+│   ├── payment-api/              # NestJS - payment orchestration (port 3001 sandbox / 3000 local)
+│   ├── payment-gateway-mock/     # NestJS - mock gateway 8 failure modes (port 3002 / 3001)
+│   └── frontend-vue/             # Vue 3 + PrimeVue dashboard (port 5173)
+├── packages/
+│   └── resilience/               # Cockatiel policies (retry+breaker+timeout composition)
+├── docker/                        # postgres init.sql + Prometheus/Grafana config
+├── docs/
+│   ├── tasks/                    # TASK-01..16 spec files + README index
+│   ├── e2e-results.md            # E2E test results (7 backend + 5 UI scenarios)
+│   ├── DEMO_SCENARIOS.md         # Demo A–E guide + business impact
+│   ├── PRODUCTION_CAVEATS.md     # Caveats + sandbox adaptation
+│   ├── ADAPTATION_NOTES.md        # Plan vs implementation comparison
+│   ├── GATEWAY_MOCK_MODES.md     # Detail 8 failure modes + timeout architecture
+│   ├── DATABASE_ERD.md           # Schema reference (narrative + DBML)
+│   └── TECHNICAL_DEBT.md         # 8 SOLID/clean code issues untuk refactor
+├── docker-compose.yml             # postgres + jaeger + prometheus + grafana
+├── package.json                   # root workspace
+├── pnpm-workspace.yaml
+├── tsconfig.base.json
+└── README.md                      # this file
+```
+
+## Payment Retry Demo
+
+Demo ini membuktikan 5 pilar resilience (retry, permanent-error skip, circuit breaker, **idempotency anti double-charge**, server-directed retry) via 5 scenario A–E dengan business impact.
+
+**Hero scenario**: **Demo D — idempotency mencegah double charge**. Bila gateway sukses charge kartu customer tapi response hilang di network, retry tanpa idempotency akan menyebabkan double-charge. Demo D membuktikan `Idempotency-Key` header mencegah hal ini — `actualCharges === 1` walaupun `gatewayCallCount >= 2`.
+
+**Cara menjalankan demo**:
+- **Opsi 1 (recommended)**: Vue+PrimeVue dashboard di `http://localhost:5173` → tab "Demo Scenarios" → klik tombol A/B/C/D/E
+- **Opsi 2 (audit / CI)**: curl commands — lihat per scenario di [`docs/DEMO_SCENARIOS.md`](docs/DEMO_SCENARIOS.md)
+
+**Bukti pengujian otomatis**: Lihat [`docs/e2e-results.md`](docs/e2e-results.md) untuk tabel PASS/FAIL 7 backend scenarios + 5 UI demos dengan evidence (test output, DB snapshot, metric snapshot).
+
 ## Documentation
 
-- [Plan document](../upload/PLAN1_Cockatiel_Retry_Failure_Scenario.md) — **source of truth domain logic**
-- [Task index](docs/tasks/README.md)
-- [Sandbox notes (environment adaptation)](docs/tasks/SANDBOX_NOTES.md)
+### Project docs (final handover — TASK-15)
+
+- [**Demo Scenarios A–E + business impact**](docs/DEMO_SCENARIOS.md) — narrative demo guide, hero scenario D (idempotency anti double-charge), resep run via Vue dashboard atau curl
+- [**Production Caveats + sandbox adaptation**](docs/PRODUCTION_CAVEATS.md) — plan section 20 (4 caveat utama) + 11 sandbox adaptation bullets + sample PromQL queries
+- [**Adaptation Notes: plan vs implementation**](docs/ADAPTATION_NOTES.md) — 8 hal yang dipertahankan utuh, 22 adaptasi dengan alasan + cross-reference matrix
+- [**E2E Test Results**](docs/e2e-results.md) — 7 backend + 5 UI scenarios PASS dengan evidence (sandbox SQLite + lokal PostgreSQL)
+- [**Technical Debt**](docs/TECHNICAL_DEBT.md) — 8 SOLID/clean code issues untuk refactor mendatang (observability module)
+
+### Reference & architecture docs
+
+- [Plan document](../upload/PLAN1_Cockatiel_Retry_Failure_Scenario.md) — **source of truth domain logic** (rev 2)
+- [Task index](docs/tasks/README.md) — TASK-01..16 spec files + execution order + DoD checklist
+- [Sandbox notes (environment adaptation)](docs/tasks/SANDBOX_NOTES.md) — pre-flight check LOCAL vs SANDBOX
 - [**CONTRIBUTING — Development Rules**](CONTRIBUTING.md) — wajib baca sebelum ngoding (rule test setelah ubah kode, mock parity, dll)
 - [**Test Maintenance Rules**](docs/TEST_MAINTENANCE_RULES.md) — rule khusus test maintenance + decision framework saat source vs test conflict
 - [**Database ERD**](docs/DATABASE_ERD.md) — narasi ERD + cara pakai di dbdiagram.io
 - [**Database ERD (DBML)**](docs/DATABASE_ERD.dbml) — copy-paste ke https://dbdiagram.io/d untuk render visual
-- [**Gateway Mock Modes**](docs/GATEWAY_MOCK_MODES.md) — detail 8 failure modes + arsitektur timeout + use case
-- [**Technical Debt**](docs/TECHNICAL_DEBT.md) — catatan technical debt observability module (SOLID + clean code issues) untuk refactor mendatang
+- [**Gateway Mock Modes**](docs/GATEWAY_MOCK_MODES.md) — detail 8 failure modes + arsitektur timeout 3 layer + use case
 - [Test sync failures — bug analysis](docs/tasks/TASK-test-sync-failures.md) — catatan 7 failures pre-existing + filosofi test maintenance
 
 ## Stack
