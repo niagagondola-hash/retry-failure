@@ -167,17 +167,16 @@ retry-failure/
 │   ├── README.md
 │   ├── SANDBOX_NOTES.md
 │   ├── plan1-cockatiel-retry-failure-scenario/
+│   │   ├── tasks/
 │   │   ├── README.md
 │   │   └── PLAN1_Cockatiel_Retry_Failure_Scenario.md
-│   ├── plan2-auth-integration/
-│   │   ├── README.md
-│   │   ├── PLAN-Auth_Integration.md
-│   │   ├── AUTH_CONTRACT.md
-│   │   ├── auth-openapi.json
-│   │   └── CHANGELOG-AUTH.md
-│   └── tasks/
-│       ├── plan1-tasks.md
-│       └── plan2-tasks.md
+│   └── plan2-auth-integration/
+│       ├── tasks/
+│       ├── README.md
+│       ├── PLAN-Auth_Integration.md
+│       ├── AUTH_CONTRACT.md
+│       ├── auth-openapi.json
+│       └── CHANGELOG-AUTH.md
 ├── docker-compose.yml
 ├── pnpm-workspace.yaml
 ├── tsconfig.base.json
@@ -1319,198 +1318,6 @@ PROD
 
 ---
 
-# LAMPIRAN A — `docs/plan2-auth-integration/README.md`
-
-```markdown
-# Plan 2 — Auth Integration
-
-Integrasi auth service eksternal ke `payment-api` dengan OAuth 2.0 + PKCE
-via BFF, JWT tipis, otorisasi berbasis menu, dan lazy sync per-sesi.
-
-## Status
-
-- **Version**: 1.0.0
-- **Status**: FINAL
-- **Created**: 2026-09-20
-- **Last updated**: 2026-09-23
-- **Baseline**: `../plan1-cockatiel-retry-failure-scenario/PLAN1_Cockatiel_Retry_Failure_Scenario.md`
-
-## Dokumen
-
-| Dokumen | Versi | Deskripsi |
-|---|---|---|
-| [PLAN-Auth_Integration.md](./PLAN-Auth_Integration.md) | 1.0.0 | Plan utama |
-| [AUTH_CONTRACT.md](./AUTH_CONTRACT.md) | 1.0.0 | Kontrak auth |
-| [auth-openapi.json](./auth-openapi.json) | — | Artefak OpenAPI |
-| [CHANGELOG-AUTH.md](./CHANGELOG-AUTH.md) | — | Riwayat versi kontrak |
-
-## Dokumen Terkait (shared)
-
-| Dokumen | Deskripsi |
-|---|---|
-| [../SANDBOX_NOTES.md](../SANDBOX_NOTES.md) | Catatan environment |
-| [../plan1-cockatiel-retry-failure-scenario/PLAN1_Cockatiel_Retry_Failure_Scenario.md](../plan1-cockatiel-retry-failure-scenario/PLAN1_Cockatiel_Retry_Failure_Scenario.md) | Plan 1 (baseline) |
-
-## Ringkasan Cepat
-
-| Aspek | Keputusan |
-|---|---|
-| Alur login | OAuth 2.0 Authorization Code + PKCE (S256) |
-| Client | Backend payment (confidential) |
-| Pola | BFF |
-| Token di browser | Tidak ada — hanya cookie `HttpOnly` |
-| Signing JWT | RS256 + JWKS |
-| Payload JWT | `sub`, `username`, `roleId`, `iss`, `aud`, `exp`, `iat`, `jti` |
-| Otorisasi | Berbasis menu code, dari cache lokal |
-| Cache | 2 tabel: `cached_users` + `sessions` |
-| Sinkronisasi | Initial + Lazy (SWR) + Webhook (opsional) |
-| Versioning | 4 level: plan, contract, API, auth service |
-
-## Cara Pakai
-
-1. Baca **PLAN-Auth_Integration.md** untuk arsitektur lengkap.
-2. Baca **AUTH_CONTRACT.md** sebelum implementasi `packages/security`.
-3. Lihat **auth-openapi.json** untuk detail endpoint auth.
-4. Cek **CHANGELOG-AUTH.md** saat auth rilis versi baru.
-5. Cek **../SANDBOX_NOTES.md** saat setup environment.
-```
-
----
-
-# LAMPIRAN B — Template `docs/plan2-auth-integration/AUTH_CONTRACT.md`
-
-```markdown
-# AUTH CONTRACT
-
-> **Version**: 1.0.0
-> **Auth service version**: 0.1.0
-> **Effective**: 2026-09-20
-> **Last updated**: 2026-09-23
-
-## 1. Base URL
-
-| Environment | URL |
-|---|---|
-| Dev | `http://localhost:4001` |
-| Staging | TBD |
-| Production | TBD |
-
-## 2. OAuth2 Endpoints
-
-| Method | Path | Deskripsi |
-|---|---|---|
-| GET | `/oauth/authorize` | Authorization endpoint |
-| POST | `/oauth/token` | Token endpoint |
-| POST | `/oauth/revoke` | Revoke |
-| GET | `/.well-known/jwks.json` | JWKS |
-
-## 3. Internal Endpoints
-
-| Method | Path | Auth | Deskripsi |
-|---|---|---|---|
-| GET | `/api/v1/me/permissions` | Bearer | User + role + permission codes |
-| POST | `/api/v1/auth/switch-role` | Bearer | Ganti active role |
-
-## 4. JWT Claims
-
-| Klaim | Tipe | Wajib | Contoh |
-|---|---|---|---|
-| `sub` | string (uuid) | ya | `a0eebc99-...` |
-| `username` | string | ya | `budi_santoso` |
-| `roleId` | string (uuid) | ya | `d3eebc99-...` |
-| `iss` | string | ya | `https://auth.example.com` |
-| `aud` | string | ya | `payment-api` |
-| `exp` | number | ya | `1730000000` |
-| `iat` | number | ya | `1729999100` |
-| `jti` | string | ya | `...` |
-
-## 5. Signing
-
-- Algoritma: RS256
-- JWKS URL: `/.well-known/jwks.json`
-- Rotasi: `kid` berbeda, dual-key period
-
-## 6. Response `/api/v1/me/permissions`
-
-```json
-{
-  "success": true,
-  "data": {
-    "user": {
-      "id": "uuid",
-      "username": "budi_santoso",
-      "email": "budi@perusahaan.com",
-      "name": "Budi Santoso",
-      "isSuperAdmin": false
-    },
-    "role": { "id": "role-uuid", "name": "HRD" },
-    "permissionCodes": ["dashboard", "payment.read", "payment.write"]
-  }
-}
-```
-
-## 7. Error Taxonomy
-
-| HTTP | Format | Arti |
-|---|---|---|
-| 400 | `{statusCode, message}` | Validasi gagal |
-| 401 | `{statusCode, message}` | Token invalid / expired |
-| 403 | `{statusCode, message}` | Tidak punya izin |
-| 429 | `{statusCode, message, retryAfter}` | Rate limited |
-
-## 8. Versioning
-
-- Kontrak ini pakai SemVer.
-- Perubahan breaking → MAJOR.
-- Payment-api mendukung N dan N-1.
-
-## 9. Scopes
-
-- `openid`
-- `profile`
-- `payment.read`
-- `payment.write`
-
-## 10. Client Registration
-
-| Field | Value |
-|---|---|
-| `client_id` | `payment-api` |
-| `client_secret` | dari env, rotasi dual-secret |
-| `redirect_uri` | `http://localhost:3000/auth/callback` |
-| `grant_types` | `authorization_code`, `refresh_token` |
-| `scopes` | `openid profile payment.read payment.write` |
-```
-
----
-
-# LAMPIRAN C — Template `docs/plan2-auth-integration/CHANGELOG-AUTH.md`
-
-```markdown
-# CHANGELOG — AUTH CONTRACT
-
-Semua perubahan pada kontrak auth dicatat di sini.
-Format: [Keep a Changelog](https://keepachangelog.com/), [SemVer](https://semver.org/).
-
-## [Unreleased]
-
-## [1.0.0] - 2026-09-20
-
-### Added
-- OAuth2 endpoints: `/oauth/authorize`, `/oauth/token`, `/oauth/revoke`
-- JWKS: `/.well-known/jwks.json`
-- `/api/v1/me/permissions`
-- `/api/v1/auth/switch-role`
-- JWT claims: `sub`, `username`, `roleId`, `iss`, `aud`, `exp`, `iat`, `jti`
-- RS256 signing
-
-### Changed
-- Migrasi dari HS256 ke RS256
-- Prefix `/api` → `/api/v1` untuk endpoint internal
-```
-
----
-
 ## 24. Penutup
 
 Plan ini adalah dokumen **hidup**. Setiap perubahan wajib:
@@ -1521,5 +1328,3 @@ Plan ini adalah dokumen **hidup**. Setiap perubahan wajib:
 4. Jalankan contract test.
 
 ---
-
-**End of PLAN-Auth_Integration.md v1.0.0**
