@@ -1,9 +1,10 @@
 # E2E Test Results — Cockatiel Retry/Failure
 
-> **Last updated**: 2026-09-18 (sandbox run with SQLite, `--forceExit`)
+> **Last updated**: 2026-09-20 (post TASK-11b + test sync fixes + IS_OTEL timing bug fix)
 > **Test env**: NestJS payment-api (port 3001) + gateway-mock (port 3002)
 > **Database**: SQLite (sandbox, `DB_TYPE=sqlite`) atau PostgreSQL 16 (lokal, `DB_TYPE=postgres`)
 > **Prerequisite**: `pnpm install` + `pnpm build:resilience` + payment-api + gateway-mock running
+> **OTel toggle**: `IS_OTEL=false` (sandbox default, ALS fallback) atau `IS_OTEL=true` (local Docker + Jaeger)
 
 ## How to Run
 
@@ -108,7 +109,9 @@ pnpm test:e2e:exhaustion      # S7
 - `resetBreaker()` di `beforeAll` (untuk S3-S7) → reset Cockatiel breaker singleton ke CLOSED
 - `--forceExit` → prevent Jest hang dari scheduler background process
 
-## Bug History (ditemukan + fixed selama TASK-14a/14b)
+## Bug History (ditemukan + fixed selama TASK-14a/14b + TASK-11b)
+
+### Phase 1: TASK-14a/14b (Bug #1-20 — E2E test sync)
 
 | # | Bug | Impact | Fix | File |
 |---|---|---|---|---|
@@ -133,6 +136,26 @@ pnpm test:e2e:exhaustion      # S7
 | 19 | Entity `type: 'timestamp'` tidak support di SQLite | SQLite reject `timestamp` | Helper `getTimestampColumnType()` → conditional `datetime`/`timestamp` | `db-types.helper.ts` |
 | 20 | Entity `type: 'enum'` tidak support di SQLite | SQLite reject `enum` | Ganti ke `type: 'varchar'` + application validation | `payment.entity.ts`, `payment-attempt.entity.ts` |
 
+### Phase 2: Post-TASK-14a/14b (Bug #21-25 — test sync + OTel timing)
+
+| # | Bug | Impact | Fix | File |
+|---|---|---|---|---|
+| 21 | Mock file `__mocks__/cockatiel-adapter.ts` lupa export `DelegateBackoff` | 9 tests fail: `TypeError: DelegateBackoff is not a constructor` | Tambah mock class `DelegateBackoff` + export di `__mocks__/cockatiel-adapter.ts` | `packages/resilience/__mocks__/cockatiel-adapter.ts` |
+| 22 | Mock repo `makeMockRepo()` tidak implement `atomicUpdateStatus` | 3 tests fail: `executePayment` not called (expected 2, got 0) | Tambah `atomicUpdateStatus: jest.fn(async () => true)` ke mock repo + microtask yield di re-entrancy test | `tests/modules/retry-scheduler/retry-scheduler.service.spec.ts` |
+| 23 | Test expect `totalRetryCount=1` tapi increment pindah ke scheduler (PLAN1 section 10.2) | 3 tests fail: expected 1, got 0 | Update expectasi ke `totalRetryCount=0` + comment PLAN1 reference | `tests/modules/payments/payments.service.spec.ts` (3 expectations) |
+| 24 | Test expect `http.post` dipanggil dengan 3 args, tapi adapter include `timeout` field | 1 test fail: extra `timeout: 1800` field | Ganti strict equality ke `expect.objectContaining({ headers: ... })` | `tests/modules/gateway/http-adapter.spec.ts` |
+| 25 | IS_OTEL env timing bug — `otel.ts` baca `IS_OTEL=undefined` (env belum load), `trace-context.ts` baca `IS_OTEL=true` (env sudah load via ConfigModule) | OTel SDK tidak start (IS_OTEL=false di otel.ts), service tidak muncul di Jaeger UI dropdown | Tambah `dotenv.config()` di `otel.ts` untuk 4 paths SEBELUM evaluate IS_OTEL + lazy require OTel SDK | `apps/payment-api/src/otel.ts`, `apps/payment-gateway-mock/src/otel.ts` |
+
+### Bug history summary
+
+- **Phase 1 (#1-20)**: E2E test sync issues — ditemukan + fixed selama TASK-14a/14b (PostgreSQL + SQLite dual env)
+- **Phase 2 (#21-25)**: Post-TASK-14 test sync + OTel timing — ditemukan + fixed setelah TASK-14 complete, selama TASK-11b + test maintenance
+- **Total**: 25 bugs, semua fixed. 142/142 tests PASS.
+
+Cross-reference detail:
+- Bug #21-24: Lihat [`docs/tasks/TASK-test-sync-failures.md`](./tasks/TASK-test-sync-failures.md) untuk analisa lengkap + cross-check ke PLAN1
+- Bug #25: Lihat [`docs/tasks/TASK-11b-otel-sdk.md`](./tasks/TASK-11b-otel-sdk.md) section "Critical implementation notes" — IS_OTEL gating di otel.ts
+
 ## Environment notes
 
 ### Dual environment (TASK-14b)
@@ -155,7 +178,37 @@ SCHEDULER_INTERVAL_MS=5000         # scheduler poll interval
 SCHEDULER_BASE_DELAY_MS=2000       # delay before scheduler picks up (default 30000 too slow for test)
 BREAKER_FAILURE_THRESHOLD=3        # consecutive failures to OPEN breaker
 BREAKER_COOLDOWN_MS=10000           # HALF_OPEN after cooldown
-IS_OTEL=false                      # AsyncLocalStorage trace (true = full OTel SDK)
+IS_OTEL=false                      # default: AsyncLocalStorage trace ID (sandbox)
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318/v1/traces  # OTLP endpoint (kalau IS_OTEL=true)
+```
+
+### IS_OTEL toggle scenarios (TASK-11b)
+
+| Scenario | IS_OTEL | Docker | Trace ID Source | trace_id format di DB | Jaeger UI |
+|---|---|---|---|---|---|
+| **Sandbox (default)** | `false` | ❌ No | AsyncLocalStorage + `crypto.randomUUID()` | 36 chars UUID (`74698290-ee5e-498a-8edc-59f85d88cc64`) | ❌ Tidak ada data |
+| **Local Docker** | `true` | ✅ Jaeger | OTel active span | 32 chars hex (`b264aab666cc9f49de502215a39bc836`) | ✅ Span tree visible |
+| **Test env** | (any) | ❌ No | AsyncLocalStorage (NODE_ENV=test skip SDK) | 36 chars UUID | ❌ Tidak ada data |
+
+**Cara verify trace_id format**:
+```bash
+# Create payment
+curl -X POST http://localhost:3001/payments -H "Content-Type: application/json" \
+  -d '{"orderId":"OTEL-VERIFY","amount":100,"currency":"IDR"}'
+
+# Get trace_id dari DB
+curl -s http://localhost:3001/payments | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+pid = data['payments'][-1]['id']
+import urllib.request
+with urllib.request.urlopen(f'http://localhost:3001/payments/{pid}') as resp:
+    d = json.load(resp)
+for a in d.get('attempts', []):
+    tid = a.get('traceId', '')
+    fmt = 'OTel hex (IS_OTEL=true AKTIF)' if len(tid) == 32 else 'UUID fallback (IS_OTEL=false)'
+    print(f'trace_id: {tid} ({len(tid)} chars) → {fmt}')
+"
 ```
 
 ### Cockatiel v4 notes
@@ -165,29 +218,97 @@ IS_OTEL=false                      # AsyncLocalStorage trace (true = full OTel S
 - `handleAll` retry semua thrown error → permanent error harus `return` (bukan `throw`) supaya tidak retry
 - Circuit breaker adalah **singleton per dependency** → state carry-over antar test jika tidak di-reset
 
+## How to verify Jaeger UI (TASK-11b — local Docker only)
+
+> Prerequisite: Docker + `IS_OTEL=true` di `apps/payment-api/.env` + `docker compose up -d jaeger`
+
+### Step-by-step verification
+
+```bash
+# 1. Start Jaeger container
+docker compose up -d jaeger
+sleep 5
+
+# 2. Set IS_OTEL=true di .env (kalau belum)
+# Edit apps/payment-api/.env: IS_OTEL=true
+
+# 3. Start gateway-mock + payment-api (with OTel SDK)
+cd apps/payment-gateway-mock && PORT=3002 pnpm start:dev > /tmp/gw.log 2>&1 &
+sleep 5
+cd apps/payment-api && PORT=3001 pnpm start:dev > /tmp/api.log 2>&1 &
+sleep 8
+
+# 4. Verify IS_OTEL=true aktif via trace_id format (must be 32 chars hex)
+curl -X PUT http://localhost:3002/admin/config -H "Content-Type: application/json" -d '{"mode":"always-success"}'
+curl -X POST http://localhost:3001/payments -H "Content-Type: application/json" -d '{"orderId":"JAEGER-VERIFY","amount":100,"currency":"IDR"}'
+sleep 3
+curl -s http://localhost:3001/payments | python3 -c "
+import sys, json, urllib.request
+data = json.load(sys.stdin)
+pid = data['payments'][-1]['id']
+with urllib.request.urlopen(f'http://localhost:3001/payments/{pid}') as resp:
+    d = json.load(resp)
+tid = d['attempts'][0]['traceId']
+print(f'trace_id: {tid} ({len(tid)} chars)')
+print('IS_OTEL=true AKTIF ✅' if len(tid) == 32 else 'IS_OTEL=false (SDK tidak start) ❌')
+"
+
+# 5. Buka Jaeger UI di browser
+echo "Buka: http://localhost:16686"
+echo "Service dropdown → pilih 'payment-api' atau 'payment-gateway-mock'"
+echo "Operation dropdown → 'POST /payments', 'payment.processing', 'HTTP POST /v1/charges'"
+echo "Klik trace → lihat span tree (cross-service)"
+```
+
+### Expected span tree di Jaeger UI
+
+```text
+POST /payments (root span, payment-api)
+  └── payment.processing (custom span, attributes: payment.id, payment.order_id, payment.source)
+        ├── HTTP POST /v1/charges (attempt #1, payment-api axios span)
+        │     └── POST /v1/charges (gateway-mock child span, cross-service!)
+        ├── HTTP POST /v1/charges (attempt #2, kalau retry)
+        │     └── POST /v1/charges (gateway-mock child span)
+        └── pg.query (INSERT payment_attempts, payment-api pg span)
+
+Services di Jaeger dropdown:
+  - payment-api          ← muncul setelah POST /payments
+  - payment-gateway-mock ← muncul setelah gateway-mock receive request
+```
+
+### Troubleshooting: Service tidak muncul di dropdown
+
+1. **IS_OTEL=false** → trace_id 36 chars UUID, SDK tidak start → set `IS_OTEL=true` + restart payment-api
+2. **Jaeger tidak running** → `docker compose up -d jaeger` + verify port 4318 listening
+3. **ECONNREFUSED di log** → Jaeger port salah atau tidak running → check `OTEL_EXPORTER_OTLP_ENDPOINT`
+4. **trace_id masih 36 chars UUID padahal IS_OTEL=true** → env belum ter-load saat otel.ts evaluate → verify dotenv.config() di otel.ts (bug #25 fix)
+
 ## UI Demo (Agent Browser)
 
-> UI demo belum dijalankan. Backend E2E sudah PASS semua.
+> UI demo sudah dilakukan via Agent Browser (TASK-13a). Semua 5 demo PASS dengan evidence dialog.
+> Lihat detail di [`docs/tasks/TASK-13a-vue-improvements.md`](./tasks/TASK-13a-vue-improvements.md) section TASK-13a-04 (DemoScenarioRunner Opsi C).
 
 ### Vue dashboard (port 5173)
 
-| Demo | Scenario | Status | Screenshot |
+| Demo | Scenario | Status | Evidence |
 |---|---|---|---|
-| A | Retry saves transient failure | PENDING | — |
-| B | Don't retry permanent error | PENDING | — |
-| C | Circuit breaker protects | PENDING | — |
-| D | Idempotency prevents double charge (HERO) | PENDING | — |
-| E | Server-directed retry timing | PENDING | — |
+| A | Retry saves transient failure (fail-first-n=2) | ✅ PASS | 3 attempts (2×500 + 1×200), trace ID consistent, stats delta +3/+1/+2/+1 |
+| B | Don't retry permanent error (client-error) | ✅ PASS | 1 attempt (400 invalid_card), no retry, immediate failed |
+| C | Circuit breaker protects (always-timeout) | ✅ PASS | 3×4 timeouts → breaker OPEN, 4th payment circuit_open |
+| D | Idempotency prevents double charge (HERO) | ✅ PASS | 2 attempts (timeout + replay), actualCharges delta=1 (NO DOUBLE CHARGE) |
+| E | Server-directed retry timing (rate-limited) | ✅ PASS | 4 attempts (429), delayBeforeNextMs=3000ms (Retry-After honored) |
+
+**Evidence dialog** (setiap demo): payment summary + assertions + warnings + attempts table + gateway stats delta + breaker state.
 
 ### Next.js sandbox (port 3000)
 
-| Demo | Scenario | Status | Screenshot |
+> Next.js sandbox hanya tampilkan data read-only dari payment-api. Tidak ada demo runner di Next.js.
+> Untuk demo interaktif, gunakan Vue dashboard di port 5173.
+
+| Demo | Scenario | Status | Notes |
 |---|---|---|---|
-| A | Retry saves transient failure | PENDING | — |
-| B | Don't retry permanent error | PENDING | — |
-| C | Circuit breaker protects | PENDING | — |
-| D | Idempotency prevents double charge (HERO) | PENDING | — |
-| E | Server-directed retry timing | PENDING | — |
+| - | Display payment list + status | ✅ PASS | Next.js fetch GET /payments + render |
+| - | Display metrics summary | ✅ PASS | Next.js fetch GET /metrics + parse Prometheus text |
 
 ## DoD checklist verification (subset)
 
@@ -204,10 +325,13 @@ IS_OTEL=false                      # AsyncLocalStorage trace (true = full OTel S
 - [x] Idempotency menjamin actualCharges ≤ 1 (scenario 4 — HERO)
 - [x] Audit attempt tersimpan di database (semua scenario, PostgreSQL + SQLite)
 - [x] Metrics tersedia di /metrics (semua scenario, setelah fix ObservabilityModule import)
-- [ ] Grafana dashboard tersedia (TASK-11 — sample queries only)
-- [ ] Trace payment dapat ditemukan di Jaeger (TASK-11 simplified, TASK-11b for full OTel)
-- [ ] Docker full stack berjalan (user local with Docker)
+- [ ] Grafana dashboard tersedia (TASK-11 — sample queries only, dashboard JSON belum provisioned)
+- [x] Trace payment dapat ditemukan di Jaeger (TASK-11b done — IS_OTEL=true + Docker)
+  - Sandbox (IS_OTEL=false): trace_id via ALS fallback (36 chars UUID), tidak ada Jaeger UI
+  - Local Docker (IS_OTEL=true): full OTel SDK + Jaeger export + cross-service span tree
+  - Verification: trace_id format di DB = 32 chars hex (IS_OTEL=true) atau 36 chars UUID (IS_OTEL=false)
+- [x] Docker full stack berjalan (user local with Docker — Jaeger + Prometheus + Grafana verified)
 - [x] Dev mode berjalan tanpa Docker (sandbox verified with SQLite)
 - [x] Unit + E2E test framework ready (Jest + ts-jest)
 - [x] Dual environment support (PostgreSQL + SQLite via TASK-14b)
-- [ ] README menjelaskan failure scenarios (TASK-15)
+- [ ] README menjelaskan failure scenarios (TASK-15 — pending)
