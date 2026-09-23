@@ -204,6 +204,7 @@ Untuk komunikasi antar service, gunakan env variable (`process.env.GATEWAY_URL`,
 - Sandbox notes (lingkungan-specific): `/home/z/my-project/retry-failure/docs/tasks/SANDBOX_NOTES.md`
 - Database ERD: [`docs/DATABASE_ERD.md`](../DATABASE_ERD.md) (narasi) + [`docs/DATABASE_ERD.dbml`](../DATABASE_ERD.dbml) (format dbdiagram.io — copy-paste ke https://dbdiagram.io/d)
 - Gateway Mock Modes: [`docs/GATEWAY_MOCK_MODES.md`](../GATEWAY_MOCK_MODES.md) — detail 8 failure modes + arsitektur timeout 3 layer + use case per mode
+- Technical Debt: [`docs/TECHNICAL_DEBT.md`](../TECHNICAL_DEBT.md) — catatan technical debt observability module (5 issues SOLID + clean code) untuk refactor mendatang
 - Worklog (cross-agent): `/home/z/my-project/worklog.md` - **setiap sub-agent WAJIB membaca & menambahkan entry di sini**.
 
 ---

@@ -56,6 +56,7 @@ pnpm dev
 - [**Database ERD**](docs/DATABASE_ERD.md) — narasi ERD + cara pakai di dbdiagram.io
 - [**Database ERD (DBML)**](docs/DATABASE_ERD.dbml) — copy-paste ke https://dbdiagram.io/d untuk render visual
 - [**Gateway Mock Modes**](docs/GATEWAY_MOCK_MODES.md) — detail 8 failure modes + arsitektur timeout + use case
+- [**Technical Debt**](docs/TECHNICAL_DEBT.md) — catatan technical debt observability module (SOLID + clean code issues) untuk refactor mendatang
 - [Test sync failures — bug analysis](docs/tasks/TASK-test-sync-failures.md) — catatan 7 failures pre-existing + filosofi test maintenance
 
 ## Stack

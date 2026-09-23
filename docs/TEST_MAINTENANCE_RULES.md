@@ -319,7 +319,9 @@ it.skip('should increment totalRetryCount', ...);
 
 ## 📚 Referensi
 
-- [`CONTRIBUTING.md`](../../CONTRIBUTING.md) — development rules umum (root project)
+- [`CONTRIBUTING.md`](../../CONTRIBUTING.md) — development rules umum (root project, termasuk Rule #5: update scenario diagram kalau ubah test)
+- [`docs/skenario/README.md`](./skenario/README.md) — **index file semua scenario diagrams** (Mermaid diagrams untuk test yang kompleks: retry-scheduler, idempotency, resilient-adapter, composition)
+- [`docs/tasks/TASK-16-test-scenario-diagrams.md`](./tasks/TASK-16-test-scenario-diagrams.md) — task plan yang create scenario diagrams (post-plan documentation)
 - [`docs/tasks/TASK-test-sync-failures.md`](./tasks/TASK-test-sync-failures.md) — bug analysis 7 failures yang inspire dokumen ini
 - [`docs/PLAN1_Cockatiel_Retry_Failure_Scenario.md`](./PLAN1_Cockatiel_Retry_Failure_Scenario.md) — source of truth domain logic
 - [`docs/e2e-results.md`](./e2e-results.md) — hasil E2E test + 20 bug history
@@ -332,6 +334,7 @@ it.skip('should increment totalRetryCount', ...);
 | Tanggal | Perubahan | Alasan |
 |---|---|---|
 | 2026-09-19 | Initial creation | Setelah insiden 7 test failures yang tidak terdeteksi lintas commit (DelegateBackoff mock missing + 6 out-of-sync tests dengan PLAN1) |
+| 2026-09-19 | Tambah cross-link ke `docs/skenario/README.md` + `docs/tasks/TASK-16-test-scenario-diagrams.md` | Saat draft TASK-16 (test scenario diagrams) — visual diagrams untuk test kompleks jadi referensi pendamping rules ini |
 
 ---
 

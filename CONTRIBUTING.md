@@ -127,6 +127,47 @@ async executePayment(...) {
 
 ---
 
+## 🎯 Rule #5 (WAJIB): Update Scenario Diagram kalau Ubah Test
+
+> Kalau Anda ubah test file yang sudah punya scenario diagram di `docs/skenario/`, WAJIB update diagram-nya dalam commit yang sama.
+
+### Kapan wajib update diagram
+
+- Ubah assertion yang verify behavior yang di-diagram-kan
+- Tambah describe block baru di spec file yang sudah punya diagram
+- Refactor flow yang sudah di-diagram-kan (e.g., pindah logic dari satu method ke method lain)
+
+### Kapan tidak wajib update
+
+- Tambah test case di describe block yang sudah punya diagram (cukup tambah bullet point di "Key assertions" section diagram itu)
+- Rename variable internal (implementation detail, tidak affect diagram)
+- Perubahan di spec file yang **belum** punya diagram (lihat "Future work" di [`docs/skenario/README.md`](docs/skenario/README.md))
+
+### Cara update
+
+1. Buka `docs/skenario/<spec-name>-scenario.md` (lihat [index file](docs/skenario/README.md) untuk mapping)
+2. Update diagram Mermaid yang relevan dengan perubahan test
+3. Update "Key assertions" + "Common pitfalls" kalau perlu
+4. Commit bersama perubahan test (jangan terpisah) dengan message: `docs: update scenario diagram for <spec-name> (refactor: <reason>)`
+
+### Contoh
+
+```typescript
+// Misal: refactor processOne() di retry-scheduler.service.ts
+// yang affect re-entrancy guard behavior
+//
+// Wajib update: docs/skenario/retry-scheduler-service-scenario.md
+// Karena diagram re-entrancy guard flowchart verify behavior itu.
+```
+
+### Lihat juga
+
+- [`docs/TEST_MAINTENANCE_RULES.md`](docs/TEST_MAINTENANCE_RULES.md) — Rule detail + decision framework
+- [`docs/skenario/README.md`](docs/skenario/README.md) — index file semua scenario diagrams
+- [`docs/tasks/TASK-16-test-scenario-diagrams.md`](docs/tasks/TASK-16-test-scenario-diagrams.md) — task plan yang create scenario diagrams
+
+---
+
 ## 📋 Pre-Commit Checklist
 
 Sebelum `git commit`, pastikan:
@@ -137,6 +178,7 @@ Sebelum `git commit`, pastikan:
 - [ ] Tidak ada assertion yang di-comment
 - [ ] Kalau source behavior berubah, test sudah di-update
 - [ ] Kalau tambah export baru di adapter, mock juga di-update
+- [ ] **Kalau ubah test yang sudah punya scenario diagram, update diagram juga** (Rule #5)
 - [ ] Commit message menjelaskan perubahan + impact ke test
 
 ---
@@ -187,6 +229,7 @@ pnpm typecheck                          # typecheck semua packages
 | 3 tests fail `executePayment` not called | Mock repo tidak implement `atomicUpdateStatus` (source ditambah commit refaktor) | Rule #4 — update test saat refactor |
 | 3 tests fail `totalRetryCount` expect 1 got 0 | Increment pindah dari service ke scheduler, test tidak update | Rule #4 — update test saat refactor |
 | 1 test fail `http.post` extra `timeout` field | Bug fix race condition tambah `timeout` ke axios, test tidak update assertion | Rule #1 + #4 — test setelah ubah + update test saat refactor |
+| Diagram scenario test tidak sinkron setelah refactor | Developer ubah test tapi lupa update Mermaid diagram di `docs/skenario/` | **Rule #5 — update scenario diagram kalau ubah test** |
 
 ---
 
