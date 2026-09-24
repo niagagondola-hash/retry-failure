@@ -1,10 +1,10 @@
 # PLAN 2 — Auth Integration (OAuth 2.0 + PKCE + BFF + Lazy Sync)
 
 > **File**: `docs/plan2-auth-integration/PLAN-Auth_Integration.md`
-> **Version**: 1.0.0
+> **Version**: 1.1.0
 > **Status**: FINAL
 > **Created**: 2026-09-20
-> **Last updated**: 2026-09-23
+> **Last updated**: 2026-09-24
 > **Baseline**: `docs/plan1-cockatiel-retry-failure-scenario/PLAN1_Cockatiel_Retry_Failure_Scenario.md`
 > **Frontend**: Vue 3 + PrimeVue
 
@@ -12,7 +12,8 @@
 
 | Version | Tanggal | Perubahan |
 |---|---|---|
-| 1.0.0 | 2026-09-23 | Final. Struktur folder per-plan, versioning ditambahkan. |
+| 1.1.0 | 2026-09-24 | Simplifikasi konfigurasi: `AUTH_BASE_URL` + konstanta path; hapus env URL per-endpoint; tambah "Configuration Philosophy". |
+| 1.0.0 | 2026-09-23 | Final. Struktur folder per-plan, versioning 4 level. |
 | 0.4.0 | 2026-09-20 | Vue-only frontend. |
 | 0.3.0 | 2026-09-20 | OAuth2 + PKCE + BFF, JWT tipis + `roleId`, lazy sync (SWR), cache 2 tabel. |
 | 0.2.0 | 2026-09-19 | Menyesuaikan kontrak auth aktual (HS256, stateless, two-step login). |
@@ -40,6 +41,7 @@ Fokus integrasi:
 7. **Lazy sync (stale-while-revalidate)** menggantikan background refresh.
 8. **Observability lintas service**.
 9. **Versioning kontrak** agar auth update tidak memecah payment.
+10. **Konfigurasi minimal**: env hanya untuk yang berubah antar environment.
 
 ---
 
@@ -205,7 +207,7 @@ User          FE Vue              BE Payment (BFF)          Auth Service
  |                 |<--302 /auth/callback?code=...&state=...-----|
  |                 |                     |--POST /oauth/token--->|
  |                 |                     |<--access+refresh------|
- |                 |                     |--GET /api/me/permissions->|
+ |                 |                     |--GET /api/v1/me/permissions->|
  |                 |                     |<--user+role+perms-----|
  |                 |<--Set-Cookie: sid---|                       |
  |<--redirect app--|                     |                       |
@@ -295,7 +297,7 @@ Cookie hanya berisi `sid`.
 ```text
 1. User klik "Ganti Role" di FE Vue
 2. FE panggil POST /auth/switch-role { roleId } ke BE payment
-3. BE payment proxy ke auth: POST /api/auth/switch-role
+3. BE payment proxy ke auth: POST /api/v1/auth/switch-role
 4. Auth terbitkan JWT baru dengan roleId baru
 5. BE payment verifikasi JWT baru, update session (roleId + permission_codes)
 6. FE refresh /auth/session
@@ -525,6 +527,7 @@ Validasi signature, update `cached_users`, invalidate sesi terkait.
 packages/security/
 ├── src/
 │   ├── oauth/
+│   │   ├── endpoints.ts             # konstanta path (fixed)
 │   │   ├── oauth-client.service.ts
 │   │   ├── oauth.controller.ts
 │   │   └── session.service.ts
@@ -557,7 +560,33 @@ packages/security/
 └── test/
 ```
 
-### 9.1 `req.user` shape
+### 9.1 `endpoints.ts` — konstanta path
+
+```ts
+// packages/security/src/oauth/endpoints.ts
+export const OAUTH_PATHS = {
+  authorize:   '/oauth/authorize',
+  token:       '/oauth/token',
+  revoke:      '/oauth/revoke',
+  jwks:        '/.well-known/jwks.json',
+  discovery:   '/.well-known/openid-configuration',
+  permissions: '/api/v1/me/permissions',
+  switchRole:  '/api/v1/auth/switch-role',
+} as const;
+
+export type OAuthPath = keyof typeof OAUTH_PATHS;
+```
+
+Pemakaian:
+
+```ts
+const base = process.env.AUTH_BASE_URL;
+const tokenUrl = `${base}${OAUTH_PATHS.token}`;
+```
+
+Path-path ini **fixed** oleh RFC (OAuth2) atau kontrak (internal), bukan konfigurasi.
+
+### 9.2 `req.user` shape
 
 ```ts
 interface AuthUser {
@@ -569,7 +598,7 @@ interface AuthUser {
 }
 ```
 
-### 9.2 `AUTH_MODE`
+### 9.3 `AUTH_MODE`
 
 | Mode | Deskripsi |
 |---|---|
@@ -593,8 +622,8 @@ interface AuthUser {
 | `GET /oauth/userinfo` | OIDC user info (opsional) |
 | `GET /.well-known/jwks.json` | JWKS |
 | `GET /.well-known/openid-configuration` | OIDC discovery |
-| `GET /api/me/permissions` | Data otorisasi untuk sync |
-| `POST /api/auth/switch-role` | Ganti role aktif |
+| `GET /api/v1/me/permissions` | Data otorisasi untuk sync |
+| `POST /api/v1/auth/switch-role` | Ganti role aktif |
 | `POST /dev/token` | Dev shortcut |
 
 ### 10.2 Client registration
@@ -621,7 +650,7 @@ interface AuthUser {
 
 Setelah login, jika multi-role: auth tampilkan halaman pilih role. Setelah dipilih, baru redirect ke `redirect_uri` dengan `code`. `roleId` masuk ke klaim JWT.
 
-### 10.6 Response `/api/me/permissions`
+### 10.6 Response `/api/v1/me/permissions`
 
 ```json
 {
@@ -861,66 +890,79 @@ frontend:vue:build
 
 ```text
 AUTH_MODE=mock
+AUTH_BASE_URL=http://localhost:4001
 AUTH_ISSUER=http://localhost:4001
-AUTH_AUTHORIZE_URL=http://localhost:4001/oauth/authorize
-AUTH_TOKEN_URL=http://localhost:4001/oauth/token
-AUTH_REVOKE_URL=http://localhost:4001/oauth/revoke
-AUTH_JWKS_URL=http://localhost:4001/.well-known/jwks.json
-AUTH_PERMISSIONS_URL=http://localhost:4001/api/me/permissions
-AUTH_SWITCH_ROLE_URL=http://localhost:4001/api/auth/switch-role
+JWT_AUDIENCE=payment-api
 OAUTH_CLIENT_ID=payment-api
 OAUTH_CLIENT_SECRET=dev-client-secret
 OAUTH_REDIRECT_URI=http://localhost:3000/auth/callback
-JWT_ISSUER=http://localhost:4001
-JWT_AUDIENCE=payment-api
-SESSION_SECRET=dev-session-secret
-SESSION_TTL_SEC=28800
-REDIS_URL=redis://localhost:6379
-VITE_API_URL=http://localhost:3000
+OAUTH_SCOPES=openid profile
 ```
+
+Path OAuth2 (`/oauth/token`, dll) **tidak** jadi env. Lihat Section 9.1 (`endpoints.ts`).
 
 ---
 
-## 15. Testing Strategy
+## 15. Configuration Philosophy
 
-### 15.1 Unit
+Prinsip: **env hanya untuk yang berubah antar environment.** Sisanya konstanta di kode.
 
-- PKCE: verifier/challenge, S256.
-- OAuth client: token exchange, refresh, revoke, switch-role.
-- JWKS verifier: cache, rotation, invalid signature.
-- Session guard: valid, expired, revoked.
-- MenuAccessGuard: super admin, allowed, denied.
-- Lazy sync middleware: fresh, stale (background), very stale (blocking), timeout, lock.
-- CSRF middleware.
+### 15.1 Klasifikasi
 
-### 15.2 Integration
+| Kategori | Contoh | Tempat | Alasan |
+|---|---|---|---|
+| Berubah antar env | host, secret, client_id, redirect_uri | Env | Beda dev/staging/prod |
+| Fixed oleh spec (RFC) | `/oauth/token`, `/.well-known/jwks.json` | Konstanta kode | Tidak akan berubah |
+| Fixed oleh kontrak | `/api/v1/me/permissions` | Konstanta kode | Bagian dari kesepakatan |
 
-- `/auth/login` → redirect dengan PKCE.
-- `/auth/callback` → cookie, session dibuat.
-- `/auth/session` → user.
-- Protected: 401 tanpa cookie, 200 dengan cookie valid.
-- Protected: 403 jika permission tidak dimiliki.
-- Super admin: akses semua.
-- Logout: session dihapus, token direvoke.
-- Switch-role: session diupdate.
+### 15.2 Kenapa path OAuth2 tidak jadi env
 
-### 15.3 E2E lintas service
+- Path `/oauth/authorize`, `/oauth/token`, `/oauth/revoke`, `/.well-known/jwks.json` **ditetapkan oleh RFC 6749 / RFC 7009 / RFC 7517**. Tidak ada alasan untuk mengubahnya.
+- Kalau dijadikan env, ada risiko typo yang tidak terdeteksi compiler.
+- Kalau dijadikan env, kamu harus update 7 tempat saat host pindah. Rawan lupa.
 
-- Dengan `auth-mock`: full OAuth2 flow.
-- Dengan auth asli: full OAuth2 flow.
-- Skenario: single-role, multi-role, super admin, user tanpa akses.
+### 15.3 Yang tetap perlu env
 
-### 15.4 FE Vue
+| Env | Kenapa perlu |
+|---|---|
+| `AUTH_BASE_URL` | Host beda per environment |
+| `AUTH_ISSUER` | Klaim `iss` JWT — kadang beda dari base URL |
+| `JWT_AUDIENCE` | Beda per resource server |
+| `OAUTH_CLIENT_ID` | Beda per client |
+| `OAUTH_CLIENT_SECRET` | Secret, beda per environment |
+| `OAUTH_REDIRECT_URI` | Beda per environment |
+| `OAUTH_SCOPES` | Kadang beda |
 
-- Redirect ke `/auth/login` saat belum login.
-- Setelah callback, session terisi.
-- Guard route: 403 halaman.
-- 429 halaman.
-- Logout menghapus session.
+Kalau `AUTH_ISSUER` sama dengan `AUTH_BASE_URL`, bisa disatukan.
 
-### 15.5 Contract test
+### 15.4 Evolusi ke OIDC discovery
 
-JWT claims, JWKS, `/api/me/permissions`, error format. Alarm saat auth update.
+Kalau auth punya `/.well-known/openid-configuration`, env bisa dipangkas lagi:
+
+```text
+AUTH_ISSUER=http://localhost:4001
+JWT_AUDIENCE=payment-api
+OAUTH_CLIENT_ID=payment-api
+OAUTH_CLIENT_SECRET=dev-client-secret
+OAUTH_REDIRECT_URI=http://localhost:3000/auth/callback
+```
+
+`openid-client` auto-fetch semua URL dari discovery:
+
+```ts
+const issuer = await Issuer.discover(process.env.AUTH_ISSUER);
+const client = new issuer.Client({ client_id, client_secret });
+// client.authorizationUrl(), client.tokenUrl(), client.jwksUri
+```
+
+**Lima env.** Ini paling standar OAuth2/OIDC. Butuh auth punya discovery endpoint; `auth-mock` bisa disiapkan.
+
+### 15.5 Aturan praktis
+
+1. **Jangan jadikan env apa yang tidak berubah.** Path fixed → konstanta.
+2. **Satu base URL** lebih baik dari tujuh URL terpisah.
+3. **Discovery** lebih baik dari base URL manual, kalau tersedia.
+4. **Secret selalu env.** Jangan pernah commit.
 
 ---
 
@@ -933,21 +975,15 @@ NODE_ENV=development
 
 # OAuth2
 AUTH_MODE=oauth
+AUTH_BASE_URL=
 AUTH_ISSUER=
-AUTH_AUTHORIZE_URL=
-AUTH_TOKEN_URL=
-AUTH_REVOKE_URL=
-AUTH_JWKS_URL=
-AUTH_PERMISSIONS_URL=
-AUTH_SWITCH_ROLE_URL=
+JWT_AUDIENCE=payment-api
 OAUTH_CLIENT_ID=payment-api
 OAUTH_CLIENT_SECRET=
 OAUTH_REDIRECT_URI=
 OAUTH_SCOPES=openid profile
 
 # JWT
-JWT_ISSUER=
-JWT_AUDIENCE=payment-api
 JWT_CLOCK_TOLERANCE_SEC=5
 JWKS_CACHE_TTL_SEC=300
 
@@ -990,11 +1026,54 @@ VITE_API_URL=http://localhost:3000
 
 ---
 
-## 17. Versioning
+## 17. Testing Strategy
+
+### 17.1 Unit
+
+- PKCE: verifier/challenge, S256.
+- OAuth client: token exchange, refresh, revoke, switch-role.
+- JWKS verifier: cache, rotation, invalid signature.
+- Session guard: valid, expired, revoked.
+- MenuAccessGuard: super admin, allowed, denied.
+- Lazy sync middleware: fresh, stale (background), very stale (blocking), timeout, lock.
+- CSRF middleware.
+
+### 17.2 Integration
+
+- `/auth/login` → redirect dengan PKCE.
+- `/auth/callback` → cookie, session dibuat.
+- `/auth/session` → user.
+- Protected: 401 tanpa cookie, 200 dengan cookie valid.
+- Protected: 403 jika permission tidak dimiliki.
+- Super admin: akses semua.
+- Logout: session dihapus, token direvoke.
+- Switch-role: session diupdate.
+
+### 17.3 E2E lintas service
+
+- Dengan `auth-mock`: full OAuth2 flow.
+- Dengan auth asli: full OAuth2 flow.
+- Skenario: single-role, multi-role, super admin, user tanpa akses.
+
+### 17.4 FE Vue
+
+- Redirect ke `/auth/login` saat belum login.
+- Setelah callback, session terisi.
+- Guard route: 403 halaman.
+- 429 halaman.
+- Logout menghapus session.
+
+### 17.5 Contract test
+
+JWT claims, JWKS, `/api/v1/me/permissions`, error format. Alarm saat auth update.
+
+---
+
+## 18. Versioning
 
 Versioning berlaku di **empat level**. Masing-masing independen.
 
-### 17.1 Level 1 — Plan Version
+### 18.1 Level 1 — Plan Version
 
 Plan ini menggunakan **SemVer** (`MAJOR.MINOR.PATCH`):
 
@@ -1006,15 +1085,12 @@ Plan ini menggunakan **SemVer** (`MAJOR.MINOR.PATCH`):
 
 - File: header `> **Version**: X.Y.Z`
 - Changelog: di atas file ini.
-- Tidak ada file terpisah untuk changelog plan (cukup di header).
 
-### 17.2 Level 2 — AUTH_CONTRACT Version
+### 18.2 Level 2 — AUTH_CONTRACT Version
 
 Kontrak auth punya versioning sendiri, **independen dari plan**.
 
 File: `docs/plan2-auth-integration/AUTH_CONTRACT.md`
-
-Isi header:
 
 ```markdown
 # AUTH CONTRACT
@@ -1022,8 +1098,6 @@ Isi header:
 > **Auth service version**: 0.1.0
 > **Effective**: 2026-09-20
 ```
-
-Aturan:
 
 | Perubahan di auth | Naik di contract |
 |---|---|
@@ -1042,9 +1116,7 @@ Setiap perubahan kontrak wajib:
 3. Jalankan contract test di repo payment.
 4. Kalau MAJOR: koordinasi deployment order.
 
-### 17.3 Level 3 — API Versioning (OAuth2 endpoints)
-
-Untuk endpoint OAuth2 di auth service:
+### 18.3 Level 3 — API Versioning (OAuth2 endpoints)
 
 | Endpoint | Path |
 |---|---|
@@ -1062,13 +1134,13 @@ Aturan:
 - JWKS **tidak ber-version** (spec stabil), tapi `kid` dirotasi.
 - Backward compatibility: minimal 1 siklus rilis sebelum hapus versi lama.
 
-### 17.4 Level 4 — JWT Claims Versioning
+### 18.4 Level 4 — JWT Claims Versioning
 
-Klaim JWT punya versioning implisit. Untuk memudahkan evolusi:
+Klaim JWT punya versioning implisit:
 
-- Tambahkan klaim `v` (versi kontrak JWT) di payload? **Tidak direkomendasikan** — menambah kompleksitas.
-- Alternatif: gunakan `iss` + `aud` sebagai namespace. Perubahan klaim = naik di AUTH_CONTRACT.
-- Perubahan klaim **wajib** dikoordinasikan: auth dan payment harus sejalan.
+- Gunakan `iss` + `aud` sebagai namespace.
+- Perubahan klaim = naik di AUTH_CONTRACT.
+- Perubahan klaim **wajib** dikoordinasikan.
 
 Contoh evolusi:
 
@@ -1078,7 +1150,7 @@ Contoh evolusi:
 | 1.1.0 | + `email` (opsional) | Tidak |
 | 2.0.0 | Ganti `username` → `preferred_username` | Ya |
 
-### 17.5 Level 5 — Auth Service Version
+### 18.5 Level 5 — Auth Service Version
 
 Auth service punya versioning sendiri (semver). Dikaitkan dengan AUTH_CONTRACT:
 
@@ -1090,7 +1162,7 @@ Auth service punya versioning sendiri (semver). Dikaitkan dengan AUTH_CONTRACT:
 
 Payment-api mendukung **rentang** versi kontrak, bukan satu versi.
 
-### 17.6 File yang Terlibat
+### 18.6 File yang Terlibat
 
 | File | Versioning |
 |---|---|
@@ -1099,7 +1171,7 @@ Payment-api mendukung **rentang** versi kontrak, bukan satu versi.
 | `CHANGELOG-AUTH.md` | Riwayat semua versi kontrak |
 | `auth-openapi.json` | Version di `info.version` |
 
-### 17.7 Alur Update Kontrak
+### 18.7 Alur Update Kontrak
 
 ```text
 1. Auth service rilis versi baru
@@ -1114,16 +1186,7 @@ Payment-api mendukung **rentang** versi kontrak, bukan satu versi.
      - Kalau MAJOR: koordinasi deployment order
 ```
 
-### 17.8 Kompatibilitas
-
-Payment-api **wajib mendukung**:
-
-- Kontrak versi saat ini (N).
-- Kontrak versi sebelumnya (N-1), selama masa transisi.
-
-Artinya: kalau auth naik ke 1.1.0, payment harus tetap bisa kerja dengan 1.0.0 sampai semua deploy selesai.
-
-### 17.9 Deployment Order untuk Breaking Change
+### 18.8 Deployment Order untuk Breaking Change
 
 ```text
 1. Deploy auth versi baru (mendukung kontrak N dan N-1)
@@ -1136,7 +1199,7 @@ Artinya: kalau auth naik ke 1.1.0, payment harus tetap bisa kerja dengan 1.0.0 s
 
 ---
 
-## 18. Urutan Implementasi
+## 19. Urutan Implementasi
 
 1. **Kontrak OAuth2 & klaim JWT** — sepakati dengan tim auth (termasuk `roleId`).
 2. **Auth service** — tambah `/oauth/*`, JWKS, `/api/v1/me/permissions`, `/api/v1/auth/switch-role`, kolom `code` di menu.
@@ -1154,7 +1217,7 @@ Artinya: kalau auth naik ke 1.1.0, payment harus tetap bisa kerja dengan 1.0.0 s
 
 ---
 
-## 19. Definition of Done
+## 20. Definition of Done
 
 - [ ] Auth punya `/oauth/authorize`, `/oauth/token`, `/oauth/revoke`, JWKS.
 - [ ] Auth expose `/api/v1/me/permissions`.
@@ -1162,7 +1225,7 @@ Artinya: kalau auth naik ke 1.1.0, payment harus tetap bisa kerja dengan 1.0.0 s
 - [ ] Auth punya kolom `code` di menu.
 - [ ] JWT payload menyertakan `roleId`.
 - [ ] `apps/auth-mock` implementasi OAuth2 + PKCE.
-- [ ] `packages/security` lengkap.
+- [ ] `packages/security` lengkap (termasuk `endpoints.ts`).
 - [ ] Tabel `cached_users` + `sessions` (dengan `permission_codes`) dibuat.
 - [ ] Migrasi `payments.user_id`.
 - [ ] Cookie sesi `HttpOnly; Secure; SameSite=Lax`.
@@ -1180,73 +1243,74 @@ Artinya: kalau auth naik ke 1.1.0, payment harus tetap bisa kerja dengan 1.0.0 s
 - [ ] E2E lulus (mock + auth asli).
 - [ ] Observability: log, metrics, trace.
 - [ ] Docker `dev` & `full`.
+- [ ] Konfigurasi mengikuti "Configuration Philosophy" (Section 15).
 - [ ] Dokumentasi: `AUTH_CONTRACT.md`, `CHANGELOG-AUTH.md`, `SANDBOX_NOTES.md`.
 - [ ] Versioning terdokumentasi di semua file.
 
 ---
 
-## 20. Production Caveats
+## 21. Production Caveats
 
-### 20.1 Auth down
+### 21.1 Auth down
 
 - Lazy sync: pakai cache sampai `STALE_TTL` (30 menit).
 - Setelah itu: blocking sync; kalau gagal, tetap pakai cache dengan warning.
 - Batas `MAX_STALE_TTL` (2 jam) → sesi invalid.
 
-### 20.2 Key rotation
+### 21.2 Key rotation
 
 - JWKS multiple `kid`.
 - Payment-api refresh JWKS saat `kid` baru.
 - Contract test cover rotasi.
 
-### 20.3 Session store
+### 21.3 Session store
 
 - Redis wajib di produksi.
 - Redis down → sesi hilang → login ulang.
 - Persistence + replica.
 
-### 20.4 Refresh token bocor
+### 21.4 Refresh token bocor
 
 - Rotation tiap pakai.
 - Reuse detection → revoke semua sesi user.
 - Log `refresh_reuse_detected`.
 
-### 20.5 Client secret bocor
+### 21.5 Client secret bocor
 
 - Rotasi dual-secret.
 - Auth terima dua secret selama periode rotasi.
 - Alert jika ada percobaan dengan secret lama.
 
-### 20.6 Deployment order
+### 21.6 Deployment order
 
 - Auth dulu (endpoint baru, backward compatible).
 - Payment-api kemudian.
 - Rollback: payment-api fallback ke mode lama sementara.
 
-### 20.7 Menu code
+### 21.7 Menu code
 
 - Jika auth belum punya `code`, pakai `url` sebagai fallback.
 - Migrasi ke `code` tanpa breaking.
 
-### 20.8 PII
+### 21.8 PII
 
 - Redaction di log & trace.
 - Cookie tidak mengandung PII.
 - Session store terenkripsi at rest.
 
-### 20.9 Cleanup sesi expired
+### 21.9 Cleanup sesi expired
 
 - Scheduled job harian: hapus sesi dengan `refresh_expires_at < now()`.
 - Jangan andalkan Redis TTL saja (kalau pakai Postgres).
 
-### 20.10 Versioning drift
+### 21.10 Versioning drift
 
 - Kalau auth dan payment pakai versi kontrak berbeda, contract test gagal.
 - Jangan skip contract test di CI.
 
 ---
 
-## 21. Referensi
+## 22. Referensi
 
 - Plan 1: `docs/plan1-cockatiel-retry-failure-scenario/PLAN1_Cockatiel_Retry_Failure_Scenario.md`
 - Plan 2 (index): `docs/plan2-auth-integration/README.md`
@@ -1255,6 +1319,7 @@ Artinya: kalau auth naik ke 1.1.0, payment harus tetap bisa kerja dengan 1.0.0 s
 - Changelog auth: `docs/plan2-auth-integration/CHANGELOG-AUTH.md`
 - Sandbox notes: `docs/SANDBOX_NOTES.md`
 - RFC 6749 — OAuth 2.0
+- RFC 7009 — OAuth 2.0 Token Revocation
 - RFC 7636 — PKCE
 - RFC 9700 — OAuth 2.0 Security Best Current Practice
 - RFC 7517 — JWK
@@ -1265,7 +1330,7 @@ Artinya: kalau auth naik ke 1.1.0, payment harus tetap bisa kerja dengan 1.0.0 s
 
 ---
 
-## 22. Decision Log
+## 23. Decision Log
 
 | # | Keputusan | Alasan |
 |---|---|---|
@@ -1285,10 +1350,11 @@ Artinya: kalau auth naik ke 1.1.0, payment harus tetap bisa kerja dengan 1.0.0 s
 | 14 | Vue-only FE | Satu FE, satu stack, fokus |
 | 15 | Versioning 4 level | Plan, contract, API, auth service — independen |
 | 16 | Folder per-plan | `docs/plan<N>-<slug>/` dengan `README.md` index |
+| 17 | **Konfigurasi minimal** | Env hanya untuk yang berubah antar env; path OAuth2 fixed → konstanta kode |
 
 ---
 
-## 23. Ringkasan
+## 24. Ringkasan
 
 ```text
 DEV
@@ -1314,17 +1380,8 @@ PROD
 - Lazy sync (SWR) menggantikan background refresh.
 - OAuth 2.0 + PKCE sesuai standar keamanan terkini.
 - Versioning 4 level agar auth update tidak memecah payment.
+- Konfigurasi minimal: `AUTH_BASE_URL` + konstanta path.
 - Auth update cadence tinggi tidak mengganggu payment-api.
 
 ---
 
-## 24. Penutup
-
-Plan ini adalah dokumen **hidup**. Setiap perubahan wajib:
-
-1. Update header `Version`.
-2. Catat di changelog.
-3. Kalau menyentuh kontrak: update `AUTH_CONTRACT.md` + `CHANGELOG-AUTH.md`.
-4. Jalankan contract test.
-
----
