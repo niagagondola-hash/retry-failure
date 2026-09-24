@@ -1,52 +1,49 @@
-# Plan 2 — Auth Integration
+# Plan 2 — Auth Integration (OAuth 2.0 + PKCE + BFF + Lazy Sync)
 
-Integrasi auth service eksternal ke `payment-api` dengan OAuth 2.0 + PKCE
-via BFF, JWT tipis, otorisasi berbasis menu, dan lazy sync per-sesi.
+> **Version**: 1.2.0
+> **Status**: FINAL
+> **Last updated**: 2026-09-24
 
-## Status
+Integrasi `payment-api` dengan auth service eksternal menggunakan OAuth 2.0 + PKCE via BFF pattern, JWT tipis + `roleId`, lazy sync (SWR), dan cache 2 tabel.
 
-- **Version**: 1.0.0
-- **Status**: FINAL
-- **Created**: 2026-09-20
-- **Last updated**: 2026-09-23
-- **Baseline**: `../plan1-cockatiel-retry-failure-scenario/PLAN1_Cockatiel_Retry_Failure_Scenario.md`
+## Source of Truth
 
-## Dokumen
-
-| Dokumen | Versi | Deskripsi |
-|---|---|---|
-| [PLAN-Auth_Integration.md](./PLAN-Auth_Integration.md) | 1.0.0 | Plan utama |
-| [AUTH_CONTRACT.md](./AUTH_CONTRACT.md) | 1.0.0 | Kontrak auth |
-| [auth-openapi.json](./auth-openapi.json) | — | Artefak OpenAPI |
-| [CHANGELOG-AUTH.md](./CHANGELOG-AUTH.md) | — | Riwayat versi kontrak |
-
-## Dokumen Terkait (shared)
-
-| Dokumen | Deskripsi |
+| File | Description |
 |---|---|
-| [../SANDBOX_NOTES.md](../SANDBOX_NOTES.md) | Catatan environment |
-| [../plan1-cockatiel-retry-failure-scenario/PLAN1_Cockatiel_Retry_Failure_Scenario.md](../plan1-cockatiel-retry-failure-scenario/PLAN1_Cockatiel_Retry_Failure_Scenario.md) | Plan 1 (baseline) |
+| [PLAN2-Auth_Integration.md](./PLAN2-Auth_Integration.md) | Plan lengkap (25 sections) — arsitektur, alur OAuth2, token strategy, cache model, lazy sync, testing, versioning, roadmap OAuth2 server |
 
-## Ringkasan Cepat
+## Contract & Changelog
 
-| Aspek | Keputusan |
+| File | Description |
 |---|---|
-| Alur login | OAuth 2.0 Authorization Code + PKCE (S256) |
-| Client | Backend payment (confidential) |
-| Pola | BFF |
-| Token di browser | Tidak ada — hanya cookie `HttpOnly` |
-| Signing JWT | RS256 + JWKS |
-| Payload JWT | `sub`, `username`, `roleId`, `iss`, `aud`, `exp`, `iat`, `jti` |
-| Otorisasi | Berbasis menu code, dari cache lokal |
-| Cache | 2 tabel: `cached_users` + `sessions` |
-| Sinkronisasi | Initial + Lazy (SWR) + Webhook (opsional) |
-| Versioning | 4 level: plan, contract, API, auth service |
+| [AUTH_CONTRACT.md](./AUTH_CONTRACT.md) | Auth contract v1.0.0 — OAuth2 endpoints, JWT claims, RS256 signing, error taxonomy, scopes |
+| [CHANGELOG-AUTH.md](./CHANGELOG-AUTH.md) | Changelog kontrak auth (SemVer) |
 
-## Cara Pakai
+## Tasks
 
-1. Baca **PLAN-Auth_Integration.md** untuk arsitektur lengkap.
-2. Baca **AUTH_CONTRACT.md** sebelum implementasi `packages/security`.
-3. Lihat **auth-openapi.json** untuk detail endpoint auth.
-4. Cek **CHANGELOG-AUTH.md** saat auth rilis versi baru.
-5. Cek **../SANDBOX_NOTES.md** saat setup environment.
+> Folder `tasks/` akan dibuat saat implementasi plan2 dimulai.
+
+## Key Architecture
+
 ```
+FE Vue  --cookie-->  BE payment (BFF)  --OAuth2-->  auth-mock / auth-service
+                          |
+                          +--> cached_users
+                          +--> sessions (permission_codes jsonb)
+                          +--> lazy sync (SWR)
+                          +--> JWKS verify (RS256)
+```
+
+- **BFF pattern**: Token tidak menyentuh browser
+- **PKCE S256**: Standar RFC 9700
+- **JWT tipis**: `sub` + `username` + `roleId` saja, permission di cache lokal
+- **Lazy sync (SWR)**: Fresh 5min → background sync → blocking sync 30min → grace 2h
+- **Versioning 4 level**: Plan, contract, API, auth service — independen
+
+## Cross-Plan Reference
+
+| File | Description |
+|---|---|
+| [../README.md](../README.md) | Global docs index (semua plan) |
+| [../SANDBOX_NOTES.md](../SANDBOX_NOTES.md) | Environment notes |
+| [../plan1-cockatiel-retry-failure/README.md](../plan1-cockatiel-retry-failure/README.md) | Plan 1 — Cockatiel Retry/Failure |

@@ -1,7 +1,7 @@
 # PLAN 2 — Auth Integration (OAuth 2.0 + PKCE + BFF + Lazy Sync)
 
 > **File**: `docs/plan2-auth-integration/PLAN-Auth_Integration.md`
-> **Version**: 1.2.1
+> **Version**: 1.2.2
 > **Status**: FINAL
 > **Created**: 2026-09-20
 > **Last updated**: 2026-09-24
@@ -12,6 +12,7 @@
 
 | Version | Tanggal | Perubahan |
 |---|---|---|
+| 1.2.2 | 2026-09-24 | Fix: payment-api port 3001 (bukan 3000), `payments.user_id` nullable (tidak NOT NULL). |
 | 1.2.1 | 2026-09-24 | Sandbox readiness: `SESSION_STORE=memory`, definisi `AUTH_MODE=disabled`, `openid-client` v5, `auth-mock` login UI (HTML server-rendered). |
 | 1.2.0 | 2026-09-24 | Roadmap OAuth2 Server di repo auth. |
 | 1.1.0 | 2026-09-24 | Simplifikasi konfigurasi: `AUTH_BASE_URL` + konstanta path. |
@@ -437,7 +438,7 @@ Index:
 ### 7.3 `payments` (perubahan)
 
 - Tambah `user_id uuid` FK → `cached_users.user_id`.
-- Backfill (nullable), lalu `NOT NULL`.
+- **Nullable** (tidak NOT NULL untuk demo/sandbox — existing payments dari Plan1 tidak punya user).
 - `ON DELETE SET NULL`.
 - Index `idx_payments_user_id`.
 
@@ -872,7 +873,6 @@ export class MemorySessionStore implements SessionStore, OnModuleDestroy {
   }
 }
 ```
-
 #### 9.4.4 Pemilihan store
 
 ```ts
@@ -924,7 +924,7 @@ export class SecurityModule {
 
 - `client_id`: `payment-api`
 - `client_secret`: dari env
-- `redirect_uri`: `http://localhost:3000/auth/callback`
+- `redirect_uri`: `http://localhost:3001/auth/callback`
 - `grant_types`: `authorization_code`, `refresh_token`
 - `scopes`: `openid profile payment.read payment.write`
 
@@ -1591,7 +1591,6 @@ docker:down
 frontend:vue:dev
 frontend:vue:build
 ```
-
 ### 14.4 Env dev
 
 ```text
@@ -1601,7 +1600,7 @@ AUTH_ISSUER=http://localhost:4001
 JWT_AUDIENCE=payment-api
 OAUTH_CLIENT_ID=payment-api
 OAUTH_CLIENT_SECRET=dev-client-secret
-OAUTH_REDIRECT_URI=http://localhost:3000/auth/callback
+OAUTH_REDIRECT_URI=http://localhost:3001/auth/callback
 OAUTH_SCOPES=openid profile
 SESSION_STORE=redis
 ```
@@ -1615,7 +1614,7 @@ AUTH_ISSUER=http://localhost:4001
 JWT_AUDIENCE=payment-api
 OAUTH_CLIENT_ID=payment-api
 OAUTH_CLIENT_SECRET=dev-client-secret
-OAUTH_REDIRECT_URI=http://localhost:3000/auth/callback
+OAUTH_REDIRECT_URI=http://localhost:3001/auth/callback
 OAUTH_SCOPES=openid profile
 SESSION_STORE=memory
 ```
@@ -1674,7 +1673,7 @@ AUTH_ISSUER=http://localhost:4001
 JWT_AUDIENCE=payment-api
 OAUTH_CLIENT_ID=payment-api
 OAUTH_CLIENT_SECRET=dev-client-secret
-OAUTH_REDIRECT_URI=http://localhost:3000/auth/callback
+OAUTH_REDIRECT_URI=http://localhost:3001/auth/callback
 ```
 
 `openid-client` v5:
@@ -1697,7 +1696,7 @@ const client = new issuer.Client({ client_id, client_secret });
 
 ```text
 # Server
-PORT=3000
+PORT=3001
 NODE_ENV=development
 
 # OAuth2
@@ -1755,7 +1754,7 @@ DB_NAME=retry_failure
 REDIS_URL=redis://localhost:6379
 
 # FE Vue
-VITE_API_URL=http://localhost:3000
+VITE_API_URL=http://localhost:3001
 ```
 
 **Bootstrap validation**:

@@ -17,9 +17,17 @@
 
 Payment retry/failure handling demo menggunakan Cockatiel (retry + circuit breaker + timeout), idempotency anti double-charge, durable retry scheduler, dan full observability.
 
-## Plan 2 — Auth Integration (future)
+## Plan 2 — Auth Integration (OAuth 2.0 + PKCE + BFF + Lazy Sync)
 
-> Belum dibuat. Akan berisi: PLAN2-Auth_Integration.md, AUTH_CONTRACT.md, auth-openapi.json, CHANGELOG-AUTH.md, tasks/.
+[→ `plan2-auth-integration/README.md`](./plan2-auth-integration/README.md)
+
+Integrasi `payment-api` dengan auth service eksternal menggunakan OAuth 2.0 + PKCE via BFF pattern, JWT tipis + `roleId`, lazy sync (SWR), dan cache 2 tabel.
+
+| File | Description |
+|---|---|
+| [PLAN2-Auth_Integration.md](./plan2-auth-integration/PLAN2-Auth_Integration.md) | Plan lengkap (25 sections, 1731 baris) |
+| [AUTH_CONTRACT.md](./plan2-auth-integration/AUTH_CONTRACT.md) | Auth contract v1.0.0 |
+| [CHANGELOG-AUTH.md](./plan2-auth-integration/CHANGELOG-AUTH.md) | Changelog kontrak auth |
 
 ## Root Project Docs
 
