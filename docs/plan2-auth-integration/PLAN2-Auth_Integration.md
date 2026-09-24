@@ -1,7 +1,7 @@
 # PLAN 2 — Auth Integration (OAuth 2.0 + PKCE + BFF + Lazy Sync)
 
 > **File**: `docs/plan2-auth-integration/PLAN-Auth_Integration.md`
-> **Version**: 1.1.0
+> **Version**: 1.2.0
 > **Status**: FINAL
 > **Created**: 2026-09-20
 > **Last updated**: 2026-09-24
@@ -12,6 +12,7 @@
 
 | Version | Tanggal | Perubahan |
 |---|---|---|
+| 1.2.0 | 2026-09-24 | Tambah Section 25: Roadmap OAuth2 Server di repo auth. Update Section 1, 19, 20 untuk mencakup pekerjaan di repo auth. |
 | 1.1.0 | 2026-09-24 | Simplifikasi konfigurasi: `AUTH_BASE_URL` + konstanta path; hapus env URL per-endpoint; tambah "Configuration Philosophy". |
 | 1.0.0 | 2026-09-23 | Final. Struktur folder per-plan, versioning 4 level. |
 | 0.4.0 | 2026-09-20 | Vue-only frontend. |
@@ -27,14 +28,14 @@ Plan ini menjelaskan bagaimana `payment-api` di monorepo Retry berintegrasi deng
 
 1. Berada di repo terpisah.
 2. Memiliki cadence update dependency/Node yang lebih cepat (karena security).
-3. Menyediakan OAuth 2.0 Authorization Server.
+3. **Akan dibangun menjadi OAuth 2.0 Authorization Server penuh.**
 4. Menyediakan admin panel untuk manajemen user/role/menu.
 
 Fokus integrasi:
 
 1. **Boundary jelas**: auth adalah service, bukan library.
 2. **Kontrak-first**: HTTP + JWT claims, bukan shared code.
-3. **Mock-first development**: dev tidak bergantung auth service hidup.
+3. **Mock-first development**: `auth-mock` sebagai referensi OAuth2 lengkap.
 4. **Verifikasi token** via JWKS (RS256).
 5. **JWT tipis**: identitas + active role saja.
 6. **Otorisasi berbasis menu** dari cache lokal.
@@ -42,6 +43,22 @@ Fokus integrasi:
 8. **Observability lintas service**.
 9. **Versioning kontrak** agar auth update tidak memecah payment.
 10. **Konfigurasi minimal**: env hanya untuk yang berubah antar environment.
+
+### 1.1 Strategi Transisi
+
+```text
+FASE 1 (sekarang)
+  payment-api  --OAuth2-->  auth-mock (referensi OAuth2 lengkap)
+  auth asli    : masih custom (login API + JWT HS256)
+  pembangunan OAuth2 server di auth asli: paralel
+
+FASE 2 (auth asli siap)
+  payment-api  --OAuth2-->  auth asli
+  auth-mock    : tetap ada untuk dev & E2E
+  auth asli    : OAuth2 server penuh, RS256 + JWKS
+```
+
+Detail roadmap OAuth2 server ada di **Section 25**.
 
 ---
 
@@ -74,14 +91,15 @@ Fokus integrasi:
 │  repo auth          │         │  repo Retry (monorepo)             │
 │                     │         │                                    │
 │  auth-service       │◄──OAuth2┤  payment-api (BFF + Resource)      │
-│  - /oauth/*         │◄──JWKS──┤   ├─ /auth/*      (BFF)            │
-│  - /api/users/*     │◄──sync──┤   ├─ /payments/*  (resource)       │
-│  - /api/roles/*     │         │   ├─ packages/security             │
-│  - /api/menus/*     │         │   ├─ cache: cached_users, sessions │
-│  - /.well-known/    │         │   └─ session store (Redis)         │
-│      jwks.json      │         │                                    │
-│                     │         │  apps/auth-mock    (OAuth2 ref)    │
-│  DB: auth           │         │  apps/frontend-vue                 │
+│  (target: OAuth2 AS)│◄──JWKS──┤   ├─ /auth/*      (BFF)            │
+│  - /oauth/*         │◄──sync──┤   ├─ /payments/*  (resource)       │
+│  - /api/users/*     │         │   ├─ packages/security             │
+│  - /api/roles/*     │         │   ├─ cache: cached_users, sessions │
+│  - /api/menus/*     │         │   └─ session store (Redis)         │
+│  - /.well-known/    │         │                                    │
+│      jwks.json      │         │  apps/auth-mock    (OAuth2 ref)    │
+│                     │         │  apps/frontend-vue                 │
+│  DB: auth           │         │                                    │
 └─────────────────────┘         └────────────────────────────────────┘
 ```
 
@@ -110,7 +128,7 @@ Fokus integrasi:
 | Testing | `jest`, `supertest`, `nock` | Unit + integration |
 | Crypto | `crypto` (builtin) | Random state, `jti` |
 
-**`apps/auth-mock`**
+**`apps/auth-mock` (OAuth2 reference — sudah OAuth2 penuh)**
 
 | Package | Fungsi |
 |---|---|
@@ -119,6 +137,9 @@ Fokus integrasi:
 | `uuid` | Generate `jti`, `code`, `sid` |
 | `class-validator`, `class-transformer` | DTO |
 | `@nestjs/throttler` | Rate limit login |
+| `ioredis` | Session + authorization code store |
+
+**Repo auth (target: OAuth2 Server)** — lihat Section 25 untuk detail.
 
 **Frontend (`apps/frontend-vue`)**
 
@@ -602,8 +623,8 @@ interface AuthUser {
 
 | Mode | Deskripsi |
 |---|---|
-| `oauth` | OAuth2 + PKCE + JWKS (produksi) |
-| `mock` | Pakai `apps/auth-mock` |
+| `oauth` | OAuth2 + PKCE + JWKS (produksi / staging) |
+| `mock` | Pakai `apps/auth-mock` (dev) |
 | `disabled` | Skip (unit test) |
 
 `AUTH_MODE=mock` menolak start jika `NODE_ENV=production`.
@@ -613,6 +634,8 @@ interface AuthUser {
 ## 10. `apps/auth-mock` (OAuth2 Reference)
 
 ### 10.1 Scope
+
+`auth-mock` adalah **implementasi referensi OAuth2 lengkap**. Auth asli akan mengikuti standar yang sama.
 
 | Endpoint | Fungsi |
 |---|---|
@@ -955,7 +978,7 @@ const client = new issuer.Client({ client_id, client_secret });
 // client.authorizationUrl(), client.tokenUrl(), client.jwksUri
 ```
 
-**Lima env.** Ini paling standar OAuth2/OIDC. Butuh auth punya discovery endpoint; `auth-mock` bisa disiapkan.
+**Lima env.** Ini paling standar OAuth2/OIDC. Butuh auth punya discovery endpoint; `auth-mock` sudah menyediakan, auth asli menyusul (Section 25).
 
 ### 15.5 Aturan praktis
 
@@ -1052,7 +1075,7 @@ VITE_API_URL=http://localhost:3000
 ### 17.3 E2E lintas service
 
 - Dengan `auth-mock`: full OAuth2 flow.
-- Dengan auth asli: full OAuth2 flow.
+- Dengan auth asli (setelah OAuth2 server selesai): full OAuth2 flow.
 - Skenario: single-role, multi-role, super admin, user tanpa akses.
 
 ### 17.4 FE Vue
@@ -1201,30 +1224,54 @@ Payment-api mendukung **rentang** versi kontrak, bukan satu versi.
 
 ## 19. Urutan Implementasi
 
+### 19.1 Fase 1 — Fondasi (Monorepo Retry)
+
 1. **Kontrak OAuth2 & klaim JWT** — sepakati dengan tim auth (termasuk `roleId`).
-2. **Auth service** — tambah `/oauth/*`, JWKS, `/api/v1/me/permissions`, `/api/v1/auth/switch-role`, kolom `code` di menu.
-3. **`apps/auth-mock`** — implementasi referensi OAuth2.
-4. **`packages/security`** — OAuth client, session, guard, cache, lazy sync middleware.
-5. **Migrasi DB payment** — `cached_users`, `sessions` (dengan `permission_codes`), `payments.user_id`.
-6. **Integrasi guard + middleware** di payment-api.
-7. **Lazy sync** — middleware + lock + timeout.
-8. **FE Vue** — redirect flow, session store, router guard, halaman 403/429.
-9. **CSRF, security headers, rate limit**.
-10. **Observability**.
-11. **Docker profile**.
-12. **Contract test + E2E**.
-13. **Dokumentasi** — `docs/plan2-auth-integration/AUTH_CONTRACT.md`, `docs/SANDBOX_NOTES.md`, `docs/plan2-auth-integration/CHANGELOG-AUTH.md`.
+2. **`apps/auth-mock`** — implementasi referensi OAuth2 lengkap.
+3. **`packages/security`** — OAuth client, session, guard, cache, lazy sync middleware.
+4. **Migrasi DB payment** — `cached_users`, `sessions` (dengan `permission_codes`), `payments.user_id`.
+5. **Integrasi guard + middleware** di payment-api.
+6. **Lazy sync** — middleware + lock + timeout.
+7. **FE Vue** — redirect flow, session store, router guard, halaman 403/429.
+8. **CSRF, security headers, rate limit**.
+9. **Observability**.
+10. **Docker profile** (dev dengan auth-mock).
+11. **Contract test + E2E** (mock).
+12. **Dokumentasi** — `docs/plan2-auth-integration/AUTH_CONTRACT.md`, `docs/SANDBOX_NOTES.md`, `docs/plan2-auth-integration/CHANGELOG-AUTH.md`.
+
+### 19.2 Fase 2 — OAuth2 Server di Repo Auth (Paralel)
+
+Detail teknis di **Section 25**. Ringkas:
+
+13. **Migrasi HS256 → RS256** di auth + expose JWKS.
+14. **Endpoint `/oauth/authorize`** di auth.
+15. **Endpoint `/oauth/token`** (code + refresh) di auth.
+16. **Endpoint `/oauth/revoke`** di auth.
+17. **PKCE support** (S256) di auth.
+18. **Client registration** di auth.
+19. **Consent screen + pilih role** di auth.
+20. **Endpoint `/api/v1/me/permissions`** di auth.
+21. **Endpoint `/api/v1/auth/switch-role`** di auth.
+22. **Discovery endpoint** `/.well-known/openid-configuration` di auth.
+23. **Kolom `code` di menu** auth.
+24. **Session store** di auth (Redis) untuk interaksi user dengan AS.
+25. **Rate limiting** di auth.
+
+### 19.3 Fase 3 — Integrasi Auth Asli
+
+26. **Deploy auth OAuth2** ke staging.
+27. **Contract test** payment-api ↔ auth asli.
+28. **E2E lintas service** dengan auth asli.
+29. **Migrasi bertahap**: dev pakai auth-mock, staging pakai auth asli.
+30. **Dokumentasi**: update `AUTH_CONTRACT.md` + `CHANGELOG-AUTH.md`.
 
 ---
 
 ## 20. Definition of Done
 
-- [ ] Auth punya `/oauth/authorize`, `/oauth/token`, `/oauth/revoke`, JWKS.
-- [ ] Auth expose `/api/v1/me/permissions`.
-- [ ] Auth expose `/api/v1/auth/switch-role`.
-- [ ] Auth punya kolom `code` di menu.
-- [ ] JWT payload menyertakan `roleId`.
-- [ ] `apps/auth-mock` implementasi OAuth2 + PKCE.
+### 20.1 Monorepo Retry (Fase 1)
+
+- [ ] `apps/auth-mock` implementasi OAuth2 + PKCE lengkap.
 - [ ] `packages/security` lengkap (termasuk `endpoints.ts`).
 - [ ] Tabel `cached_users` + `sessions` (dengan `permission_codes`) dibuat.
 - [ ] Migrasi `payments.user_id`.
@@ -1239,13 +1286,40 @@ Payment-api mendukung **rentang** versi kontrak, bukan satu versi.
 - [ ] FE Vue: redirect flow, session store, router guard.
 - [ ] Halaman 403 & 429 di FE Vue.
 - [ ] Menu dinamis dari `permissionCodes`.
-- [ ] Contract test lulus.
-- [ ] E2E lulus (mock + auth asli).
+- [ ] Contract test lulus (mock).
+- [ ] E2E lulus (mock).
 - [ ] Observability: log, metrics, trace.
-- [ ] Docker `dev` & `full`.
+- [ ] Docker `dev` profile berjalan.
 - [ ] Konfigurasi mengikuti "Configuration Philosophy" (Section 15).
 - [ ] Dokumentasi: `AUTH_CONTRACT.md`, `CHANGELOG-AUTH.md`, `SANDBOX_NOTES.md`.
 - [ ] Versioning terdokumentasi di semua file.
+
+### 20.2 Repo Auth (Fase 2)
+
+- [ ] Auth punya `/oauth/authorize`.
+- [ ] Auth punya `/oauth/token` (code + refresh).
+- [ ] Auth punya `/oauth/revoke`.
+- [ ] Auth punya `/.well-known/jwks.json`.
+- [ ] Auth punya `/.well-known/openid-configuration`.
+- [ ] Auth pakai RS256 (bukan HS256).
+- [ ] Auth support PKCE (S256).
+- [ ] Auth punya client registration.
+- [ ] Auth punya consent screen + pilih role.
+- [ ] Auth expose `/api/v1/me/permissions`.
+- [ ] Auth expose `/api/v1/auth/switch-role`.
+- [ ] Auth punya kolom `code` di menu.
+- [ ] JWT payload menyertakan `roleId`.
+- [ ] Auth punya session store (Redis) untuk interaksi user.
+- [ ] Auth punya rate limiting di login & token.
+- [ ] Admin panel auth tetap berjalan (user/role/menu CRUD).
+
+### 20.3 Integrasi Penuh (Fase 3)
+
+- [ ] `AUTH_MODE=oauth` dengan auth asli berhasil.
+- [ ] Contract test payment-api ↔ auth asli lulus.
+- [ ] E2E lintas service dengan auth asli lulus.
+- [ ] Docker `full` profile berjalan.
+- [ ] Deployment order terdokumentasi & diuji.
 
 ---
 
@@ -1265,7 +1339,7 @@ Payment-api mendukung **rentang** versi kontrak, bukan satu versi.
 
 ### 21.3 Session store
 
-- Redis wajib di produksi.
+- Redis wajib di produksi (baik di payment-api maupun di auth).
 - Redis down → sesi hilang → login ulang.
 - Persistence + replica.
 
@@ -1308,6 +1382,12 @@ Payment-api mendukung **rentang** versi kontrak, bukan satu versi.
 - Kalau auth dan payment pakai versi kontrak berbeda, contract test gagal.
 - Jangan skip contract test di CI.
 
+### 21.11 Transisi auth-mock → auth asli
+
+- `auth-mock` dan auth asli **harus** mengikuti kontrak yang sama.
+- Contract test dijalankan terhadap **keduanya**.
+- Jangan biarkan mock drift dari auth asli.
+
 ---
 
 ## 22. Referensi
@@ -1324,6 +1404,7 @@ Payment-api mendukung **rentang** versi kontrak, bukan satu versi.
 - RFC 9700 — OAuth 2.0 Security Best Current Practice
 - RFC 7517 — JWK
 - RFC 8725 — JWT Best Current Practices
+- OIDC Discovery 1.0
 - OWASP ASVS — Authentication & Session Management
 - IETF draft — OAuth 2.0 for Browser-Based Apps
 - SemVer — https://semver.org
@@ -1350,13 +1431,16 @@ Payment-api mendukung **rentang** versi kontrak, bukan satu versi.
 | 14 | Vue-only FE | Satu FE, satu stack, fokus |
 | 15 | Versioning 4 level | Plan, contract, API, auth service — independen |
 | 16 | Folder per-plan | `docs/plan<N>-<slug>/` dengan `README.md` index |
-| 17 | **Konfigurasi minimal** | Env hanya untuk yang berubah antar env; path OAuth2 fixed → konstanta kode |
+| 17 | Konfigurasi minimal | Env hanya untuk yang berubah antar env; path OAuth2 fixed → konstanta kode |
+| 18 | **Auth asli jadi OAuth2 Server penuh** | Standar, SSO-ready, menghindari custom auth jangka panjang |
+| 19 | **Transisi bertahap: auth-mock dulu** | Payment-api tidak terblokir; auth asli menyusul |
 
 ---
 
 ## 24. Ringkasan
 
 ```text
+FASE 1 (sekarang)
 DEV
   FE Vue  --cookie-->  BE payment (BFF)  --OAuth2-->  auth-mock
                               |
@@ -1364,8 +1448,9 @@ DEV
                               +--> sessions (permission_codes jsonb)
                               +--> lazy sync (SWR)
 
+FASE 2 (auth asli siap)
 PROD
-  FE Vue  --cookie-->  BE payment (BFF)  --OAuth2-->  auth-service
+  FE Vue  --cookie-->  BE payment (BFF)  --OAuth2-->  auth-service (OAuth2 AS)
                               |
                               +--> cached_users
                               +--> sessions (permission_codes jsonb)
@@ -1381,7 +1466,268 @@ PROD
 - OAuth 2.0 + PKCE sesuai standar keamanan terkini.
 - Versioning 4 level agar auth update tidak memecah payment.
 - Konfigurasi minimal: `AUTH_BASE_URL` + konstanta path.
+- **Auth asli dibangun bertahap menjadi OAuth2 Server penuh.**
+- **auth-mock adalah referensi dan tetap dipakai untuk dev & E2E.**
 - Auth update cadence tinggi tidak mengganggu payment-api.
 
 ---
 
+## 25. Roadmap OAuth2 Server di Repo Auth
+
+Section ini menjelaskan **apa yang harus dibangun di repo auth** agar menjadi OAuth2 Authorization Server penuh. Ini pekerjaan **paralel** dengan Fase 1 (Monorepo Retry).
+
+### 25.1 Kondisi Saat Ini
+
+Repo auth saat ini:
+
+| Aspek | Kondisi |
+|---|---|
+| Framework | NestJS 11 |
+| Database | PostgreSQL |
+| ORM | TypeORM 0.3.x |
+| Signing | HS256 (shared secret) |
+| Login | `POST /api/auth/login` (custom) |
+| Multi-role | `POST /api/auth/select-role` (custom) |
+| Logout | Stateless |
+| Admin panel | ✅ user/role/menu CRUD |
+| JWKS | ❌ |
+| OAuth2 endpoints | ❌ |
+| Discovery | ❌ |
+| PKCE | ❌ |
+| Client registration | ❌ |
+| Session (untuk interaksi user dengan AS) | ❌ |
+
+**Ini bukan OAuth2 Server.** Ini aplikasi auth custom dengan JWT.
+
+### 25.2 Target Arsitektur
+
+```text
+┌──────────────────────────────────────────────────────────────┐
+│  Repo Auth (target: OAuth2 Authorization Server)             │
+│                                                               │
+│  ┌──────────────────┐  ┌──────────────────┐                 │
+│  │ OAuth2 Endpoints │  │ OIDC Endpoints   │                 │
+│  │ - /oauth/authorize│  │ - /.well-known/  │                 │
+│  │ - /oauth/token    │  │     openid-      │                 │
+│  │ - /oauth/revoke   │  │     configuration│                 │
+│  │                   │  │ - /.well-known/  │                 │
+│  │                   │  │     jwks.json    │                 │
+│  │                   │  │ - /oauth/userinfo│                 │
+│  └──────────────────┘  └──────────────────┘                 │
+│                                                               │
+│  ┌──────────────────┐  ┌──────────────────┐                 │
+│  │ Admin Panel      │  │ Login & Consent  │                 │
+│  │ - /api/users     │  │ - halaman login  │                 │
+│  │ - /api/roles     │  │ - consent screen │                 │
+│  │ - /api/menus     │  │ - pilih role     │                 │
+│  └──────────────────┘  └──────────────────┘                 │
+│                                                               │
+│  ┌──────────────────┐  ┌──────────────────┐                 │
+│  │ Internal API     │  │ Session Store    │                 │
+│  │ - /api/v1/me/    │  │ (Redis)          │                 │
+│  │     permissions  │  │                  │                 │
+│  │ - /api/v1/auth/  │  │                  │                 │
+│  │     switch-role  │  │                  │                 │
+│  └──────────────────┘  └──────────────────┘                 │
+│                                                               │
+│  ┌──────────────────────────────────────────┐               │
+│  │ Key Management (RS256 + JWKS)             │               │
+│  └──────────────────────────────────────────┘               │
+│                                                               │
+│  DB: auth (PostgreSQL)                                        │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### 25.3 Yang Harus Dibangun
+
+#### A. Migrasi HS256 → RS256
+
+| Task | Detail |
+|---|---|
+| Generate keypair | RSA 2048 atau EC P-256 |
+| Simpan private key | Di secret manager atau file dengan permission ketat |
+| Expose public key | Via `/.well-known/jwks.json` |
+| `kid` support | Setiap key punya `kid` unik |
+| Rotasi | Dual-key period |
+
+#### B. Endpoint OAuth2
+
+| Endpoint | Fungsi | RFC |
+|---|---|---|
+| `GET /oauth/authorize` | Terima request, redirect ke login/consent, kembalikan `code` | RFC 6749 §3.1 |
+| `POST /oauth/token` | Tukar `code` jadi token; refresh token | RFC 6749 §3.2 |
+| `POST /oauth/revoke` | Cabut token | RFC 7009 |
+
+#### C. PKCE
+
+- Simpan `code_challenge` + `code_challenge_method` saat authorize.
+- Verifikasi `code_verifier` saat token exchange.
+- Support `S256` (wajib), `plain` (opsional, tidak dianjurkan).
+- Tolak request tanpa PKCE dari public client.
+
+#### D. Client Registration
+
+| Task | Detail |
+|---|---|
+| Tabel `oauth_clients` | `client_id`, `client_secret`, `redirect_uri`, `grant_types`, `scopes` |
+| Registrasi | Manual (admin) atau UI |
+| Rotasi secret | Dual-secret period |
+
+#### E. Login & Consent
+
+| Halaman | Fungsi |
+|---|---|
+| Login | User masuk (username/password) |
+| Consent | User setuju memberi akses ke client |
+| Pilih role | Untuk user multi-role |
+
+Halaman ini **milik auth**, bukan payment. Setelah selesai, baru redirect ke `redirect_uri`.
+
+#### F. Session di Auth
+
+Untuk interaksi user dengan AS (login, consent, pilih role), auth butuh **session sendiri**:
+
+- Cookie `HttpOnly` di domain auth.
+- Session store (Redis).
+- Berbeda dari token yang diterbitkan ke klien.
+
+#### G. Endpoint Internal (Sync)
+
+| Endpoint | Fungsi |
+|---|---|
+| `GET /api/v1/me/permissions` | User + role + permission codes |
+| `POST /api/v1/auth/switch-role` | Ganti role aktif |
+
+#### H. Discovery
+
+`GET /.well-known/openid-configuration` yang mengembalikan:
+
+```json
+{
+  "issuer": "https://auth.example.com",
+  "authorization_endpoint": "https://auth.example.com/oauth/authorize",
+  "token_endpoint": "https://auth.example.com/oauth/token",
+  "revocation_endpoint": "https://auth.example.com/oauth/revoke",
+  "jwks_uri": "https://auth.example.com/.well-known/jwks.json",
+  "response_types_supported": ["code"],
+  "grant_types_supported": ["authorization_code", "refresh_token"],
+  "code_challenge_methods_supported": ["S256"],
+  "scopes_supported": ["openid", "profile", "payment.read", "payment.write"],
+  "token_endpoint_auth_methods_supported": ["client_secret_post", "client_secret_basic"]
+}
+```
+
+#### I. Menu Code
+
+Tambah kolom `code` di tabel menu:
+
+```sql
+ALTER TABLE menus ADD COLUMN code varchar(64) UNIQUE;
+```
+
+Isi dengan kode stabil (`payment.read`, `payment.write`, dll).
+
+#### J. Rate Limiting
+
+- Login: 10/menit/IP, 5/menit/username.
+- Token: 20/menit/client.
+
+#### K. Observability
+
+- Log penerbitan token, revoke, login.
+- Metrics: `oauth_token_issued_total`, `oauth_login_attempts_total`.
+- Trace: propagate `traceparent`.
+
+### 25.4 Referensi Implementasi
+
+`apps/auth-mock` di monorepo Retry adalah **referensi implementasi**. Auth asli bisa:
+
+1. **Melihat kode `auth-mock`** untuk pola.
+2. **Mengikuti kontrak yang sama** (`AUTH_CONTRACT.md`).
+3. **Menjalankan contract test** yang sama.
+
+### 25.5 Library yang Bisa Dipakai di Auth
+
+| Kategori | Package | Fungsi |
+|---|---|---|
+| OAuth2 Server | `@node-oauth/oauth2-server` | Implementasi OAuth2 server |
+| JWT / JWKS | `jose` (v5) | Sign RS256, expose JWKS |
+| Session | `ioredis` + `@nestjs/cache-manager` | Session store |
+| Cookie | `cookie-parser` | Cookie parsing |
+| Rate Limit | `@nestjs/throttler` | Throttle |
+| Validation | `class-validator`, `class-transformer` | DTO |
+| Crypto | `crypto` (builtin) | Random `code`, `state` |
+
+**Catatan**: `@node-oauth/oauth2-server` adalah implementasi OAuth2 server yang matang untuk Node.js. Ia menangani banyak detail protokol (validasi request, PKCE, grant types). Auth bisa memakainya untuk mempercepat.
+
+### 25.6 Urutan Pembangunan di Auth
+
+1. **Migrasi HS256 → RS256** + JWKS.
+2. **Tabel `oauth_clients`** + registrasi client.
+3. **Session store** di auth.
+4. **Login & consent page**.
+5. **Endpoint `/oauth/authorize`**.
+6. **Endpoint `/oauth/token`** (code + refresh).
+7. **PKCE support**.
+8. **Endpoint `/oauth/revoke`**.
+9. **Endpoint `/api/v1/me/permissions`**.
+10. **Endpoint `/api/v1/auth/switch-role`**.
+11. **Kolom `code` di menu**.
+12. **Discovery endpoint**.
+13. **Rate limiting**.
+14. **Observability**.
+
+### 25.7 Contract Test
+
+Setiap kali auth asli update, jalankan contract test terhadap payment-api:
+
+- JWT claims sesuai.
+- JWKS bisa dibaca.
+- `/api/v1/me/permissions` struktur benar.
+- OAuth2 flow lengkap.
+- Error format sesuai.
+
+### 25.8 Kompatibilitas dengan auth-mock
+
+`auth-mock` dan auth asli **harus**:
+
+- Mengikuti kontrak yang sama.
+- Menghasilkan JWT dengan klaim yang sama.
+- Menyediakan endpoint dengan path yang sama.
+- Mengembalikan error format yang sama.
+
+Perbedaan yang **diperbolehkan**:
+
+- Implementasi internal (library berbeda).
+- Skala (auth asli lebih production-ready).
+- Fitur tambahan (auth asli bisa punya lebih banyak).
+
+### 25.9 Migrasi Bertahap
+
+```text
+Tahap 1: auth-mock OAuth2 lengkap
+         payment-api pakai auth-mock
+         auth asli masih custom
+
+Tahap 2: auth asli OAuth2 (paralel)
+         auth-mock tetap dipakai dev
+         contract test dijalankan ke keduanya
+
+Tahap 3: staging pakai auth asli
+         dev tetap pakai auth-mock
+
+Tahap 4: production pakai auth asli
+         auth-mock tetap ada untuk dev & E2E
+```
+
+### 25.10 Risiko & Mitigasi
+
+| Risiko | Mitigasi |
+|---|---|
+| Auth asli drift dari kontrak | Contract test di CI |
+| Auth asli belum siap saat payment-api butuh | auth-mock sebagai fallback |
+| Migrasi HS256 → RS256 memecah klien lama | Dual-key period; JWT lama tetap valid sampai expired |
+| Session store baru down | Redis cluster + replica |
+| Consent screen tidak selesai | Pakai halaman minimal dulu, perbaiki UI nanti |
+
+---
