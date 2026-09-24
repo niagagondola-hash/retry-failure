@@ -173,7 +173,7 @@ retry-failure/
 │   └── plan2-auth-integration/
 │       ├── tasks/
 │       ├── README.md
-│       ├── PLAN-Auth_Integration.md
+│       ├── PLAN2-Auth_Integration.md
 │       ├── AUTH_CONTRACT.md
 │       ├── auth-openapi.json
 │       └── CHANGELOG-AUTH.md
