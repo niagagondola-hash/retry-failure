@@ -759,7 +759,7 @@ sequenceDiagram
 
 ## Related docs
 
-- [TEST_MAINTENANCE_RULES.md](../TEST_MAINTENANCE_RULES.md) — rule test maintenance + decision framework
+- [TEST_MAINTENANCE_RULES.md](../../TEST_MAINTENANCE_RULES.md) — rule test maintenance + decision framework
 - [TASK-16-test-scenario-diagrams.md](../tasks/TASK-16-test-scenario-diagrams.md) — task plan yang create scenario diagrams ini
 - [TASK-06-gateway-adapter.md](../tasks/TASK-06-gateway-adapter.md) — implementation task untuk `ResilientPaymentGateway`
 - [TASK-05-cockatiel-resilience.md](../tasks/TASK-05-cockatiel-resilience.md) — implementation task untuk `executeWithResilience` composition

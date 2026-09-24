@@ -16,7 +16,7 @@
 > - Section 21: Urutan implementasi ditambah dua task frontend.
 > - Section 22: DoD ditambah Vue dashboard dan Next.js dashboard.
 >
-> **Catatan implementasi**: Adaptasi lingkungan spesifik (pnpm via corepack, port conflict, Docker availability, dll.) didokumentasikan terpisah di `docs/tasks/SANDBOX_NOTES.md`. Plan ini menjelaskan arsitektur ideal dan tidak mengandung anotasi lingkungan.
+> **Catatan implementasi**: Adaptasi lingkungan spesifik (pnpm via corepack, port conflict, Docker availability, dll.) didokumentasikan terpisah di `docs/SANDBOX_NOTES.md`. Plan ini menjelaskan arsitektur ideal dan tidak mengandung anotasi lingkungan.
 
 ---
 

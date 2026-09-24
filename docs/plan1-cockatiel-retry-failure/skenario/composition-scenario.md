@@ -977,7 +977,7 @@ flowchart TD
 
 ## Related docs
 
-- [TEST_MAINTENANCE_RULES.md](../TEST_MAINTENANCE_RULES.md) — rule test maintenance + decision framework
+- [TEST_MAINTENANCE_RULES.md](../../TEST_MAINTENANCE_RULES.md) — rule test maintenance + decision framework
 - [TASK-16-test-scenario-diagrams.md](../tasks/TASK-16-test-scenario-diagrams.md) — task plan yang create scenario diagrams ini
 - [TASK-05-cockatiel-resilience.md](../tasks/TASK-05-cockatiel-resilience.md) — implementation task untuk `executeWithResilience` composition
 - [TASK-04-error-classification.md](../tasks/TASK-04-error-classification.md) — implementation task untuk `classifyError` + `parseRetryAfter`

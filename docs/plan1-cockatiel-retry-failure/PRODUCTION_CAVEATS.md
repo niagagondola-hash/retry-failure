@@ -6,7 +6,7 @@
 > - **Section C**: Hal yang sengaja TIDAK diimplementasikan ([PLAN1 section 19](./PLAN1_Cockatiel_Retry_Failure_Scenario.md))
 >
 > **Plan reference**: [PLAN1 section 19 + section 20](./PLAN1_Cockatiel_Retry_Failure_Scenario.md)
-> **Related**: [TECHNICAL_DEBT.md](./TECHNICAL_DEBT.md) — issue yang lebih kecil tapi bisa di-refactor
+> **Related**: [TECHNICAL_DEBT.md](../TECHNICAL_DEBT.md) — issue yang lebih kecil tapi bisa di-refactor
 > **Cross-link**: [DEMO_SCENARIOS.md](./DEMO_SCENARIOS.md) — demo yang membuktikan caveat #4 (idempotency) sangat critical
 
 ---
@@ -273,7 +273,7 @@ DB_TYPE=sqlite
 # File: apps/payment-api/test.db (auto-created via synchronize:true)
 ```
 
-Helper functions di [`db-types.helper.ts`](../apps/payment-api/src/database/helpers/db-types.helper.ts):
+Helper functions di [`db-types.helper.ts`](../../apps/payment-api/src/database/helpers/db-types.helper.ts):
 - `getUuidColumnType()` → `'uuid'` PG, `'varchar'` SQLite
 - `getTimestampColumnType()` → `'timestamp'` PG, `'datetime'` SQLite
 
@@ -694,7 +694,7 @@ N/A — REST sudah cukup untuk demo.
 
 #### 7 Metrics yang di-expose payment-api
 
-Source: [`apps/payment-api/src/modules/observability/metrics.service.ts`](../apps/payment-api/src/modules/observability/metrics.service.ts) (PLAN1 section 13.2)
+Source: [`apps/payment-api/src/modules/observability/metrics.service.ts`](../../apps/payment-api/src/modules/observability/metrics.service.ts) (PLAN1 section 13.2)
 
 | # | Metric name | Type | Labels | Description |
 |---|---|---|---|---|
@@ -843,7 +843,7 @@ Plan section 19 secara eksplisit menyebut hal-hal berikut sebagai **out-of-scope
 
 **Tidak ada**: implementasi state machine CLOSED → OPEN → HALF_OPEN sendiri.
 
-**Kenapa**: Cockatiel sudah punya circuit breaker built-in dengan state machine yang benar + tested. Lihat [`packages/resilience/src/breaker/`](../packages/resilience/src/breaker/) untuk adapter.
+**Kenapa**: Cockatiel sudah punya circuit breaker built-in dengan state machine yang benar + tested. Lihat [`packages/resilience/src/breaker/`](../../packages/resilience/src/breaker/) untuk adapter.
 
 **Impact ke production**: tidak ada. Yang perlu di-add: distributed state store (lihat [A.1](#a1-circuit-breaker-state-in-memory-per-instance)).
 
@@ -851,7 +851,7 @@ Plan section 19 secara eksplisit menyebut hal-hal berikut sebagai **out-of-scope
 
 **Tidak ada**: implementasi custom exponential backoff + jitter sendiri.
 
-**Kenapa**: Cockatiel `ExponentialBackoff` + `DelegateBackoff` sudah cukup. Custom hanya untuk handle `Retry-After` header (lihat [`policies.ts` `customBackoff`](../packages/resilience/src/policies.ts)).
+**Kenapa**: Cockatiel `ExponentialBackoff` + `DelegateBackoff` sudah cukup. Custom hanya untuk handle `Retry-After` header (lihat [`policies.ts` `customBackoff`](../../packages/resilience/src/policies.ts)).
 
 **Impact ke production**: tidak ada.
 
@@ -918,7 +918,7 @@ Plan section 19 secara eksplisit menyebut hal-hal berikut sebagai **out-of-scope
 - **E2E results**: [e2e-results.md](./e2e-results.md) — sandbox (SQLite) + lokal (PostgreSQL) test results
 - **Gateway mock modes**: [GATEWAY_MOCK_MODES.md](./GATEWAY_MOCK_MODES.md) — detail 8 failure modes
 - **Database schema**: [DATABASE_ERD.md](./DATABASE_ERD.md) — `payments` + `payment_attempts` table + 6 Note sections
-- **Technical debt**: [TECHNICAL_DEBT.md](./TECHNICAL_DEBT.md) — 8 issue yang lebih kecil tapi bisa di-refactor
+- **Technical debt**: [TECHNICAL_DEBT.md](../TECHNICAL_DEBT.md) — 8 issue yang lebih kecil tapi bisa di-refactor
 - **Vue dashboard spec**: [TASK-13a-vue-improvements.md](./tasks/TASK-13a-vue-improvements.md) — DemoScenarioRunner Opsi C
 - **OTel SDK toggle**: [TASK-11b-otel-sdk.md](./tasks/TASK-11b-otel-sdk.md) — IS_OTEL=true vs false detail
 - **Dual environment**: [TASK-14b-dual-environment.md](./tasks/TASK-14b-dual-environment.md) — PostgreSQL vs SQLite adaptation

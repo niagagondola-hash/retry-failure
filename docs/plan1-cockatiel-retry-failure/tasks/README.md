@@ -9,7 +9,7 @@
 
 ## 0. WAJIB BACA Sebelum Mulai Task
 
-**Sebelum menjalankan task apapun, baca [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md).**
+**Sebelum menjalankan task apapun, baca [`SANDBOX_NOTES.md`](../../SANDBOX_NOTES.md).**
 
 File tersebut berisi:
 - **Pre-flight Check** - script untuk deteksi kondisi lingkungan (local vs sandbox)
@@ -58,7 +58,7 @@ Plan rev 2 ditulis ulang untuk stack yang faithful dengan plan asli:
   - **Next.js** - dashboard ringkas.
   - **Vue 3 + PrimeVue** di `apps/frontend-vue/` - dashboard resmi lengkap.
 
-Adaptasi lingkungan spesifik (port conflict, pnpm availability, Docker availability, dll.) TIDAK ditulis di plan maupun task files. Semua hal lingkungan-specific didokumentasikan di [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md).
+Adaptasi lingkungan spesifik (port conflict, pnpm availability, Docker availability, dll.) TIDAK ditulis di plan maupun task files. Semua hal lingkungan-specific didokumentasikan di [`SANDBOX_NOTES.md`](../../SANDBOX_NOTES.md).
 
 ---
 
@@ -190,11 +190,11 @@ cd /home/z/my-project && bun run dev
 | Jaeger UI | 16686 | docker-compose |
 | OTel OTLP | 4318 | docker-compose |
 
-> Bila port default konflik di lingkungan Anda, lihat [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section "Command Matrix" untuk strategi per kondisi (Local vs Sandbox).
+> Bila port default konflik di lingkungan Anda, lihat [`SANDBOX_NOTES.md`](../../SANDBOX_NOTES.md) section "Command Matrix" untuk strategi per kondisi (Local vs Sandbox).
 
 ### Akses cross-service
 
-Untuk komunikasi antar service, gunakan env variable (`process.env.GATEWAY_URL`, `process.env.PAYMENT_API_URL`, dst.). JANGAN hardcode port di kode aplikasi. Bila di lingkungan tertentu ada gateway/proxy (mis. Caddy dengan `?XTransformPort`), ikuti konvensi lingkungan tersebut - lihat [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section "Cross-service fetch".
+Untuk komunikasi antar service, gunakan env variable (`process.env.GATEWAY_URL`, `process.env.PAYMENT_API_URL`, dst.). JANGAN hardcode port di kode aplikasi. Bila di lingkungan tertentu ada gateway/proxy (mis. Caddy dengan `?XTransformPort`), ikuti konvensi lingkungan tersebut - lihat [`SANDBOX_NOTES.md`](../../SANDBOX_NOTES.md) section "Cross-service fetch".
 
 ---
 
@@ -205,7 +205,7 @@ Untuk komunikasi antar service, gunakan env variable (`process.env.GATEWAY_URL`,
 - Sandbox notes (lingkungan-specific): `/home/z/my-project/retry-failure/docs/tasks/SANDBOX_NOTES.md`
 - Database ERD: [`docs/DATABASE_ERD.md`](../DATABASE_ERD.md) (narasi) + [`docs/DATABASE_ERD.dbml`](../DATABASE_ERD.dbml) (format dbdiagram.io — copy-paste ke https://dbdiagram.io/d)
 - Gateway Mock Modes: [`docs/GATEWAY_MOCK_MODES.md`](../GATEWAY_MOCK_MODES.md) — detail 8 failure modes + arsitektur timeout 3 layer + use case per mode
-- Technical Debt: [`docs/TECHNICAL_DEBT.md`](../TECHNICAL_DEBT.md) — catatan technical debt observability module (5 issues SOLID + clean code) untuk refactor mendatang
+- Technical Debt: [`docs/TECHNICAL_DEBT.md`](../../TECHNICAL_DEBT.md) — catatan technical debt observability module (5 issues SOLID + clean code) untuk refactor mendatang
 - Worklog (cross-agent): `/home/z/my-project/worklog.md` - **setiap sub-agent WAJIB membaca & menambahkan entry di sini**.
 
 ---
@@ -247,7 +247,7 @@ Setelah plan rev 2 complete (TASK-01 sampai TASK-15), ada 2 task post-plan yang 
 
 - [`TASK-15-documentation.md`](./TASK-15-documentation.md) — task plan
 - Output files (4):
-  - [`README.md`](../../README.md) — root project README (quick start + services + structure + docs index)
+  - [`README.md`](../../../README.md) — root project README (quick start + services + structure + docs index)
   - [`docs/DEMO_SCENARIOS.md`](../DEMO_SCENARIOS.md) — narasi 5 demo A-E + business impact + curl steps
   - [`docs/PRODUCTION_CAVEATS.md`](../PRODUCTION_CAVEATS.md) — production caveats + sandbox adaptation + sample PromQL queries
   - [`docs/ADAPTATION_NOTES.md`](../ADAPTATION_NOTES.md) — plan vs implementation comparison table (8 preserved + 22 adapted)
@@ -263,5 +263,5 @@ Setelah plan rev 2 complete (TASK-01 sampai TASK-15), ada 2 task post-plan yang 
 - Format: Mermaid diagrams (sequence + flowchart + state — mix sesuai konteks)
 - Lihat juga:
   - [`docs/skenario/README.md`](../skenario/README.md) — index file semua scenario diagrams
-  - [`docs/TEST_MAINTENANCE_RULES.md`](../TEST_MAINTENANCE_RULES.md) — rule test maintenance + decision framework
+  - [`docs/TEST_MAINTENANCE_RULES.md`](../../TEST_MAINTENANCE_RULES.md) — rule test maintenance + decision framework
   - [`TASK-test-sync-failures.md`](./TASK-test-sync-failures.md) — bug analysis yang inspire TASK-16

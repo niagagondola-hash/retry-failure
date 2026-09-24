@@ -3,7 +3,7 @@
 > **Tujuan**: Catatan technical debt yang ditemukan selama development, dengan rekomendasi refactor.
 > **Bukan bug fatal** — code tetap berjalan dan lulus test. Tapi melanggar best practice SOLID/clean code.
 > **Source**: Analisa dari code review observability module (2026-09-20).
-> **Plan reference**: [PLAN1 section 13 (Observability)](./PLAN1_Cockatiel_Retry_Failure_Scenario.md) + [section 19 (Hal yang Sengaja Tidak Diimplementasikan)](./PLAN1_Cockatiel_Retry_Failure_Scenario.md)
+> **Plan reference**: [PLAN1 section 13 (Observability)](./plan1-cockatiel-retry-failure/PLAN1_Cockatiel_Retry_Failure_Scenario.md) + [section 19 (Hal yang Sengaja Tidak Diimplementasikan)](./plan1-cockatiel-retry-failure/PLAN1_Cockatiel_Retry_Failure_Scenario.md)
 
 ---
 
@@ -627,10 +627,10 @@ pnpm test       # Expected: PASS (142/142)
 
 ## 📚 Related Docs
 
-- [PLAN1 section 13 — Observability](./PLAN1_Cockatiel_Retry_Failure_Scenario.md)
-- [PLAN1 section 18 — SOLID dan Clean Architecture](./PLAN1_Cockatiel_Retry_Failure_Scenario.md)
-- [TASK-11 — Observability (simplified ALS)](./tasks/TASK-11-observability.md)
-- [TASK-11b — Full OTel SDK + Jaeger]((./tasks/TASK-11b-otel-sdk.md)
+- [PLAN1 section 13 — Observability](./plan1-cockatiel-retry-failure/PLAN1_Cockatiel_Retry_Failure_Scenario.md)
+- [PLAN1 section 18 — SOLID dan Clean Architecture](./plan1-cockatiel-retry-failure/PLAN1_Cockatiel_Retry_Failure_Scenario.md)
+- [TASK-11 — Observability (simplified ALS)](./plan1-cockatiel-retry-failure/tasks/TASK-11-observability.md)
+- [TASK-11b — Full OTel SDK + Jaeger]((./plan1-cockatiel-retry-failure/tasks/TASK-11b-otel-sdk.md)
 - [CONTRIBUTING.md — Development Rules](../CONTRIBUTING.md)
 - [TEST_MAINTENANCE_RULES.md — Test maintenance rules](./TEST_MAINTENANCE_RULES.md)
 

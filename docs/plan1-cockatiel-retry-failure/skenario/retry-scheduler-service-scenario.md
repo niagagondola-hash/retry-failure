@@ -431,7 +431,7 @@ flowchart TD
 
 ## Related docs
 
-- [TEST_MAINTENANCE_RULES.md](../TEST_MAINTENANCE_RULES.md) — rule test maintenance + decision framework
+- [TEST_MAINTENANCE_RULES.md](../../TEST_MAINTENANCE_RULES.md) — rule test maintenance + decision framework
 - [TASK-test-sync-failures.md](../tasks/TASK-test-sync-failures.md) — bug analysis 7 failures yang inspire diagrams ini (terutama extra microtask yield issue di Test #5)
 - [TASK-16-test-scenario-diagrams.md](../tasks/TASK-16-test-scenario-diagrams.md) — task plan yang create scenario diagrams ini
 - [PLAN1 Section 10.2 (line 497-534)](../PLAN1_Cockatiel_Retry_Failure_Scenario.md) — Payment API flow + RetryScheduler flow

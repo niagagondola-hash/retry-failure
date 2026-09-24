@@ -3,7 +3,7 @@
 > **Dokumen ini berisi rule khusus untuk maintenance test file.**
 > Pelengkap dari [`CONTRIBUTING.md`](../../CONTRIBUTING.md) yang berisi development rules umum.
 >
-> **Dibuat setelah insiden 7 test failures yang tidak terdeteksi lintas commit** — lihat [`TASK-test-sync-failures.md`](./tasks/TASK-test-sync-failures.md) untuk bug analysis lengkap.
+> **Dibuat setelah insiden 7 test failures yang tidak terdeteksi lintas commit** — lihat [`TASK-test-sync-failures.md`](./plan1-cockatiel-retry-failure/tasks/TASK-test-sync-failures.md) untuk bug analysis lengkap.
 
 ---
 
@@ -93,7 +93,7 @@ Sebelum refactor source code yang bisa affect test, check ini:
 
 ### Rule #1: PLAN1 adalah Source of Truth
 
-**Aturan**: Saat ada konflik antara source code dan test, cek PLAN1 (`docs/PLAN1_Cockatiel_Retry_Failure_Scenario.md`) untuk tentukan mana yang benar.
+**Aturan**: Saat ada konflik antara source code dan test, cek PLAN1 (`docs/plan1-cockatiel-retry-failure/PLAN1_Cockatiel_Retry_Failure_Scenario.md`) untuk tentukan mana yang benar.
 
 **Cara pakai**:
 1. Identifikasi domain behavior yang konflik
@@ -130,7 +130,7 @@ Per PLAN1 section 10.2, durable retry count increment belongs to
 RetryScheduler, not PaymentsService. Update tests in
 payments.service.spec.ts to reflect new behavior.
 
-Refs: docs/PLAN1_Cockatiel_Retry_Failure_Scenario.md#section-10-2
+Refs: docs/plan1-cockatiel-retry-failure/PLAN1_Cockatiel_Retry_Failure_Scenario.md#section-10-2
 ```
 
 ---
@@ -320,12 +320,12 @@ it.skip('should increment totalRetryCount', ...);
 ## 📚 Referensi
 
 - [`CONTRIBUTING.md`](../../CONTRIBUTING.md) — development rules umum (root project, termasuk Rule #5: update scenario diagram kalau ubah test)
-- [`docs/skenario/README.md`](./skenario/README.md) — **index file semua scenario diagrams** (Mermaid diagrams untuk test yang kompleks: retry-scheduler, idempotency, resilient-adapter, composition)
-- [`docs/tasks/TASK-16-test-scenario-diagrams.md`](./tasks/TASK-16-test-scenario-diagrams.md) — task plan yang create scenario diagrams (post-plan documentation)
-- [`docs/tasks/TASK-test-sync-failures.md`](./tasks/TASK-test-sync-failures.md) — bug analysis 7 failures yang inspire dokumen ini
-- [`docs/PLAN1_Cockatiel_Retry_Failure_Scenario.md`](./PLAN1_Cockatiel_Retry_Failure_Scenario.md) — source of truth domain logic
-- [`docs/e2e-results.md`](./e2e-results.md) — hasil E2E test + 20 bug history
-- [`docs/tasks/SANDBOX_NOTES.md`](./tasks/SANDBOX_NOTES.md) — sandbox environment notes (testing-related)
+- [`docs/plan1-cockatiel-retry-failure/skenario/README.md`](./plan1-cockatiel-retry-failure/skenario/README.md) — **index file semua scenario diagrams** (Mermaid diagrams untuk test yang kompleks: retry-scheduler, idempotency, resilient-adapter, composition)
+- [`docs/plan1-cockatiel-retry-failure/tasks/TASK-16-test-scenario-diagrams.md`](./plan1-cockatiel-retry-failure/tasks/TASK-16-test-scenario-diagrams.md) — task plan yang create scenario diagrams (post-plan documentation)
+- [`docs/plan1-cockatiel-retry-failure/tasks/TASK-test-sync-failures.md`](./plan1-cockatiel-retry-failure/tasks/TASK-test-sync-failures.md) — bug analysis 7 failures yang inspire dokumen ini
+- [`docs/plan1-cockatiel-retry-failure/PLAN1_Cockatiel_Retry_Failure_Scenario.md`](./plan1-cockatiel-retry-failure/PLAN1_Cockatiel_Retry_Failure_Scenario.md) — source of truth domain logic
+- [`docs/plan1-cockatiel-retry-failure/e2e-results.md`](./plan1-cockatiel-retry-failure/e2e-results.md) — hasil E2E test + 20 bug history
+- [`docs/SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) — sandbox environment notes (testing-related)
 
 ---
 
@@ -334,7 +334,7 @@ it.skip('should increment totalRetryCount', ...);
 | Tanggal | Perubahan | Alasan |
 |---|---|---|
 | 2026-09-19 | Initial creation | Setelah insiden 7 test failures yang tidak terdeteksi lintas commit (DelegateBackoff mock missing + 6 out-of-sync tests dengan PLAN1) |
-| 2026-09-19 | Tambah cross-link ke `docs/skenario/README.md` + `docs/tasks/TASK-16-test-scenario-diagrams.md` | Saat draft TASK-16 (test scenario diagrams) — visual diagrams untuk test kompleks jadi referensi pendamping rules ini |
+| 2026-09-19 | Tambah cross-link ke `docs/plan1-cockatiel-retry-failure/skenario/README.md` + `docs/plan1-cockatiel-retry-failure/tasks/TASK-16-test-scenario-diagrams.md` | Saat draft TASK-16 (test scenario diagrams) — visual diagrams untuk test kompleks jadi referensi pendamping rules ini |
 
 ---
 

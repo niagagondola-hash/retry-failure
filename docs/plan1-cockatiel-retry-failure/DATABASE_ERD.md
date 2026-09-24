@@ -1,6 +1,6 @@
 # Database ERD — Cockatiel Retry-Failure
 
-> **File**: `docs/DATABASE_ERD.dbml` (DBML format — dbdiagram.io native)
+> **File**: `docs/plan1-cockatiel-retry-failure/DATABASE_ERD.dbml` (DBML format — dbdiagram.io native)
 > **Source of truth**: `apps/payment-api/src/database/entities/*.entity.ts` + `migrations/*.ts`
 > **Plan reference**: [PLAN1 section 11](./PLAN1_Cockatiel_Retry_Failure_Scenario.md)
 
@@ -9,7 +9,7 @@
 ## 📋 Cara Pakai di dbdiagram.io
 
 1. Buka **[dbdiagram.io/d](https://dbdiagram.io/d)**
-2. Buka file [`docs/DATABASE_ERD.dbml`](./DATABASE_ERD.dbml) — copy seluruh isi
+2. Buka file [`docs/plan1-cockatiel-retry-failure/DATABASE_ERD.dbml`](./DATABASE_ERD.dbml) — copy seluruh isi
 3. Paste di editor kiri dbdiagram.io (akan replace konten default)
 4. Diagram akan ter-render di panel kanan
 5. Klik **"Export"** (kanan atas) untuk download:
@@ -452,8 +452,8 @@ GROUP BY p.id;
 
 | # | File | Description | Date |
 |---|---|---|---|
-| 1 | [`0001_init.ts`](../apps/payment-api/src/database/migrations/0001_init.ts) | Create tables + indexes + native PG enums | 2026-09-13 |
-| 2 | [`0002_trace_id_varchar.ts`](../apps/payment-api/src/database/migrations/0002_trace_id_varchar.ts) | ALTER `trace_id` `char(32)` → `varchar(64)` (UUIDv4 = 36 chars, tidak muat di char(32)) | 2026-09-13 |
+| 1 | [`0001_init.ts`](../../apps/payment-api/src/database/migrations/0001_init.ts) | Create tables + indexes + native PG enums | 2026-09-13 |
+| 2 | [`0002_trace_id_varchar.ts`](../../apps/payment-api/src/database/migrations/0002_trace_id_varchar.ts) | ALTER `trace_id` `char(32)` → `varchar(64)` (UUIDv4 = 36 chars, tidak muat di char(32)) | 2026-09-13 |
 
 ---
 
@@ -464,7 +464,7 @@ GROUP BY p.id;
 | **PostgreSQL** (production + local dev with Docker) | `pg` | false | Run via `pnpm db:migrate` | Native PG enums, `gen_random_uuid()`, `timestamp(3)` |
 | **SQLite** (sandbox/test) | `better-sqlite3` | true | Skipped | varchar for enum/timestamp/uuid (via helper functions) |
 
-Helper functions in [`db-types.helper.ts`](../apps/payment-api/src/database/helpers/db-types.helper.ts):
+Helper functions in [`db-types.helper.ts`](../../apps/payment-api/src/database/helpers/db-types.helper.ts):
 - `getUuidColumnType()` → `'uuid'` for PG, `'varchar'` for SQLite
 - `getTimestampColumnType()` → `'timestamp'` for PG, `'datetime'` for SQLite
 
@@ -473,10 +473,10 @@ Helper functions in [`db-types.helper.ts`](../apps/payment-api/src/database/help
 ## 🔗 Cross-Reference
 
 - **Entity source code**:
-  - [`payment.entity.ts`](../apps/payment-api/src/database/entities/payment.entity.ts)
-  - [`payment-attempt.entity.ts`](../apps/payment-api/src/database/entities/payment-attempt.entity.ts)
-  - [`enums.ts`](../apps/payment-api/src/database/entities/enums.ts)
-- **Migrations**: [`migrations/`](../apps/payment-api/src/database/migrations/)
+  - [`payment.entity.ts`](../../apps/payment-api/src/database/entities/payment.entity.ts)
+  - [`payment-attempt.entity.ts`](../../apps/payment-api/src/database/entities/payment-attempt.entity.ts)
+  - [`enums.ts`](../../apps/payment-api/src/database/entities/enums.ts)
+- **Migrations**: [`migrations/`](../../apps/payment-api/src/database/migrations/)
 - **PLAN1 section 11**: Persistence schema reference
 - **TASK-14b**: Dual environment (PostgreSQL + SQLite) — see [`TASK-14b-dual-environment.md`](./tasks/TASK-14b-dual-environment.md)
 - **Bug history**: `trace_id` char(32) → varchar(64) — see [`e2e-results.md`](./e2e-results.md) bug #1

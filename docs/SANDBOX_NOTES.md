@@ -288,7 +288,7 @@ fetch('/admin/config?XTransformPort=3002', { method: 'PUT' })  # -> gateway-mock
 
 ## 3. Task-by-Task Adaptation Notes
 
-Setiap task di `retry-failure/docs/tasks/TASK-*.md` punya section "Useful commands". Saat menjalankan command tersebut, cek dulu kondisi lingkungan. Berikut adaptasi yang perlu diingat per task:
+Setiap task di `retry-failure/docs/plan1-cockatiel-retry-failure/tasks/TASK-*.md` punya section "Useful commands". Saat menjalankan command tersebut, cek dulu kondisi lingkungan. Berikut adaptasi yang perlu diingat per task:
 
 ### TASK-01 (Scaffolding)
 - KONDISI SANDBOX: jalankan `corepack enable pnpm` sebelum `pnpm install`

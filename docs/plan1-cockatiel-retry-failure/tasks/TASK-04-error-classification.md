@@ -137,10 +137,10 @@ NEVER sum Retry-After + exponential backoff. Pilih salah satu:
 
 ### Pre-flight Check
 
-> **WAJIB BACA**: sebelum menjalankan command di bawah, cek kondisi lingkungan Anda via [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 1 (Pre-flight Check).
+> **WAJIB BACA**: sebelum menjalankan command di bawah, cek kondisi lingkungan Anda via [`SANDBOX_NOTES.md`](../../SANDBOX_NOTES.md) section 1 (Pre-flight Check).
 >
 > Ringkasan keyword:
-> - `pnpm --version` ada -> KONDISI LOCAL. Tidak ada -> KONDISI SANDBOX -> jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu (lihat [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 2.1).
+> - `pnpm --version` ada -> KONDISI LOCAL. Tidak ada -> KONDISI SANDBOX -> jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu (lihat [`SANDBOX_NOTES.md`](../../SANDBOX_NOTES.md) section 2.1).
 >
 > Tidak ada port-specific command di task ini (pure TypeScript package, Jest unit test only). Command di bawah sama untuk kedua kondisi (LOCAL & SANDBOX).
 

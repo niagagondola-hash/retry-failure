@@ -817,7 +817,7 @@ Modify `/home/z/my-project/retry-failure/docs/tasks/README.md` - add new section
 
 Setelah TASK-15 selesai, dokumentasi final tersedia di:
 
-- [Project root README](../../README.md) - quick start + service ports + structure.
+- [Project root README](../../../README.md) - quick start + service ports + structure.
 - [Demo scenarios A–E + business impact](../DEMO_SCENARIOS.md) - narrative demo guide,
   hero scenario D (idempotency anti double-charge).
 - [Production caveats + sandbox adaptation](../PRODUCTION_CAVEATS.md) - plan section 20
@@ -888,7 +888,7 @@ Pastikan tidak ada link ke path yang tidak ada.
 
 ### Pre-flight Check
 
-> **WAJIB BACA**: sebelum menjalankan command di bawah, cek kondisi lingkungan Anda via [`SANDBOX_NOTES.md`](./SANDBOX_NOTES.md) section 1 (Pre-flight Check).
+> **WAJIB BACA**: sebelum menjalankan command di bawah, cek kondisi lingkungan Anda via [`SANDBOX_NOTES.md`](../../SANDBOX_NOTES.md) section 1 (Pre-flight Check).
 >
 > Ringkasan keyword:
 > - `pnpm --version` ada -> KONDISI LOCAL. Tidak ada -> KONDISI SANDBOX -> jalankan `corepack enable pnpm && corepack prepare pnpm@9.12.0 --activate` dulu.

@@ -318,7 +318,7 @@ sequenceDiagram
 
 ## Related docs
 
-- [TEST_MAINTENANCE_RULES.md](../TEST_MAINTENANCE_RULES.md) — rule test maintenance + decision framework
+- [TEST_MAINTENANCE_RULES.md](../../TEST_MAINTENANCE_RULES.md) — rule test maintenance + decision framework
 - [TASK-16-test-scenario-diagrams.md](../tasks/TASK-16-test-scenario-diagrams.md) — task plan yang create scenario diagrams ini
 - [PLAN1 Section 9 (line 435-479)](../PLAN1_Cockatiel_Retry_Failure_Scenario.md) — Idempotency-Key header + invariant + replay mechanism
 - [retry-scheduler-service-scenario.md](./retry-scheduler-service-scenario.md) — cross-reference: scheduler juga reuse Idempotency-Key (`{ source: 'scheduler' }` calls `executePayment` yang reuse key yang sama)

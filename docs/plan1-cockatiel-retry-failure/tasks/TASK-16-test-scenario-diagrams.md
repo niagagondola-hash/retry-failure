@@ -37,7 +37,7 @@ Plus 1 index file: `docs/skenario/README.md`.
 - **Simple pure-function tests** (audit.service, classifier, retry-after, idempotency-key, payments.controller, state-machine) — terlalu sederhana untuk perlu diagram
 - **TASK-15 business docs** — separate task, jangan campur
 - **Implementation code changes** — TASK-16 murni dokumentasi visual
-- **Automation/CI** — diagram di-update manual sesuai [CONTRIBUTING.md](../../CONTRIBUTING.md) rule
+- **Automation/CI** — diagram di-update manual sesuai [CONTRIBUTING.md](../../../CONTRIBUTING.md) rule
 - **Non-Mermaid format** (PNG/SVG/Excalidraw) — Mermaid saja supaya render native di GitHub/VS Code
 
 ---
@@ -309,9 +309,9 @@ Spec files yang belum punya diagram (low complexity, bisa tambah nanti kalau per
 
 ## Related docs
 
-- [TEST_MAINTENANCE_RULES.md](../TEST_MAINTENANCE_RULES.md) — rule test maintenance + decision framework
+- [TEST_MAINTENANCE_RULES.md](../../TEST_MAINTENANCE_RULES.md) — rule test maintenance + decision framework
 - [TASK-test-sync-failures.md](./tasks/TASK-test-sync-failures.md) — bug analysis yang inspire diagrams ini
-- [CONTRIBUTING.md](../../CONTRIBUTING.md) — development rules (Rule #5: update diagram jika ubah test)
+- [CONTRIBUTING.md](../../../CONTRIBUTING.md) — development rules (Rule #5: update diagram jika ubah test)
 ```
 
 ---
@@ -480,8 +480,8 @@ pnpm typecheck
 ### Cross-reference
 
 - [`TASK-test-sync-failures.md`](./TASK-test-sync-failures.md) — bug analysis 7 failures yang inspire TASK-16
-- [`TEST_MAINTENANCE_RULES.md`](../TEST_MAINTENANCE_RULES.md) — rule test maintenance + decision framework
-- [`CONTRIBUTING.md`](../../CONTRIBUTING.md) — development rules (Rule #5 akan ditambahkan)
+- [`TEST_MAINTENANCE_RULES.md`](../../TEST_MAINTENANCE_RULES.md) — rule test maintenance + decision framework
+- [`CONTRIBUTING.md`](../../../CONTRIBUTING.md) — development rules (Rule #5 akan ditambahkan)
 - [`TASK-14-e2e-scenarios.md`](./TASK-14-e2e-scenarios.md) — E2E scenario docs (out of scope TASK-16)
 - [`TASK-15-documentation.md`](./TASK-15-documentation.md) — business docs (separate task)
 

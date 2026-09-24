@@ -62,7 +62,7 @@ sleep 5
 > 6. Tampilkan evidence dialog: attempts table + stats delta + breaker state
 > 7. Restore gateway ke `always-success` mode
 
-Lihat detail runner di [`docs/tasks/TASK-13a-vue-improvements.md`](./tasks/TASK-13a-vue-improvements.md) sub-task TASK-13a-04 (Opsi C — Hybrid).
+Lihat detail runner di [`docs/plan1-cockatiel-retry-failure/tasks/TASK-13a-vue-improvements.md`](./tasks/TASK-13a-vue-improvements.md) sub-task TASK-13a-04 (Opsi C — Hybrid).
 
 ### Opsi 2: curl (Recommended untuk audit / CI / script)
 
@@ -613,7 +613,7 @@ Tanpa Retry-After handling:
 - Gateway masih overloaded → semua retry gagal → cascade failure tetap terjadi
 - Client tidak hormat ke rate limit gateway → bisa kena IP ban atau HTTP 403
 
-Dengan DelegateBackoff custom ([`policies.ts`](../apps/payment-api/src/modules/observability/policies.ts) atau [`packages/resilience/src/policies.ts`](../packages/resilience/src/policies.ts)):
+Dengan DelegateBackoff custom ([`policies.ts`](../../apps/payment-api/src/modules/observability/policies.ts) atau [`packages/resilience/src/policies.ts`](../../packages/resilience/src/policies.ts)):
 - Cockatiel ambil `Math.max(exponential, retryAfterMs)` — selalu hormati server
 - Backoff minimal = `Retry-After` walau exponential Cockatiel lebih pendek
 - `delay_before_next_ms` di audit row = 3000 (bukti persist ke DB)
@@ -700,7 +700,7 @@ payments_current_status{status="scheduled_for_retry"} +1
 
 ### Catatan Teknis: DelegateBackoff
 
-Cockatiel v4 `ExponentialBackoff` tidak baca `Retry-After` header (default behavior). Karena itu, kami pakai `DelegateBackoff` custom function di [`packages/resilience/src/policies.ts`](../packages/resilience/src/policies.ts):
+Cockatiel v4 `ExponentialBackoff` tidak baca `Retry-After` header (default behavior). Karena itu, kami pakai `DelegateBackoff` custom function di [`packages/resilience/src/policies.ts`](../../packages/resilience/src/policies.ts):
 
 ```typescript
 const customBackoff = new DelegateBackoff((context, state) => {
@@ -754,7 +754,7 @@ Bersama-sama, kelima demo membuktikan sistem payment **resilient secara end-to-e
 - **Database schema + idempotency invariant**: [DATABASE_ERD.md](./DATABASE_ERD.md)
 - **Vue dashboard DemoScenarioRunner spec**: [TASK-13a-vue-improvements.md](./tasks/TASK-13a-vue-improvements.md) sub-task TASK-13a-04
 - **Production caveats**: [PRODUCTION_CAVEATS.md](./PRODUCTION_CAVEATS.md) — apa yang TIDAK ada di demo ini
-- **Technical debt yang terkait**: [TECHNICAL_DEBT.md](./TECHNICAL_DEBT.md) — issue #1-#8 (observability + dead code)
+- **Technical debt yang terkait**: [TECHNICAL_DEBT.md](../TECHNICAL_DEBT.md) — issue #1-#8 (observability + dead code)
 - **Plan asli**: [PLAN1 section 18 — Demonstration Scenarios](./PLAN1_Cockatiel_Retry_Failure_Scenario.md)
 
 ---

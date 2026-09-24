@@ -76,7 +76,7 @@ Spec files yang belum punya diagram (low complexity, bisa tambah nanti kalau per
 
 ## Related docs
 
-- [TEST_MAINTENANCE_RULES.md](../TEST_MAINTENANCE_RULES.md) — rule test maintenance + decision framework
+- [TEST_MAINTENANCE_RULES.md](../../TEST_MAINTENANCE_RULES.md) — rule test maintenance + decision framework
 - [TASK-test-sync-failures.md](../tasks/TASK-test-sync-failures.md) — bug analysis yang inspire diagrams ini
-- [CONTRIBUTING.md](../../CONTRIBUTING.md) — development rules (Rule #5: update scenario diagram kalau ubah test)
+- [CONTRIBUTING.md](../../../CONTRIBUTING.md) — development rules (Rule #5: update scenario diagram kalau ubah test)
 - [TASK-16-test-scenario-diagrams.md](../tasks/TASK-16-test-scenario-diagrams.md) — task plan yang create scenario diagrams ini
