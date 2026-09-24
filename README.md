@@ -3,8 +3,8 @@
 Production-like demo of payment processing failure handling using Cockatiel as resilience engine.
 
 > Source plan: [`upload/PLAN1_Cockatiel_Retry_Failure_Scenario.md`](../upload/PLAN1_Cockatiel_Retry_Failure_Scenario.md)
-> Subtask index: [`docs/tasks/README.md`](docs/tasks/README.md)
-> Sandbox notes: [`docs/tasks/SANDBOX_NOTES.md`](docs/tasks/SANDBOX_NOTES.md)
+> Subtask index: [`docs/plan1-cockatiel-retry-failure/tasks/README.md`](docs/plan1-cockatiel-retry-failure/tasks/README.md)
+> Sandbox notes: [`docs/SANDBOX_NOTES.md`](docs/SANDBOX_NOTES.md)
 
 ## Quick start
 
@@ -46,7 +46,7 @@ pnpm dev
 | Jaeger UI | 16686 | - | docker-compose |
 | OTel OTLP | 4318 | - | docker-compose |
 
-> **Port shift rationale**: Port 3000 dipakai Next.js sandbox preview di parent root, jadi `payment-api` geser ke 3001 dan `gateway-mock` ke 3002 (sandbox mode). Detail adaptasi plan → implementation lihat [`docs/ADAPTATION_NOTES.md`](docs/ADAPTATION_NOTES.md#7-port-assignments).
+> **Port shift rationale**: Port 3000 dipakai Next.js sandbox preview di parent root, jadi `payment-api` geser ke 3001 dan `gateway-mock` ke 3002 (sandbox mode). Detail adaptasi plan → implementation lihat [`docs/plan1-cockatiel-retry-failure/ADAPTATION_NOTES.md`](docs/plan1-cockatiel-retry-failure/ADAPTATION_NOTES.md#7-port-assignments).
 
 ## Project structure
 
@@ -60,14 +60,22 @@ retry-failure/
 │   └── resilience/               # Cockatiel policies (retry+breaker+timeout composition)
 ├── docker/                        # postgres init.sql + Prometheus/Grafana config
 ├── docs/
-│   ├── tasks/                    # TASK-01..16 spec files + README index
-│   ├── e2e-results.md            # E2E test results (7 backend + 5 UI scenarios)
-│   ├── DEMO_SCENARIOS.md         # Demo A–E guide + business impact
-│   ├── PRODUCTION_CAVEATS.md     # Caveats + sandbox adaptation
-│   ├── ADAPTATION_NOTES.md        # Plan vs implementation comparison
-│   ├── GATEWAY_MOCK_MODES.md     # Detail 8 failure modes + timeout architecture
-│   ├── DATABASE_ERD.md           # Schema reference (narrative + DBML)
-│   └── TECHNICAL_DEBT.md         # 8 SOLID/clean code issues untuk refactor
+│   ├── plan1-cockatiel-retry-failure/   # PLAN1-specific docs (reorganized)
+│   │   ├── PLAN1_Cockatiel_Retry_Failure_Scenario.md  # source of truth domain logic
+│   │   ├── tasks/                # TASK-01..16 spec files + README index
+│   │   ├── skenario/             # Mermaid scenario diagrams (TASK-16)
+│   │   ├── DEMO_SCENARIOS.md     # Demo A–E guide + business impact
+│   │   ├── PRODUCTION_CAVEATS.md # Caveats + sandbox adaptation
+│   │   ├── ADAPTATION_NOTES.md   # Plan vs implementation comparison
+│   │   ├── GATEWAY_MOCK_MODES.md # Detail 8 failure modes + timeout architecture
+│   │   ├── DATABASE_ERD.md       # Schema reference (narrative + DBML)
+│   │   ├── DATABASE_ERD.dbml     # DBML source for dbdiagram.io
+│   │   ├── ESM_CJS_MODULE_RESOLUTION_NOTES.md
+│   │   └── e2e-results.md        # E2E test results (7 backend + 5 UI scenarios)
+│   ├── command/                  # Sync commands + e2e debug tasks
+│   ├── TECHNICAL_DEBT.md         # 8 SOLID/clean code issues untuk refactor
+│   ├── TEST_MAINTENANCE_RULES.md # Rule khusus test maintenance + decision framework
+│   └── SANDBOX_NOTES.md          # Sandbox environment notes (root)
 ├── docker-compose.yml             # postgres + jaeger + prometheus + grafana
 ├── package.json                   # root workspace
 ├── pnpm-workspace.yaml
@@ -83,31 +91,31 @@ Demo ini membuktikan 5 pilar resilience (retry, permanent-error skip, circuit br
 
 **Cara menjalankan demo**:
 - **Opsi 1 (recommended)**: Vue+PrimeVue dashboard di `http://localhost:5173` → tab "Demo Scenarios" → klik tombol A/B/C/D/E
-- **Opsi 2 (audit / CI)**: curl commands — lihat per scenario di [`docs/DEMO_SCENARIOS.md`](docs/DEMO_SCENARIOS.md)
+- **Opsi 2 (audit / CI)**: curl commands — lihat per scenario di [`docs/plan1-cockatiel-retry-failure/DEMO_SCENARIOS.md`](docs/plan1-cockatiel-retry-failure/DEMO_SCENARIOS.md)
 
-**Bukti pengujian otomatis**: Lihat [`docs/e2e-results.md`](docs/e2e-results.md) untuk tabel PASS/FAIL 7 backend scenarios + 5 UI demos dengan evidence (test output, DB snapshot, metric snapshot).
+**Bukti pengujian otomatis**: Lihat [`docs/plan1-cockatiel-retry-failure/e2e-results.md`](docs/plan1-cockatiel-retry-failure/e2e-results.md) untuk tabel PASS/FAIL 7 backend scenarios + 5 UI demos dengan evidence (test output, DB snapshot, metric snapshot).
 
 ## Documentation
 
 ### Project docs (final handover — TASK-15)
 
-- [**Demo Scenarios A–E + business impact**](docs/DEMO_SCENARIOS.md) — narrative demo guide, hero scenario D (idempotency anti double-charge), resep run via Vue dashboard atau curl
-- [**Production Caveats + sandbox adaptation**](docs/PRODUCTION_CAVEATS.md) — plan section 20 (4 caveat utama) + 11 sandbox adaptation bullets + sample PromQL queries
-- [**Adaptation Notes: plan vs implementation**](docs/ADAPTATION_NOTES.md) — 8 hal yang dipertahankan utuh, 22 adaptasi dengan alasan + cross-reference matrix
-- [**E2E Test Results**](docs/e2e-results.md) — 7 backend + 5 UI scenarios PASS dengan evidence (sandbox SQLite + lokal PostgreSQL)
+- [**Demo Scenarios A–E + business impact**](docs/plan1-cockatiel-retry-failure/DEMO_SCENARIOS.md) — narrative demo guide, hero scenario D (idempotency anti double-charge), resep run via Vue dashboard atau curl
+- [**Production Caveats + sandbox adaptation**](docs/plan1-cockatiel-retry-failure/PRODUCTION_CAVEATS.md) — plan section 20 (4 caveat utama) + 11 sandbox adaptation bullets + sample PromQL queries
+- [**Adaptation Notes: plan vs implementation**](docs/plan1-cockatiel-retry-failure/ADAPTATION_NOTES.md) — 8 hal yang dipertahankan utuh, 22 adaptasi dengan alasan + cross-reference matrix
+- [**E2E Test Results**](docs/plan1-cockatiel-retry-failure/e2e-results.md) — 7 backend + 5 UI scenarios PASS dengan evidence (sandbox SQLite + lokal PostgreSQL)
 - [**Technical Debt**](docs/TECHNICAL_DEBT.md) — 8 SOLID/clean code issues untuk refactor mendatang (observability module)
 
 ### Reference & architecture docs
 
 - [Plan document](../upload/PLAN1_Cockatiel_Retry_Failure_Scenario.md) — **source of truth domain logic** (rev 2)
-- [Task index](docs/tasks/README.md) — TASK-01..16 spec files + execution order + DoD checklist
-- [Sandbox notes (environment adaptation)](docs/tasks/SANDBOX_NOTES.md) — pre-flight check LOCAL vs SANDBOX
+- [Task index](docs/plan1-cockatiel-retry-failure/tasks/README.md) — TASK-01..16 spec files + execution order + DoD checklist
+- [Sandbox notes (environment adaptation)](docs/SANDBOX_NOTES.md) — pre-flight check LOCAL vs SANDBOX
 - [**CONTRIBUTING — Development Rules**](CONTRIBUTING.md) — wajib baca sebelum ngoding (rule test setelah ubah kode, mock parity, dll)
 - [**Test Maintenance Rules**](docs/TEST_MAINTENANCE_RULES.md) — rule khusus test maintenance + decision framework saat source vs test conflict
-- [**Database ERD**](docs/DATABASE_ERD.md) — narasi ERD + cara pakai di dbdiagram.io
-- [**Database ERD (DBML)**](docs/DATABASE_ERD.dbml) — copy-paste ke https://dbdiagram.io/d untuk render visual
-- [**Gateway Mock Modes**](docs/GATEWAY_MOCK_MODES.md) — detail 8 failure modes + arsitektur timeout 3 layer + use case
-- [Test sync failures — bug analysis](docs/tasks/TASK-test-sync-failures.md) — catatan 7 failures pre-existing + filosofi test maintenance
+- [**Database ERD**](docs/plan1-cockatiel-retry-failure/DATABASE_ERD.md) — narasi ERD + cara pakai di dbdiagram.io
+- [**Database ERD (DBML)**](docs/plan1-cockatiel-retry-failure/DATABASE_ERD.dbml) — copy-paste ke https://dbdiagram.io/d untuk render visual
+- [**Gateway Mock Modes**](docs/plan1-cockatiel-retry-failure/GATEWAY_MOCK_MODES.md) — detail 8 failure modes + arsitektur timeout 3 layer + use case
+- [Test sync failures — bug analysis](docs/plan1-cockatiel-retry-failure/tasks/TASK-test-sync-failures.md) — catatan 7 failures pre-existing + filosofi test maintenance
 
 ## Stack
 

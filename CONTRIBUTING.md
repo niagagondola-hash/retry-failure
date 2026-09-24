@@ -1,7 +1,7 @@
 # CONTRIBUTING — Development Rules
 
 > **Wajib dibaca sebelum mulai ngoding di proyek ini.**
-> Aturan ini didirikan setelah insiden 7 test failures yang tidak terdeteksi lintas commit (lihat [docs/tasks/TASK-test-sync-failures.md](docs/tasks/TASK-test-sync-failures.md)).
+> Aturan ini didirikan setelah insiden 7 test failures yang tidak terdeteksi lintas commit (lihat [docs/plan1-cockatiel-retry-failure/tasks/TASK-test-sync-failures.md](docs/plan1-cockatiel-retry-failure/tasks/TASK-test-sync-failures.md)).
 
 > 📋 **Untuk rule khusus test maintenance + decision framework saat source vs test conflict**, lihat juga: [docs/TEST_MAINTENANCE_RULES.md](docs/TEST_MAINTENANCE_RULES.md)
 
@@ -129,7 +129,7 @@ async executePayment(...) {
 
 ## 🎯 Rule #5 (WAJIB): Update Scenario Diagram kalau Ubah Test
 
-> Kalau Anda ubah test file yang sudah punya scenario diagram di `docs/skenario/`, WAJIB update diagram-nya dalam commit yang sama.
+> Kalau Anda ubah test file yang sudah punya scenario diagram di `docs/plan1-cockatiel-retry-failure/skenario/`, WAJIB update diagram-nya dalam commit yang sama.
 
 ### Kapan wajib update diagram
 
@@ -141,11 +141,11 @@ async executePayment(...) {
 
 - Tambah test case di describe block yang sudah punya diagram (cukup tambah bullet point di "Key assertions" section diagram itu)
 - Rename variable internal (implementation detail, tidak affect diagram)
-- Perubahan di spec file yang **belum** punya diagram (lihat "Future work" di [`docs/skenario/README.md`](docs/skenario/README.md))
+- Perubahan di spec file yang **belum** punya diagram (lihat "Future work" di [`docs/plan1-cockatiel-retry-failure/skenario/README.md`](docs/plan1-cockatiel-retry-failure/skenario/README.md))
 
 ### Cara update
 
-1. Buka `docs/skenario/<spec-name>-scenario.md` (lihat [index file](docs/skenario/README.md) untuk mapping)
+1. Buka `docs/plan1-cockatiel-retry-failure/skenario/<spec-name>-scenario.md` (lihat [index file](docs/plan1-cockatiel-retry-failure/skenario/README.md) untuk mapping)
 2. Update diagram Mermaid yang relevan dengan perubahan test
 3. Update "Key assertions" + "Common pitfalls" kalau perlu
 4. Commit bersama perubahan test (jangan terpisah) dengan message: `docs: update scenario diagram for <spec-name> (refactor: <reason>)`
@@ -156,15 +156,15 @@ async executePayment(...) {
 // Misal: refactor processOne() di retry-scheduler.service.ts
 // yang affect re-entrancy guard behavior
 //
-// Wajib update: docs/skenario/retry-scheduler-service-scenario.md
+// Wajib update: docs/plan1-cockatiel-retry-failure/skenario/retry-scheduler-service-scenario.md
 // Karena diagram re-entrancy guard flowchart verify behavior itu.
 ```
 
 ### Lihat juga
 
 - [`docs/TEST_MAINTENANCE_RULES.md`](docs/TEST_MAINTENANCE_RULES.md) — Rule detail + decision framework
-- [`docs/skenario/README.md`](docs/skenario/README.md) — index file semua scenario diagrams
-- [`docs/tasks/TASK-16-test-scenario-diagrams.md`](docs/tasks/TASK-16-test-scenario-diagrams.md) — task plan yang create scenario diagrams
+- [`docs/plan1-cockatiel-retry-failure/skenario/README.md`](docs/plan1-cockatiel-retry-failure/skenario/README.md) — index file semua scenario diagrams
+- [`docs/plan1-cockatiel-retry-failure/tasks/TASK-16-test-scenario-diagrams.md`](docs/plan1-cockatiel-retry-failure/tasks/TASK-16-test-scenario-diagrams.md) — task plan yang create scenario diagrams
 
 ---
 
@@ -214,10 +214,10 @@ pnpm typecheck                          # typecheck semua packages
 ## 📚 Referensi
 
 - [docs/TEST_MAINTENANCE_RULES.md](docs/TEST_MAINTENANCE_RULES.md) — **rule khusus test maintenance** + decision framework saat source vs test conflict + mock parity checklist + common pitfalls
-- [docs/tasks/TASK-test-sync-failures.md](docs/tasks/TASK-test-sync-failures.md) — catatan lengkap 7 failures yang inspire rule ini
-- [docs/PLAN1_Cockatiel_Retry_Failure_Scenario.md](docs/PLAN1_Cockatiel_Retry_Failure_Scenario.md) — **source of truth domain logic** — saat konflik source vs test, cek PLAN1
-- [docs/e2e-results.md](docs/e2e-results.md) — hasil E2E test + bug history (20 bug)
-- [docs/tasks/SANDBOX_NOTES.md](docs/tasks/SANDBOX_NOTES.md) — sandbox environment notes
+- [docs/plan1-cockatiel-retry-failure/tasks/TASK-test-sync-failures.md](docs/plan1-cockatiel-retry-failure/tasks/TASK-test-sync-failures.md) — catatan lengkap 7 failures yang inspire rule ini
+- [docs/plan1-cockatiel-retry-failure/PLAN1_Cockatiel_Retry_Failure_Scenario.md](docs/plan1-cockatiel-retry-failure/PLAN1_Cockatiel_Retry_Failure_Scenario.md) — **source of truth domain logic** — saat konflik source vs test, cek PLAN1
+- [docs/plan1-cockatiel-retry-failure/e2e-results.md](docs/plan1-cockatiel-retry-failure/e2e-results.md) — hasil E2E test + bug history (20 bug)
+- [docs/SANDBOX_NOTES.md](docs/SANDBOX_NOTES.md) — sandbox environment notes
 
 ---
 
@@ -229,7 +229,7 @@ pnpm typecheck                          # typecheck semua packages
 | 3 tests fail `executePayment` not called | Mock repo tidak implement `atomicUpdateStatus` (source ditambah commit refaktor) | Rule #4 — update test saat refactor |
 | 3 tests fail `totalRetryCount` expect 1 got 0 | Increment pindah dari service ke scheduler, test tidak update | Rule #4 — update test saat refactor |
 | 1 test fail `http.post` extra `timeout` field | Bug fix race condition tambah `timeout` ke axios, test tidak update assertion | Rule #1 + #4 — test setelah ubah + update test saat refactor |
-| Diagram scenario test tidak sinkron setelah refactor | Developer ubah test tapi lupa update Mermaid diagram di `docs/skenario/` | **Rule #5 — update scenario diagram kalau ubah test** |
+| Diagram scenario test tidak sinkron setelah refactor | Developer ubah test tapi lupa update Mermaid diagram di `docs/plan1-cockatiel-retry-failure/skenario/` | **Rule #5 — update scenario diagram kalau ubah test** |
 
 ---
 
