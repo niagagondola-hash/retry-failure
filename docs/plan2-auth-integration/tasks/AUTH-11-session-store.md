@@ -291,16 +291,16 @@ Implementasi `SessionStore` interface + 2 implementations (Redis untuk productio
 
 ```bash
 # Typecheck
-cd  && pnpm --filter @retry-failure/security typecheck
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security typecheck
 
 # Lint
-cd  && pnpm --filter @retry-failure/security lint
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security lint
 
 # Run session-store tests
-cd  && pnpm --filter @retry-failure/security test -- --testPathPattern=session-store
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security test -- --testPathPattern=session-store
 
 # Run all security tests
-cd  && pnpm --filter @retry-failure/security test
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security test
 
 # Manual Redis test (butuh docker compose up redis atau external Redis)
 docker run --rm -d -p 6379:6379 redis:7-alpine

@@ -3,7 +3,7 @@
 > **Tujuan**: Catatan technical debt yang ditemukan selama development, dengan rekomendasi refactor.
 > **Bukan bug fatal** — code tetap berjalan dan lulus test. Tapi melanggar best practice SOLID/clean code.
 > **Source**: Analisa dari code review observability module (2026-09-20).
-> **Plan reference**: [PLAN1 section 13 (Observability)](./plan1-cockatiel-retry-failure/PLAN1_Cockatiel_Retry_Failure_Scenario.md) + [section 19 (Hal yang Sengaja Tidak Diimplementasikan)](./plan1-cockatiel-retry-failure/PLAN1_Cockatiel_Retry_Failure_Scenario.md)
+> **Plan reference**: [PLAN1 section 13 (Observability)](./PLAN1_Cockatiel_Retry_Failure_Scenario.md) + [section 19 (Hal yang Sengaja Tidak Diimplementasikan)](./PLAN1_Cockatiel_Retry_Failure_Scenario.md)
 
 ---
 
@@ -19,6 +19,10 @@
 | 6 | `src/data-source.ts` legacy orphan (duplicate dengan `database/data-source.ts`) | Low | S (5 menit) | Clean code — dead code + duplicate |
 | 7 | `src/config/configuration.ts` legacy orphan (typed config tidak dipakai) | Low | S (5 menit) | Clean code — dead code |
 | 8 | `src/config/env.ts` legacy orphan (class-validator tidak dipakai, Joi yang aktif) | Low | S (5 menit) | Clean code — dead code + duplicate validation |
+| 9 | AUTH-02: Missing unit tests `keypair.spec.ts` + `jwks.controller.spec.ts` | Medium | S (30 menit) | Test coverage — acceptance criteria tidak terpenuhi |
+| 10 | AUTH-23: Docker/env/scripts tidak terimplementasi | High | M (1 jam) | Acceptance criteria tidak terpenuhi — docker-compose, package.json, .env files |
+| 11 | AUTH-03: `/health` endpoint hilang setelah controller prefix berubah | Low | S (5 menit) | Regression — `@Controller('oauth')` menghilangkan route `/health` yang sebelumnya `@Controller()` |
+| 12 | Plan2: OAuthClientService tight coupling ke axios (direct import) | Low | M (30 menit) | D — Dependency Inversion (axios di-import langsung, bukan via DI token) |
 
 **Total estimasi**: ~4-6 jam kalau semua di-refactor. Tapi bisa incremental. Issues 1, 6, 7, 8 adalah quick wins (masing-masing 5 menit delete dead code).
 
@@ -566,6 +570,180 @@ rm apps/payment-api/src/config/env.ts
 
 ---
 
+### Issue 9: AUTH-02 — Missing Unit Tests `keypair.spec.ts` + `jwks.controller.spec.ts`
+
+**Task**: AUTH-02 (Plan 2 — auth-mock RS256 keypair + JWKS endpoint)
+**Severity**: Medium
+**Effort**: S (30 menit)
+**Plan reference**: [Plan2 Section 5.1 (Signing)](./plan2-auth-integration/PLAN2-Auth_Integration.md) + [AUTH-02 task file](./plan2-auth-integration/tasks/AUTH-02-rs256-jwks.md)
+
+#### Deskripsi
+
+AUTH-02 acceptance criteria (line 242 task file) eksplisit mewajibkan:
+- `Unit test (keypair.spec.ts) + integration test (jwks.controller.spec.ts) lulus.`
+
+Subagent yang implement AUTH-02 **skip kedua test files** dengan alasan "manual curl verification cukup". Manual verify memang PASS (sign/verify roundtrip, JWKS endpoint, kid consistency), tapi tidak ada automated test yang bisa di-run di CI.
+
+#### Yang Hilang
+
+| File | Test Cases yang Harusnya Ada |
+|---|---|
+| `apps/auth-mock/test/keypair.spec.ts` (atau `src/modules/keypair/keypair.spec.ts`) | Sign + verify roundtrip; Invalid signature reject; Expired token reject (`expiresIn: '1s'` + sleep); Wrong audience reject; Wrong issuer reject; `kid` ada di JWT header |
+| `apps/auth-mock/test/jwks.controller.spec.ts` (atau `src/modules/keypair/jwks.controller.spec.ts`) | `GET /.well-known/jwks.json` returns valid JWK set; `kid` di JWKS = `kid` di JWT header; `Cache-Control: max-age=300` header |
+
+#### Impact
+
+- ❌ Tidak ada regression protection untuk KeyPairService + JwtSignerService
+- ❌ Kalau someone break sign/verify logic, tidak ada test yang catch
+- ❌ Acceptance criteria AUTH-02 tidak terpenuhi (9/11 met)
+
+#### Rekomendasi Fix
+
+Buat 2 test files di `apps/auth-mock/src/modules/keypair/` (sesuai jest config `rootDir: 'src'`):
+- `keypair.spec.ts` — test KeyPairService + JwtSignerService
+- `jwks.controller.spec.ts` — test JwksController via supertest atau Nest testing module
+
+**Estimasi**: 30 menit.
+
+---
+
+### Issue 10: AUTH-23 — Docker/Env/Scripts Tidak Terimplementasi
+
+**Task**: AUTH-23 (Plan 2 — Docker sandbox/dev profiles)
+**Severity**: High
+**Effort**: M (1 jam)
+**Plan reference**: [Plan2 Section 14 (Docker & Dev Workflow)](./plan2-auth-integration/PLAN2-Auth_Integration.md) + [AUTH-23 task file](./plan2-auth-integration/tasks/AUTH-23-docker-sandbox-dev-profiles.md)
+
+#### Deskripsi
+
+AUTH-23 acceptance criteria mewajibkan update docker-compose.yml, package.json scripts, dan .env files dengan auth integration env vars. Audit menemukan **6 dari 8 criteria FAIL**:
+
+| # | Criteria | Status |
+|---|---|---|
+| 1 | `docker-compose.yml` has `auth-mock` (port 4001) | ❌ MISSING |
+| 2 | `docker-compose.yml` has `redis` (port 6379) | ❌ MISSING |
+| 3 | `docker-compose.sandbox.yml` minimal (postgres only) | ✅ Pre-existing |
+| 4 | Root `package.json` has `dev:sandbox`, `docker:up:sandbox`, `docker:down:sandbox` | ❌ MISSING |
+| 5 | `.env.example` has auth integration env vars | ✅ FIXED (2026-09-25) |
+| 6 | `.env.sandbox.example` has auth sandbox env vars (`SESSION_STORE=memory`) | ✅ FIXED (2026-09-25) |
+| 7 | Existing services + scripts preserved | ✅ |
+| 8 | `pnpm install` lulus | ✅ |
+
+#### Root Cause
+
+Subagent AUTH-23 sempat implement di sandbox sebelum reset. Setelah sandbox reset + sync dari local upload, perubahan AUTH-23 tidak ter-include di upload (kemungkinan user upload dari versi lokal yang belum sync perubahan AUTH-23).
+
+#### Impact
+
+- ❌ `docker compose up -d` tidak menjalankan auth-mock + redis
+- ❌ Tidak ada sandbox script (`dev:sandbox`)
+- ❌ Developer tidak tahu env vars apa yang perlu di-set untuk auth integration
+- ❌ AUTH-17 (payment-api integration) akan butuh env vars yang belum ada di .env files
+
+#### Rekomendasi Fix
+
+1. Update `docker-compose.yml` — tambah service `auth-mock` (port 4001) + `redis` (port 6379)
+2. Update root `package.json` — tambah scripts: `dev:sandbox`, `docker:up:sandbox`, `docker:down:sandbox`
+3. Update `.env.example` — append auth integration env vars (AUTH_MODE, AUTH_BASE_URL, OAUTH_*, SESSION_STORE, dll dari Plan2 Section 16)
+4. Update `.env.sandbox.example` — append auth sandbox env vars (SESSION_STORE=memory, AUTH_MODE=mock)
+
+**Estimasi**: 1 jam.
+
+---
+
+### Issue 11: AUTH-03 — `/health` Endpoint Hilang (Regression)
+
+**Task**: AUTH-03 (Plan 2 — OAuth2 endpoints)
+**Severity**: Low
+**Effort**: S (5 menit)
+**Plan reference**: [AUTH-03 task file](./plan2-auth-integration/tasks/AUTH-03-oauth2-endpoints.md)
+
+#### Deskripsi
+
+AUTH-01 (scaffold) membuat `OAuthController` dengan `@Controller()` (no prefix) yang punya route `GET /health`. AUTH-03 mengubah controller menjadi `@Controller('oauth')` untuk OAuth2 endpoints, yang menyebabkan route `/health` hilang (sekarang menjadi `/oauth/health` yang juga tidak ada).
+
+#### Bukti
+
+```bash
+curl http://localhost:4001/health
+# {"message":"Cannot GET /health","error":"Not Found","statusCode":404}
+
+curl http://localhost:4001/oauth/health
+# {"message":"Cannot GET /oauth/health","error":"Not Found","statusCode":404}
+```
+
+#### Impact
+
+- ❌ Health check endpoint hilang — tidak ada cara verify auth-mock running selain curl JWKS
+- ❌ Docker healthcheck (kalau ada) akan fail
+
+#### Rekomendasi Fix
+
+Tambahkan health route di controller terpisah (tanpa prefix) atau di `AppModule`:
+
+```typescript
+// apps/auth-mock/src/modules/health/health.controller.ts
+@Controller()
+export class HealthController {
+  @Get('health')
+  health() {
+    return { status: 'ok', service: 'auth-mock', version: '0.1.0' };
+  }
+}
+```
+
+Atau pindahkan ke `main.ts` via `app.getHttpAdapter().get('/health', ...)`.
+
+**Estimasi**: 5 menit.
+
+---
+
+### Issue 12: Plan2 — OAuthClientService Tight Coupling ke axios
+
+**Task**: AUTH-09 (Plan 2 — OAuth client)
+**Severity**: Low
+**Effort**: M (30 menit)
+**Plan reference**: [Plan2 Section 9 (packages/security)](./plan2-auth-integration/PLAN2-Auth_Integration.md)
+
+#### Deskripsi
+
+`OAuthClientService` di `packages/security/src/oauth/oauth-client.service.ts` langsung import dan instantiate `axios` di constructor:
+
+```typescript
+import axios from 'axios';
+
+constructor(@Inject(SECURITY_OPTIONS) private readonly options: SecurityOptions) {
+  this.httpClient = axios.create({ baseURL: options.authBaseUrl, timeout: 5000 });
+}
+```
+
+Ini technically melanggar DIP — class depend ke concrete library (axios), bukan abstraction.
+
+#### Impact
+
+- ⚠️ Sulit mock axios di unit test (subagent pakai `jest.mock('axios')` yang work, tapi fragile)
+- ⚠️ Kalau mau ganti ke `fetch` atau `undici`, harus modify class
+
+#### Rekomendasi Fix
+
+Inject `AxiosInstance` via DI token:
+
+```typescript
+constructor(
+  @Inject('HTTP_CLIENT') private httpClient: AxiosInstance,
+  @Inject(SECURITY_OPTIONS) private options: SecurityOptions,
+) {}
+```
+
+Factory di SecurityModule:
+```typescript
+{ provide: 'HTTP_CLIENT', useFactory: () => axios.create({ timeout: 5000 }) }
+```
+
+**Estimasi**: 30 menit. Low priority — axios stable, jarang diganti.
+
+---
+
 ## 📊 Analysis: Pure SOLID vs Pragmatic
 
 | Approach | Plus | Minus |
@@ -627,10 +805,10 @@ pnpm test       # Expected: PASS (142/142)
 
 ## 📚 Related Docs
 
-- [PLAN1 section 13 — Observability](./plan1-cockatiel-retry-failure/PLAN1_Cockatiel_Retry_Failure_Scenario.md)
-- [PLAN1 section 18 — SOLID dan Clean Architecture](./plan1-cockatiel-retry-failure/PLAN1_Cockatiel_Retry_Failure_Scenario.md)
-- [TASK-11 — Observability (simplified ALS)](./plan1-cockatiel-retry-failure/tasks/TASK-11-observability.md)
-- [TASK-11b — Full OTel SDK + Jaeger]((./plan1-cockatiel-retry-failure/tasks/TASK-11b-otel-sdk.md)
+- [PLAN1 section 13 — Observability](./PLAN1_Cockatiel_Retry_Failure_Scenario.md)
+- [PLAN1 section 18 — SOLID dan Clean Architecture](./PLAN1_Cockatiel_Retry_Failure_Scenario.md)
+- [TASK-11 — Observability (simplified ALS)](./tasks/TASK-11-observability.md)
+- [TASK-11b — Full OTel SDK + Jaeger]((./tasks/TASK-11b-otel-sdk.md)
 - [CONTRIBUTING.md — Development Rules](../CONTRIBUTING.md)
 - [TEST_MAINTENANCE_RULES.md — Test maintenance rules](./TEST_MAINTENANCE_RULES.md)
 
@@ -642,6 +820,7 @@ pnpm test       # Expected: PASS (142/142)
 |---|---|---|
 | 2026-09-20 | Initial creation | Code review observability module — ditemukan 5 technical debt issues terkait SOLID + clean code |
 | 2026-09-23 | Tambah Issues 6, 7, 8 | Code review config + data-source files — ditemukan 3 legacy orphan files (dead code): `src/data-source.ts` (duplicate dengan `database/data-source.ts`), `src/config/configuration.ts` (typed config tidak dipakai), `src/config/env.ts` (class-validator tidak dipakai, Joi yang aktif). Semua Low severity, S effort (delete dead code). |
+| 2026-09-25 | Tambah Issues 9, 10, 11, 12 | Audit Batch 2 + Batch 3 Plan 2 — AUTH-02 missing test files (keypair.spec.ts + jwks.controller.spec.ts), AUTH-23 docker/env/scripts tidak terimplementasi (6/8 criteria fail), AUTH-03 /health endpoint regression, AUTH-09 OAuthClientService tight coupling ke axios. |
 
 ---
 

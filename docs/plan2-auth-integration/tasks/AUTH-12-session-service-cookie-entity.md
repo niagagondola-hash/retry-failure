@@ -313,16 +313,16 @@ Implementasi `SessionService` di `packages/security` — orchestrator yang pakai
 
 ```bash
 # Typecheck
-cd  && pnpm --filter @retry-failure/security typecheck
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security typecheck
 
 # Lint
-cd  && pnpm --filter @retry-failure/security lint
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security lint
 
 # Run session + cookie + cache tests
-cd  && pnpm --filter @retry-failure/security test -- --testPathPattern="(session.service|cookie.util|cache.repository)"
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security test -- --testPathPattern="(session.service|cookie.util|cache.repository)"
 
 # Run all security tests
-cd  && pnpm --filter @retry-failure/security test
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security test
 
 # Verify cookie format manual
 node -e "

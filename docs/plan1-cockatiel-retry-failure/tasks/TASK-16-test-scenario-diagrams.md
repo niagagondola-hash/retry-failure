@@ -451,7 +451,7 @@ Developer yang ubah test file WAJIB update scenario diagram kalau:
 # Buka setiap .md file di docs/skenario/ dan preview Mermaid
 
 # Verify all cross-links valid
-cd 
+cd /home/z/my-project/retry-failure
 grep -r "docs/skenario/" --include="*.md" . | grep -v "^Binary" | sort
 
 # Verify test still pass

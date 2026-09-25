@@ -339,7 +339,7 @@ Buat 4 EJS templates (layout, login, select-role, error) + CSS stylesheet untuk 
 
 ```bash
 # Start auth-mock + verify login page
-cd /apps/auth-mock && pnpm start:dev
+cd /home/z/my-project/retry-failure/apps/auth-mock && pnpm start:dev
 
 # GET authorize → expect login page HTML
 curl -s "http://localhost:4001/oauth/authorize?response_type=code&client_id=payment-api&redirect_uri=http://localhost:3001/auth/callback&state=abc&code_challenge=$(node -e "console.log(require('crypto').createHash('sha256').update('test-verifier-123456789012345678901234567890123').digest('base64url'))")&code_challenge_method=S256" | head -30
@@ -358,18 +358,18 @@ curl -i -b /tmp/cookies.txt "http://localhost:4001/oauth/authorize?response_type
 # Expected: 302 with Location: http://localhost:3001/auth/callback?code=...&state=abc
 
 # Run e2e test
-cd /apps/auth-mock && pnpm test:e2e
+cd /home/z/my-project/retry-failure/apps/auth-mock && pnpm test:e2e
 
 # Run all tests
-cd  && pnpm --filter auth-mock test
+cd /home/z/my-project/retry-failure && pnpm --filter auth-mock test
 
 # Verify build copies views + public
-cd /apps/auth-mock && pnpm build
+cd /home/z/my-project/retry-failure/apps/auth-mock && pnpm build
 ls -la dist/views/ dist/public/
 
 # Typecheck + lint
-cd  && pnpm --filter auth-mock typecheck
-cd  && pnpm --filter auth-mock lint
+cd /home/z/my-project/retry-failure && pnpm --filter auth-mock typecheck
+cd /home/z/my-project/retry-failure && pnpm --filter auth-mock lint
 ```
 
 ## Notes

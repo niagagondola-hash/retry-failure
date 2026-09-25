@@ -117,18 +117,18 @@ Index `idx_payments_status` + `idx_payments_next_retry_at` (TASK-02) menjadikan 
 
 Semua path absolut di monorepo:
 
-- `/apps/payment-api/src/modules/retry-scheduler/retry-scheduler.service.ts`
-- `/apps/payment-api/src/modules/retry-scheduler/retry-scheduler.module.ts`
-- `/apps/payment-api/src/modules/retry-scheduler/index.ts`
-- `/apps/payment-api/src/modules/retry-scheduler/retry-scheduler.controller.ts` (opsional - endpoint `/scheduler-health`)
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/retry-scheduler/retry-scheduler.service.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/retry-scheduler/retry-scheduler.module.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/retry-scheduler/index.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/retry-scheduler/retry-scheduler.controller.ts` (opsional - endpoint `/scheduler-health`)
 
 File yang di-modify:
 
-- `/apps/payment-api/src/app.module.ts` - import `RetrySchedulerModule` (sebelumnya `ScheduleModule.forRoot()` sudah ada dari TASK-09; sekarang tambah `RetrySchedulerModule` setelahnya).
+- `/home/z/my-project/retry-failure/apps/payment-api/src/app.module.ts` - import `RetrySchedulerModule` (sebelumnya `ScheduleModule.forRoot()` sudah ada dari TASK-09; sekarang tambah `RetrySchedulerModule` setelahnya).
 
 Test file:
 
-- `/apps/payment-api/test/modules/retry-scheduler/retry-scheduler.service.spec.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/test/modules/retry-scheduler/retry-scheduler.service.spec.ts`
 
 ## Implementation steps
 
@@ -629,32 +629,32 @@ Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih s
 # 1. Start dependency services (gateway mock + PostgreSQL - port kondisional)
 #    Pastikan PostgreSQL jalan + migration sudah di-run.
 # KONDISI LOCAL (Docker tersedia - gateway-mock di port 3001):
-docker compose -f /docker-compose.yml up -d postgres
+docker compose -f /home/z/my-project/retry-failure/docker-compose.yml up -d postgres
 sleep 3
-docker compose -f /docker-compose.yml ps postgres
-cd /apps/payment-gateway-mock && PORT=3001 pnpm start:dev &
+docker compose -f /home/z/my-project/retry-failure/docker-compose.yml ps postgres
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && PORT=3001 pnpm start:dev &
 
 # KONDISI SANDBOX (Docker tidak tersedia - gateway-mock di port 3002):
 # - Opsi A: connect ke external PostgreSQL instance (set DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME di apps/payment-api/.env).
 # - Opsi B: skip scenario 6/7 yang butuh persistence; jalankan unit test (step 5) saja.
-cd /apps/payment-gateway-mock && PORT=3002 pnpm start:dev &
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && PORT=3002 pnpm start:dev &
 
 # 2. Run migration bila belum (sama kedua kondisi - butuh DB connectable)
-cd /apps/payment-api && pnpm db:migrate
+cd /home/z/my-project/retry-failure/apps/payment-api && pnpm db:migrate
 
 # 3. Start payment-api (port kondisional) - scheduler otomatis aktif via RetrySchedulerModule
 # KONDISI LOCAL (port 3000 bebas):
-cd /apps/payment-api && PORT=3000 pnpm start:dev
+cd /home/z/my-project/retry-failure/apps/payment-api && PORT=3000 pnpm start:dev
 # Expected early log:
 #   [Nest] LOG [RetrySchedulerService] Scheduler started: intervalMs=5000, batchSize=50, maxTotalRetries=5
 #   [Nest] LOG [NestApplication] Nest application successfully started
 
 # KONDISI SANDBOX (port 3000 dipakai Next.js preview -> payment-api geser ke 3001):
-cd /apps/payment-api && PORT=3001 pnpm start:dev
+cd /home/z/my-project/retry-failure/apps/payment-api && PORT=3001 pnpm start:dev
 # Expected early log: same as above + "listening on :3001"
 
 # 4. Typecheck + lint - sama kedua kondisi
-cd 
+cd /home/z/my-project/retry-failure
 pnpm --filter payment-api typecheck
 pnpm --filter payment-api lint
 
@@ -745,7 +745,7 @@ curl -sS "http://localhost:${API_PORT}/scheduler-health" | jq .
 
 # 8a. List payments dengan scheduler state
 # KONDISI LOCAL (docker exec):
-docker compose -f /docker-compose.yml exec postgres \
+docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
   psql -U retry_failure -d retry_failure -c \
   "SELECT id, order_id, status, attempt_count, total_retry_count,
           next_retry_at, failure_reason, updated_at
@@ -764,7 +764,7 @@ psql -h localhost -U retry_failure -d retry_failure -c \
 # 8b. List attempts per scheduler-triggered cycle - verify trace_id sama per cycle,
 #     berbeda antar cycle (traceId di-generate per executePayment call di TASK-07).
 # KONDISI LOCAL:
-docker compose -f /docker-compose.yml exec postgres \
+docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
   psql -U retry_failure -d retry_failure -c \
   "SELECT payment_id, attempt_number, outcome, breaker_state, trace_id, created_at
    FROM payment_attempts
@@ -785,7 +785,7 @@ psql -h localhost -U retry_failure -d retry_failure -c \
 
 # 8c. Verify scheduler no longer picks failed payment
 # KONDISI LOCAL:
-docker compose -f /docker-compose.yml exec postgres \
+docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
   psql -U retry_failure -d retry_failure -c \
   "SELECT COUNT(*) FROM payments
    WHERE status='scheduled_for_retry' AND next_retry_at <= NOW();"

@@ -3,8 +3,8 @@
 > **Source plan**: [`../PLAN2-Auth_Integration.md`](../PLAN2-Auth_Integration.md) (v1.2.2, 2369 lines, 25 sections)
 > **Execution model**: paralel batch + sequential dependency (lihat dependency graph di bawah)
 > **Stack target**: NestJS 11 + TypeORM 0.3 + PostgreSQL 16 + openid-client v5 + jose v5 + ioredis + lru-cache + Vue 3 + PrimeVue
-> **Monorepo root**: `/`
-> **Tasks folder**: `/docs/plan2-auth-integration/tasks/`
+> **Monorepo root**: `/home/z/my-project/retry-failure/`
+> **Tasks folder**: `/home/z/my-project/retry-failure/docs/plan2-auth-integration/tasks/`
 
 ---
 
@@ -123,19 +123,38 @@ AUTH-26
 
 ### Recommended execution batches
 
-- **Batch 1** (parallel, 2 agents): `AUTH-01` (auth-mock scaffold) + `AUTH-08` (security scaffold).
-- **Batch 2** (parallel, 3 agents): `AUTH-02` (JWKS) + `AUTH-03` (OAuth2 endpoints — butuh AUTH-02 stub) + `AUTH-11` (SessionStore — paralel dengan AUTH-02/03 di branch security).
-  - Catatan: `AUTH-03` depends on `AUTH-02`. Eksekusi bisa paralel bila `AUTH-03` pakai stub `JwtSignerService` (interface dulu, impl di AUTH-02). Atau sequential: `AUTH-02` → `AUTH-03`.
-- **Batch 3** (parallel, 4 agents): `AUTH-04` (login UI) + `AUTH-05` (internal endpoints) + `AUTH-06` (fixtures) + `AUTH-07` (discovery).
+> **Batch mapping disesuaikan dengan eksekusi aktual sandbox.**
+> Batch 1 dan 2 sudah selesai dieksekusi (7/28 tasks done).
+
+- **Batch 1** (parallel, 2 agents): `AUTH-01` (auth-mock scaffold) + `AUTH-08` (security scaffold). ✅ DONE
+- **Batch 2** (parallel, 3 subagents / 5 tasks): `AUTH-02` (RS256+JWKS) + `AUTH-09` (OAuth client) + `AUTH-11` (SessionStore Redis+Memory) + `AUTH-16` (DB migration) + `AUTH-23` (Docker profiles). ✅ DONE
+- **Batch 3** (parallel, 2 agents): `AUTH-03` (OAuth2 endpoints — depends AUTH-02) + `AUTH-10` (JWKS verifier — depends AUTH-08).
+- **Batch 4** (parallel, 4 agents): `AUTH-04` (login UI EJS) + `AUTH-05` (internal endpoints) + `AUTH-06` (fixtures) + `AUTH-07` (OIDC discovery).
   - Semua depends pada `AUTH-03` (atau `AUTH-02` untuk `AUTH-07`).
-- **Batch 4** (parallel, 3 agents): `AUTH-09` (OAuth client) + `AUTH-10` (JWKS verifier) + `AUTH-11` (SessionStore).
 - **Batch 5** (sequential): `AUTH-12` (Session service) → `AUTH-13` (Guards) → `AUTH-14` (Lazy sync) → `AUTH-15` (CSRF + Helmet + Throttler).
-- **Batch 6** (parallel, 2 agents): `AUTH-16` (DB migration) + `AUTH-23` (Docker profiles) — keduanya independent.
-- **Batch 7** (sequential): `AUTH-17` (payment-api BFF integration) — butuh semua security tasks + AUTH-15 + AUTH-16 ready. Single agent (large task).
-- **Batch 8** (parallel, 4 agents): `AUTH-18` (@RequireMenu existing endpoints) + `AUTH-19` (observability) + `AUTH-20` (FE Vue axios) + `AUTH-27` (contract tests) — semua depends on AUTH-17.
-- **Batch 9** (parallel, 2 agents): `AUTH-21` (router guards + pages) + `AUTH-22` (menu component) — keduanya depends on AUTH-20.
-- **Batch 10** (sequential): `AUTH-24` (unit tests) → `AUTH-25` (integration tests) → `AUTH-26` (E2E) — testing chain.
-- **Batch 11** (final): `AUTH-28` (documentation) — setelah semua implementation done. Single agent.
+- **Batch 6** (sequential, single agent): `AUTH-17` (payment-api BFF integration) — butuh semua security tasks + AUTH-15 + AUTH-16 ready. Large task.
+- **Batch 7** (parallel, 4 agents): `AUTH-18` (@RequireMenu existing endpoints) + `AUTH-19` (observability) + `AUTH-20` (FE Vue axios) + `AUTH-27` (contract tests) — semua depends on AUTH-17.
+- **Batch 8** (parallel, 2 agents): `AUTH-21` (router guards + pages) + `AUTH-22` (menu component) — keduanya depends on AUTH-20.
+- **Batch 9** (sequential): `AUTH-24` (unit tests) → `AUTH-25` (integration tests) → `AUTH-26` (E2E) — testing chain.
+- **Batch 10** (final): `AUTH-28` (documentation) — setelah semua implementation done. Single agent.
+
+#### Eksekusi aktual (sandbox)
+
+| Batch | Tasks | Status | Date |
+|---|---|---|---|
+| Batch 1 | AUTH-01 + AUTH-08 | ✅ DONE | 2026-09-24 |
+| Batch 2 | AUTH-02, AUTH-09, AUTH-11, AUTH-16, AUTH-23 | ✅ DONE | 2026-09-24 |
+| Batch 3 | AUTH-03 + AUTH-10 | ✅ DONE | 2026-09-25 |
+| Batch 4 | AUTH-04, AUTH-05, AUTH-06, AUTH-07 | ⏳ NEXT | - |
+| Batch 5 | AUTH-12 → AUTH-13 → AUTH-14 → AUTH-15 | Pending | - |
+| Batch 6 | AUTH-17 | Pending | - |
+| Batch 7 | AUTH-18, AUTH-19, AUTH-20, AUTH-27 | Pending | - |
+| Batch 8 | AUTH-21, AUTH-22 | Pending | - |
+| Batch 9 | AUTH-24 → AUTH-25 → AUTH-26 | Pending | - |
+| Batch 10 | AUTH-28 | Pending | - |
+
+**Completed**: 7/28 tasks (AUTH-01, 02, 08, 09, 11, 16, 23)
+**Tests**: 230 PASS (88 security + 58 resilience + 84 payment-api)
 
 ---
 
@@ -146,7 +165,7 @@ Setiap file task memakai template yang sama (per plan2 + plan1 convention):
 1. **Header** — Task ID, Plan version, Dependencies, Effort, Plan reference.
 2. **Goal** — 1-2 kalimat tujuan task.
 3. **Scope** — In scope + Out of scope (bullet points).
-4. **Files to create/modify** — path absolut (relatif ke `/`).
+4. **Files to create/modify** — path absolut (relatif ke `/home/z/my-project/retry-failure/`).
 5. **Implementation steps** — urutan konkret dengan code snippets dari plan2.
 6. **Acceptance criteria** — checklist.
 7. **Useful commands** — command yang WAJIB dijalankan setelah task selesai (verify).
@@ -156,36 +175,36 @@ Setiap file task memakai template yang sama (per plan2 + plan1 convention):
 
 ```bash
 # Install dependencies monorepo (root)
-cd  && pnpm install
+cd /home/z/my-project/retry-failure && pnpm install
 
 # Lint (root)
-cd  && pnpm lint
+cd /home/z/my-project/retry-failure && pnpm lint
 
 # Typecheck (root)
-cd  && pnpm typecheck
+cd /home/z/my-project/retry-failure && pnpm typecheck
 
 # Build all
-cd  && pnpm build
+cd /home/z/my-project/retry-failure && pnpm build
 
 # Run all tests
-cd  && pnpm test
+cd /home/z/my-project/retry-failure && pnpm test
 
 # Dev mode (semua apps)
-cd  && pnpm dev
+cd /home/z/my-project/retry-failure && pnpm dev
 
 # Dev mode per-app
-cd  && pnpm --filter auth-mock start:dev        # port 4001
-cd  && pnpm --filter payment-api start:dev      # port 3001
-cd  && pnpm --filter payment-gateway-mock start:dev  # port 3002 (sandbox)
-cd  && pnpm --filter frontend-vue dev            # port 5173
+cd /home/z/my-project/retry-failure && pnpm --filter auth-mock start:dev        # port 4001
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api start:dev      # port 3001
+cd /home/z/my-project/retry-failure && pnpm --filter payment-gateway-mock start:dev  # port 3002 (sandbox)
+cd /home/z/my-project/retry-failure && pnpm --filter frontend-vue dev            # port 5173
 
 # Test specific package
-cd  && pnpm --filter @retry-failure/security test
-cd  && pnpm --filter auth-mock test
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security test
+cd /home/z/my-project/retry-failure && pnpm --filter auth-mock test
 
 # Typecheck specific package
-cd  && pnpm --filter @retry-failure/security typecheck
-cd  && pnpm --filter auth-mock typecheck
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security typecheck
+cd /home/z/my-project/retry-failure && pnpm --filter auth-mock typecheck
 ```
 
 ### Port assignments (per plan2 v1.2.2)

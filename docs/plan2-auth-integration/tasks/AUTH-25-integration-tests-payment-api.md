@@ -625,29 +625,29 @@ Tulis integration test suite untuk `apps/payment-api` yang menguji alur OAuth2 e
 
 ```bash
 # Install test deps
-cd  && pnpm --filter payment-api add -D supertest @types/supertest
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api add -D supertest @types/supertest
 
 # Run all tests (unit + integration)
-cd  && pnpm --filter payment-api test
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api test
 
 # Run integration tests only
-cd  && pnpm --filter payment-api test:integration
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api test:integration
 
 # Run specific integration test
-cd  && pnpm --filter payment-api test -- --testNamePattern="auth.callback"
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api test -- --testNamePattern="auth.callback"
 
 # Run with coverage
-cd  && pnpm --filter payment-api test:cov
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api test:cov
 
 # Debug failing test (verbose)
-cd  && pnpm --filter payment-api test -- --verbose --testNamePattern="auth"
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api test -- --verbose --testNamePattern="auth"
 
 # Watch mode
-cd  && pnpm --filter payment-api test -- --watch
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api test -- --watch
 
 # Typecheck + lint after changes
-cd  && pnpm --filter payment-api typecheck
-cd  && pnpm --filter payment-api lint
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api typecheck
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api lint
 ```
 
 ## Notes

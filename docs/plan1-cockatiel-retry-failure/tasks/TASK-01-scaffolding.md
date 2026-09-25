@@ -9,7 +9,7 @@
 
 ## Goal
 
-Menyiapkan monorepo pnpm workspaces di `/` dengan struktur sesuai plan section 4, plus konfigurasi `@nestjs/config` + Joi schema validation. Fondasi untuk semua task berikutnya.
+Menyiapkan monorepo pnpm workspaces di `/home/z/my-project/retry-failure/` dengan struktur sesuai plan section 4, plus konfigurasi `@nestjs/config` + Joi schema validation. Fondasi untuk semua task berikutnya.
 
 ## Scope
 
@@ -30,37 +30,37 @@ Menyiapkan monorepo pnpm workspaces di `/` dengan struktur sesuai plan section 4
 
 ## Files to create
 
-- `/package.json`
-- `/pnpm-workspace.yaml`
-- `/tsconfig.base.json`
-- `/.gitignore` - ignore `.env`, allow `.env.example` + `.env.sandbox.example`
-- `/.env.example` - **KONDISI LOCAL** (port 3000, gateway 3001, Docker available)
-- `/.env.sandbox.example` - **KONDISI SANDBOX** (port 3001, gateway 3002, no Docker)
-- `/.nvmrc` - pin Node version
-- `/apps/payment-api/package.json`
-- `/apps/payment-api/tsconfig.json`
-- `/apps/payment-api/nest-cli.json`
-- `/apps/payment-api/src/main.ts` - minimal bootstrap
-- `/apps/payment-api/src/app.module.ts` - empty root module
-- `/apps/payment-api/src/config/config.module.ts`
-- `/apps/payment-api/src/config/configuration.ts`
-- `/apps/payment-api/src/config/validation.schema.ts` - Joi
-- `/apps/payment-gateway-mock/package.json`
-- `/apps/payment-gateway-mock/tsconfig.json`
-- `/apps/payment-gateway-mock/nest-cli.json`
-- `/apps/payment-gateway-mock/src/main.ts`
-- `/apps/payment-gateway-mock/src/app.module.ts`
-- `/apps/frontend-vue/package.json` - Vite + Vue
-- `/apps/frontend-vue/tsconfig.json`
-- `/apps/frontend-vue/vite.config.ts`
-- `/apps/frontend-vue/index.html`
-- `/apps/frontend-vue/src/main.ts` - empty Vue bootstrap
-- `/apps/frontend-vue/src/App.vue` - placeholder
-- `/packages/resilience/package.json`
-- `/packages/resilience/tsconfig.json`
-- `/packages/resilience/src/index.ts` - barrel placeholder
-- `/docker-compose.yml` - minimal stub (postgres only)
-- `/README.md` - short overview
+- `/home/z/my-project/retry-failure/package.json`
+- `/home/z/my-project/retry-failure/pnpm-workspace.yaml`
+- `/home/z/my-project/retry-failure/tsconfig.base.json`
+- `/home/z/my-project/retry-failure/.gitignore` - ignore `.env`, allow `.env.example` + `.env.sandbox.example`
+- `/home/z/my-project/retry-failure/.env.example` - **KONDISI LOCAL** (port 3000, gateway 3001, Docker available)
+- `/home/z/my-project/retry-failure/.env.sandbox.example` - **KONDISI SANDBOX** (port 3001, gateway 3002, no Docker)
+- `/home/z/my-project/retry-failure/.nvmrc` - pin Node version
+- `/home/z/my-project/retry-failure/apps/payment-api/package.json`
+- `/home/z/my-project/retry-failure/apps/payment-api/tsconfig.json`
+- `/home/z/my-project/retry-failure/apps/payment-api/nest-cli.json`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/main.ts` - minimal bootstrap
+- `/home/z/my-project/retry-failure/apps/payment-api/src/app.module.ts` - empty root module
+- `/home/z/my-project/retry-failure/apps/payment-api/src/config/config.module.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/config/configuration.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/config/validation.schema.ts` - Joi
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/package.json`
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/tsconfig.json`
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/nest-cli.json`
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/main.ts`
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/app.module.ts`
+- `/home/z/my-project/retry-failure/apps/frontend-vue/package.json` - Vite + Vue
+- `/home/z/my-project/retry-failure/apps/frontend-vue/tsconfig.json`
+- `/home/z/my-project/retry-failure/apps/frontend-vue/vite.config.ts`
+- `/home/z/my-project/retry-failure/apps/frontend-vue/index.html`
+- `/home/z/my-project/retry-failure/apps/frontend-vue/src/main.ts` - empty Vue bootstrap
+- `/home/z/my-project/retry-failure/apps/frontend-vue/src/App.vue` - placeholder
+- `/home/z/my-project/retry-failure/packages/resilience/package.json`
+- `/home/z/my-project/retry-failure/packages/resilience/tsconfig.json`
+- `/home/z/my-project/retry-failure/packages/resilience/src/index.ts` - barrel placeholder
+- `/home/z/my-project/retry-failure/docker-compose.yml` - minimal stub (postgres only)
+- `/home/z/my-project/retry-failure/README.md` - short overview
 
 ## Implementation steps
 
@@ -280,7 +280,7 @@ Menyiapkan monorepo pnpm workspaces di `/` dengan struktur sesuai plan section 4
 ## Acceptance criteria
 
 - [ ] `pnpm --version` works (via corepack).
-- [ ] `pnpm install` di `/` berhasil tanpa error.
+- [ ] `pnpm install` di `/home/z/my-project/retry-failure/` berhasil tanpa error.
 - [ ] `cd apps/payment-api && pnpm start:dev` bisa start NestJS di port 3001 (modal "Hello world" cukup).
 - [ ] `cd apps/payment-gateway-mock && pnpm start:dev` bisa start di port 3002.
 - [ ] `cd apps/frontend-vue && pnpm dev` bisa start Vite di port 5173.
@@ -316,7 +316,7 @@ corepack prepare pnpm@9.12.0 --activate
 pnpm --version  # verify, expected 9.12.0
 
 # 2. Install dependencies monorepo (sama kedua kondisi)
-cd 
+cd /home/z/my-project/retry-failure
 pnpm install
 
 # 3. Verify structure
@@ -324,14 +324,14 @@ ls -la apps/ packages/
 
 # 4. Start payment-api (background)
 # KONDISI LOCAL (port 3000 bebas):
-cd /apps/payment-api
+cd /home/z/my-project/retry-failure/apps/payment-api
 PORT=3000 pnpm start:dev > /tmp/payment-api.log 2>&1 &
 sleep 5
 tail -n 20 /tmp/payment-api.log
 curl -s http://localhost:3000/ 2>&1 || echo "no route yet - OK if NestJS default 404"
 
 # KONDISI SANDBOX (port 3000 dipakai Next.js preview):
-cd /apps/payment-api
+cd /home/z/my-project/retry-failure/apps/payment-api
 PORT=3001 pnpm start:dev > /tmp/payment-api.log 2>&1 &
 sleep 5
 tail -n 20 /tmp/payment-api.log
@@ -339,31 +339,31 @@ curl -s http://localhost:3001/ 2>&1 || echo "no route yet - OK if NestJS default
 
 # 5. Start gateway-mock (background)
 # KONDISI LOCAL:
-cd /apps/payment-gateway-mock
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock
 PORT=3001 pnpm start:dev > /tmp/gateway-mock.log 2>&1 &
 sleep 5
 tail -n 20 /tmp/gateway-mock.log
 
 # KONDISI SANDBOX:
-cd /apps/payment-gateway-mock
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock
 PORT=3002 pnpm start:dev > /tmp/gateway-mock.log 2>&1 &
 sleep 5
 tail -n 20 /tmp/gateway-mock.log
 
 # 6. Start Vue frontend (background) - sama kedua kondisi (port 5173)
-cd /apps/frontend-vue
+cd /home/z/my-project/retry-failure/apps/frontend-vue
 pnpm dev > /tmp/frontend-vue.log 2>&1 &
 sleep 5
 tail -n 20 /tmp/frontend-vue.log
 curl -s http://localhost:5173/ | head -20
 
 # 7. Lint & typecheck - sama kedua kondisi
-cd 
+cd /home/z/my-project/retry-failure
 pnpm lint
 pnpm typecheck
 
 # 8. Test config validation (start with missing env) - sama kedua kondisi
-cd /apps/payment-api
+cd /home/z/my-project/retry-failure/apps/payment-api
 unset DB_HOST DB_PORT DB_USER DB_PASS DB_NAME
 pnpm start:dev 2>&1 | head -20  # expected: Joi validation error
 
@@ -373,10 +373,10 @@ pkill -f "vite" 2>/dev/null
 
 # 10. Verify Docker compose
 # KONDISI LOCAL (Docker tersedia):
-docker compose -f /docker-compose.yml up -d postgres
+docker compose -f /home/z/my-project/retry-failure/docker-compose.yml up -d postgres
 sleep 5
-docker compose -f /docker-compose.yml ps
-docker compose -f /docker-compose.yml down
+docker compose -f /home/z/my-project/retry-failure/docker-compose.yml ps
+docker compose -f /home/z/my-project/retry-failure/docker-compose.yml down
 
 # KONDISI SANDBOX (Docker tidak tersedia):
 # Skip command ini. Butuh external PostgreSQL instance, atau gunakan mock repository untuk dev.

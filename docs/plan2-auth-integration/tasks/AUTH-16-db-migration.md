@@ -331,16 +331,16 @@ Buat 3 file migration di `apps/payment-api/src/migrations/` untuk:
 
 ```bash
 # Install TypeORM CLI (jika belum)
-cd  && pnpm --filter payment-api add typeorm
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api add typeorm
 
 # Run migration (local Postgres harus running)
-cd  && pnpm --filter payment-api migration:run
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api migration:run
 
 # Revert last migration
-cd  && pnpm --filter payment-api migration:revert
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api migration:revert
 
 # Generate migration from entity changes (for future)
-cd  && npm_config_name=UpdateCachedUsers pnpm --filter payment-api migration:generate
+cd /home/z/my-project/retry-failure && npm_config_name=UpdateCachedUsers pnpm --filter payment-api migration:generate
 
 # Verify schema via psql
 docker exec -it retry-failure-postgres psql -U retry_failure -d retry_failure -c "\d cached_users"
@@ -363,11 +363,11 @@ docker exec -it retry-failure-postgres psql -U retry_failure -d retry_failure -c
 # Should also delete the session row.
 
 # Typecheck after entity changes
-cd  && pnpm --filter payment-api typecheck
-cd  && pnpm --filter @retry-failure/security typecheck
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api typecheck
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security typecheck
 
 # Lint
-cd  && pnpm --filter payment-api lint
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api lint
 ```
 
 ## Notes

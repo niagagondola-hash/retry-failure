@@ -160,8 +160,8 @@ docker compose up -d jaeger
 
 ### Create baru
 
-- `/apps/payment-api/src/otel.ts` - OTel SDK init (load sebelum NestJS).
-- `/apps/payment-gateway-mock/src/otel.ts` - (opsional) gateway mock OTel init.
+- `/home/z/my-project/retry-failure/apps/payment-api/src/otel.ts` - OTel SDK init (load sebelum NestJS).
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/otel.ts` - (opsional) gateway mock OTel init.
 
 ### Modify
 
@@ -181,7 +181,7 @@ docker compose up -d jaeger
 ### 1. Install OTel dependencies
 
 ```bash
-cd 
+cd /home/z/my-project/retry-failure
 pnpm --filter payment-api add \
   @opentelemetry/sdk-node \
   @opentelemetry/api \
@@ -438,7 +438,7 @@ jaeger:
 
 ```bash
 # 1. Start Jaeger (via docker-compose)
-cd 
+cd /home/z/my-project/retry-failure
 docker compose up -d jaeger
 sleep 3
 # Verify: curl http://localhost:16686 -> Jaeger UI HTML

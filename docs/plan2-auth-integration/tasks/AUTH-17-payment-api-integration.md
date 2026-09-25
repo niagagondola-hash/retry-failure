@@ -489,16 +489,16 @@ Integrasikan `packages/security` ke `apps/payment-api`:
 
 ```bash
 # Install deps
-cd  && pnpm --filter payment-api add cookie-parser @nestjs/throttler helmet joi
-cd  && pnpm --filter payment-api add -D @types/cookie-parser
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api add cookie-parser @nestjs/throttler helmet joi
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api add -D @types/cookie-parser
 
 # Typecheck + lint
-cd  && pnpm --filter payment-api typecheck
-cd  && pnpm --filter payment-api lint
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api typecheck
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api lint
 
 # Run payment-api (AUTH_MODE=mock)
-cd  && pnpm --filter auth-mock start:dev &  # port 4001
-cd  && pnpm --filter payment-api start:dev  # port 3001
+cd /home/z/my-project/retry-failure && pnpm --filter auth-mock start:dev &  # port 4001
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api start:dev  # port 3001
 
 # Manual smoke test (browser-based)
 # 1. Browser: http://localhost:3001/auth/login

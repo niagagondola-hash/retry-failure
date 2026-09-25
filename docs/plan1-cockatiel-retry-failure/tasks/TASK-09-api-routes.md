@@ -85,25 +85,25 @@ Semua path absolut di monorepo:
 
 ### Create baru
 
-- `/apps/payment-api/src/modules/payments/payments.controller.ts`
-- `/apps/payment-api/src/modules/payments/dto/payment-response.dto.ts`
-- `/apps/payment-api/src/modules/payments/dto/list-payments-query.dto.ts`
-- `/apps/payment-api/src/modules/health/health.controller.ts`
-- `/apps/payment-api/src/modules/health/health.service.ts`
-- `/apps/payment-api/src/modules/health/health.module.ts`
-- `/apps/payment-api/src/modules/health/index.ts`
-- `/apps/payment-api/src/modules/metrics/metrics.controller.ts`
-- `/apps/payment-api/src/modules/metrics/metrics.module.ts`
-- `/apps/payment-api/src/modules/metrics/index.ts`
-- `/apps/payment-api/test/modules/payments/payments.controller.spec.ts`
-- `/apps/payment-api/test/modules/health/health.controller.spec.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/payments/payments.controller.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/payments/dto/payment-response.dto.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/payments/dto/list-payments-query.dto.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/health/health.controller.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/health/health.service.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/health/health.module.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/health/index.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/metrics/metrics.controller.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/metrics/metrics.module.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/metrics/index.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/test/modules/payments/payments.controller.spec.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/test/modules/health/health.controller.spec.ts`
 
 ### Modify
 
-- `/apps/payment-api/src/modules/payments/payments.module.ts` - tambahkan `controllers: [PaymentsController]` + export.
-- `/apps/payment-api/src/modules/payments/dto/create-payment.dto.ts` - tambahkan `@ApiProperty()` decorators (bila belum ada dari TASK-07).
-- `/apps/payment-api/src/app.module.ts` - wire semua modul baru.
-- `/apps/payment-api/src/main.ts` - Swagger + ValidationPipe + CORS.
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/payments/payments.module.ts` - tambahkan `controllers: [PaymentsController]` + export.
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/payments/dto/create-payment.dto.ts` - tambahkan `@ApiProperty()` decorators (bila belum ada dari TASK-07).
+- `/home/z/my-project/retry-failure/apps/payment-api/src/app.module.ts` - wire semua modul baru.
+- `/home/z/my-project/retry-failure/apps/payment-api/src/main.ts` - Swagger + ValidationPipe + CORS.
 
 ## Implementation steps
 
@@ -809,26 +809,26 @@ Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih s
 #    Pastikan PostgreSQL sudah running (docker atau managed) + env DATABASE_URL ter-set
 #    di apps/payment-api/.env
 # KONDISI LOCAL (gateway-mock port 3001):
-cd /apps/payment-gateway-mock && PORT=3001 pnpm start:dev &
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && PORT=3001 pnpm start:dev &
 
 # KONDISI SANDBOX (gateway-mock port 3002):
-cd /apps/payment-gateway-mock && PORT=3002 pnpm start:dev &
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && PORT=3002 pnpm start:dev &
 
 # 2. Run migration bila belum (sama kedua kondisi - butuh DB connectable)
-cd /apps/payment-api && pnpm db:migrate
+cd /home/z/my-project/retry-failure/apps/payment-api && pnpm db:migrate
 
 # 3. Start payment-api dev server (port kondisional)
 # KONDISI LOCAL (port 3000 bebas):
-cd /apps/payment-api && PORT=3000 pnpm start:dev
+cd /home/z/my-project/retry-failure/apps/payment-api && PORT=3000 pnpm start:dev
 # Expected log: "Payment API running on http://localhost:3000" + "Swagger UI: http://localhost:3000/docs"
 
 # KONDISI SANDBOX (port 3000 dipakai Next.js preview -> payment-api geser ke 3001):
-cd /apps/payment-api && PORT=3001 pnpm start:dev
+cd /home/z/my-project/retry-failure/apps/payment-api && PORT=3001 pnpm start:dev
 # Expected log: "Payment API running on http://localhost:3001" + "Swagger UI: http://localhost:3001/docs"
 
 # 4. Typecheck + lint - sama kedua kondisi
-cd  && pnpm --filter payment-api typecheck
-cd  && pnpm --filter payment-api lint
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api typecheck
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api lint
 
 # 5. Test endpoints via curl (jalan dari shell lain)
 #    Pola env var: API_PORT default 3000 LOCAL; set API_PORT=3001 untuk SANDBOX.
@@ -912,11 +912,11 @@ curl -s "http://localhost:${API_PORT}/docs" | head -n 5
 # Lihat SANDBOX_NOTES.md section 2.12 untuk detail cross-service fetch.
 
 # 6. Check dev log - pastikan tidak ada unhandled promise rejection
-tail -n 100 /apps/payment-api/dev.log 2>/dev/null || \
+tail -n 100 /home/z/my-project/retry-failure/apps/payment-api/dev.log 2>/dev/null || \
   echo "dev.log path mungkin berbeda - check start:dev script"
 
 # 7. Jest unit tests - sama kedua kondisi (tidak butuh HTTP server)
-cd  && pnpm --filter payment-api test -- \
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api test -- \
   test/modules/payments/payments.controller.spec.ts \
   test/modules/health/health.controller.spec.ts
 ```

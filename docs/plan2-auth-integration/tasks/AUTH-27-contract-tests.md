@@ -523,17 +523,17 @@ Tulis contract test suite yang verify `apps/auth-mock` dan auth asli (future) co
 
 ```bash
 # Install deps (jika belum)
-cd  && pnpm --filter payment-api add axios
-cd  && pnpm --filter payment-api add -D @types/jest
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api add axios
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api add -D @types/jest
 
 # Start auth-mock
-cd  && pnpm --filter auth-mock start:dev &
+cd /home/z/my-project/retry-failure && pnpm --filter auth-mock start:dev &
 
 # Run contract tests against auth-mock (default)
-cd  && pnpm --filter payment-api test:contract
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api test:contract
 
 # Run against auth asli (setelah Fase 2)
-cd  && \
+cd /home/z/my-project/retry-failure && \
   AUTH_BASE_URL=https://staging.auth.example.com \
   OAUTH_CLIENT_ID=payment-api \
   OAUTH_CLIENT_SECRET=real-secret-from-vault \
@@ -541,18 +541,18 @@ cd  && \
   pnpm --filter payment-api test:contract
 
 # Run specific contract test
-cd  && pnpm --filter payment-api test:contract -- --testNamePattern="JWT"
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api test:contract -- --testNamePattern="JWT"
 
 # Run with verbose output
-cd  && pnpm --filter payment-api test:contract -- --verbose
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api test:contract -- --verbose
 
 # Generate coverage report (opsional)
-cd  && pnpm --filter payment-api test:contract -- --json --outputFile=test-results.json
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api test:contract -- --json --outputFile=test-results.json
 # Parse + generate docs/plan2-auth-integration/contract-coverage.md
 
 # Typecheck + lint after changes
-cd  && pnpm --filter payment-api typecheck
-cd  && pnpm --filter payment-api lint
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api typecheck
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api lint
 ```
 
 ## Notes

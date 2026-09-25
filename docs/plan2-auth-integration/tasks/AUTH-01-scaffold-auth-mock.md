@@ -64,7 +64,7 @@ Menyiapkan `apps/auth-mock` sebagai NestJS app kosong di port `4001` dengan stru
 
 1. Buat folder structure:
    ```bash
-   cd 
+   cd /home/z/my-project/retry-failure
    mkdir -p apps/auth-mock/src/modules/oauth
    mkdir -p apps/auth-mock/src/modules/user
    mkdir -p apps/auth-mock/src/modules/client
@@ -268,29 +268,29 @@ Menyiapkan `apps/auth-mock` sebagai NestJS app kosong di port `4001` dengan stru
 
 ```bash
 # Install dependencies (root)
-cd  && pnpm install
+cd /home/z/my-project/retry-failure && pnpm install
 
 # Run auth-mock dev server (port 4001)
-cd /apps/auth-mock && pnpm start:dev
+cd /home/z/my-project/retry-failure/apps/auth-mock && pnpm start:dev
 # atau via workspace filter:
-cd  && pnpm --filter auth-mock start:dev
+cd /home/z/my-project/retry-failure && pnpm --filter auth-mock start:dev
 
 # Verify health endpoint
 curl -s http://localhost:4001/health
 # Expected: {"status":"ok","service":"auth-mock","version":"0.1.0"}
 
 # Typecheck
-cd  && pnpm --filter auth-mock typecheck
+cd /home/z/my-project/retry-failure && pnpm --filter auth-mock typecheck
 
 # Lint
-cd  && pnpm --filter auth-mock lint
+cd /home/z/my-project/retry-failure && pnpm --filter auth-mock lint
 
 # Test (placeholder — belum ada spec test)
-cd  && pnpm --filter auth-mock test
+cd /home/z/my-project/retry-failure && pnpm --filter auth-mock test
 
 # Verify folder structure
-ls -la /apps/auth-mock/
-ls -la /apps/auth-mock/src/modules/
+ls -la /home/z/my-project/retry-failure/apps/auth-mock/
+ls -la /home/z/my-project/retry-failure/apps/auth-mock/src/modules/
 
 # Stop dev server
 pkill -f "nest start" 2>/dev/null

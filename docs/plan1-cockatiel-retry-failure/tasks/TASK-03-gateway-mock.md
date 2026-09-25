@@ -39,24 +39,24 @@ Membangun `payment-gateway-mock` sebagai NestJS app terpisah di `apps/payment-ga
 
 ## Files to create
 
-- `/apps/payment-gateway-mock/src/main.ts` - bootstrap port 3002, CORS, Swagger optional.
-- `/apps/payment-gateway-mock/src/app.module.ts`
-- `/apps/payment-gateway-mock/src/modules/charges/charges.module.ts`
-- `/apps/payment-gateway-mock/src/modules/charges/charges.controller.ts` - POST /v1/charges
-- `/apps/payment-gateway-mock/src/modules/charges/charges.service.ts` - apply mode + idempotency
-- `/apps/payment-gateway-mock/src/modules/charges/dto/charge-request.dto.ts` - class-validator
-- `/apps/payment-gateway-mock/src/modules/charges/dto/charge-response.dto.ts`
-- `/apps/payment-gateway-mock/src/modules/admin/admin.module.ts`
-- `/apps/payment-gateway-mock/src/modules/admin/admin.controller.ts` - GET/PUT /admin/config, GET /admin/stats
-- `/apps/payment-gateway-mock/src/modules/admin/admin.service.ts`
-- `/apps/payment-gateway-mock/src/modules/admin/dto/mock-config.dto.ts`
-- `/apps/payment-gateway-mock/src/modules/metrics/metrics.module.ts`
-- `/apps/payment-gateway-mock/src/modules/metrics/metrics.controller.ts` - GET /metrics
-- `/apps/payment-gateway-mock/src/modules/metrics/metrics.service.ts` - prom-client registry
-- `/apps/payment-gateway-mock/src/shared/state/mock-state.ts` - runtime config singleton
-- `/apps/payment-gateway-mock/src/shared/idempotency/idempotency-store.ts` - in-memory store
-- `/apps/payment-gateway-mock/src/shared/modes/mode-handler.ts` - switch per mode
-- `/apps/payment-gateway-mock/src/shared/modes/index.ts`
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/main.ts` - bootstrap port 3002, CORS, Swagger optional.
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/app.module.ts`
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/modules/charges/charges.module.ts`
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/modules/charges/charges.controller.ts` - POST /v1/charges
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/modules/charges/charges.service.ts` - apply mode + idempotency
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/modules/charges/dto/charge-request.dto.ts` - class-validator
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/modules/charges/dto/charge-response.dto.ts`
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/modules/admin/admin.module.ts`
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/modules/admin/admin.controller.ts` - GET/PUT /admin/config, GET /admin/stats
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/modules/admin/admin.service.ts`
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/modules/admin/dto/mock-config.dto.ts`
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/modules/metrics/metrics.module.ts`
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/modules/metrics/metrics.controller.ts` - GET /metrics
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/modules/metrics/metrics.service.ts` - prom-client registry
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/shared/state/mock-state.ts` - runtime config singleton
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/shared/idempotency/idempotency-store.ts` - in-memory store
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/shared/modes/mode-handler.ts` - switch per mode
+- `/home/z/my-project/retry-failure/apps/payment-gateway-mock/src/shared/modes/index.ts`
 
 ## Implementation steps
 
@@ -182,13 +182,13 @@ Membangun `payment-gateway-mock` sebagai NestJS app terpisah di `apps/payment-ga
 ```bash
 # 1. Start gateway mock
 # KONDISI LOCAL (port 3001 bebas):
-cd /apps/payment-gateway-mock
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock
 PORT=3001 pnpm start:dev > /tmp/gateway-mock.log 2>&1 &
 sleep 5
 tail -n 20 /tmp/gateway-mock.log
 
 # KONDISI SANDBOX (port 3001 dipakai payment-api; port 3000 dipakai Next.js preview):
-cd /apps/payment-gateway-mock
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock
 PORT=3002 pnpm start:dev > /tmp/gateway-mock.log 2>&1 &
 sleep 5
 tail -n 20 /tmp/gateway-mock.log
@@ -242,7 +242,7 @@ curl -s "http://localhost:3000/admin/config?XTransformPort=3002" | jq .
 # Note: XTransformPort=3002 sesuai port gateway-mock di SANDBOX.
 
 # 8. Lint & typecheck - sama kedua kondisi
-cd 
+cd /home/z/my-project/retry-failure
 pnpm --filter payment-gateway-mock lint
 pnpm --filter payment-gateway-mock typecheck
 

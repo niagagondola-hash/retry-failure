@@ -589,35 +589,35 @@ Tulis unit test lengkap untuk `packages/security` mencakup semua component:
 
 ```bash
 # Install test deps
-cd  && pnpm --filter @retry-failure/security add -D vitest @types/jest msw ioredis-mock @vitest/ui
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security add -D vitest @types/jest msw ioredis-mock @vitest/ui
 
 # Or use Jest (if NestJS prefers Jest)
-cd  && pnpm --filter @retry-failure/security add -D @types/jest jest ts-jest msw ioredis-mock
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security add -D @types/jest jest ts-jest msw ioredis-mock
 
 # Run all tests
-cd  && pnpm --filter @retry-failure/security test
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security test
 
 # Run with coverage
-cd  && pnpm --filter @retry-failure/security test:cov
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security test:cov
 
 # Run specific test file
-cd  && pnpm --filter @retry-failure/security test -- pkce.spec
-cd  && pnpm --filter @retry-failure/security test -- jwks-verifier
-cd  && pnpm --filter @retry-failure/security test -- session-store.parity
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security test -- pkce.spec
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security test -- jwks-verifier
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security test -- session-store.parity
 
 # Watch mode (dev)
-cd  && pnpm --filter @retry-failure/security test -- --watch
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security test -- --watch
 
 # UI mode (Vitest)
-cd  && pnpm --filter @retry-failure/security test -- --ui
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security test -- --ui
 
 # Coverage report (open in browser)
-cd /packages/security/coverage && python3 -m http.server 8080
+cd /home/z/my-project/retry-failure/packages/security/coverage && python3 -m http.server 8080
 # Open http://localhost:8080/lcov-report/index.html
 
 # Lint + typecheck after test changes
-cd  && pnpm --filter @retry-failure/security typecheck
-cd  && pnpm --filter @retry-failure/security lint
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security typecheck
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security lint
 ```
 
 ## Notes

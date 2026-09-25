@@ -327,16 +327,16 @@ Implementasi `OAuthClientService` di `packages/security` pakai `openid-client` v
 
 ```bash
 # Typecheck
-cd  && pnpm --filter @retry-failure/security typecheck
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security typecheck
 
 # Lint
-cd  && pnpm --filter @retry-failure/security lint
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security lint
 
 # Test (semua spec)
-cd  && pnpm --filter @retry-failure/security test
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security test
 
 # Test specific file
-cd /packages/security && pnpm test pkce.util.spec.ts
+cd /home/z/my-project/retry-failure/packages/security && pnpm test pkce.util.spec.ts
 
 # Verify RFC 7636 test vector manual
 node -e "
@@ -349,7 +349,7 @@ console.log(challenge);
 
 # Integration test manual (butuh auth-mock running)
 # 1. Start auth-mock
-cd /apps/auth-mock && pnpm start:dev &
+cd /home/z/my-project/retry-failure/apps/auth-mock && pnpm start:dev &
 
 # 2. Get dev token (skip OAuth flow)
 TOKEN=$(curl -s -X POST http://localhost:4001/dev/token -H 'Content-Type: application/json' -d '{"username":"budi_santoso"}' | jq -r .accessToken)

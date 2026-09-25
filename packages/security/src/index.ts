@@ -8,6 +8,7 @@ export * from './oauth/oauth-client.service';
 export * from './types/auth-user';
 export * from './security.module';
 export * from './session-store';
+export * from './verifiers';
 
 // Stubs — will be exported when implemented:
 // export * from './oauth/oauth.controller';          // AUTH-17 (payment-api)
@@ -19,8 +20,6 @@ export * from './session-store';
 // export * from './decorators/public.decorator';             // AUTH-13
 // export * from './decorators/current-user.decorator';       // AUTH-13
 // export * from './decorators/require-menu.decorator';      // AUTH-13
-// export * from './verifiers/jwks-verifier';                 // AUTH-10
-// export * from './verifiers/mock-verifier';                 // AUTH-10
 // export * from './sync/auth-sync.service';                  // AUTH-14
 // export * from './sync/sync-lock.service';                  // AUTH-14
 // export * from './cache/cached-user.entity';                // AUTH-16

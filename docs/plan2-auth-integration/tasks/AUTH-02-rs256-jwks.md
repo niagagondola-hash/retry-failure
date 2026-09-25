@@ -220,7 +220,7 @@ Generate dev RSA 2048 keypair (RS256) di `apps/auth-mock`, expose `/.well-known/
 
 9. Run tests + manual verify:
    ```bash
-   cd /apps/auth-mock && pnpm start:dev
+   cd /home/z/my-project/retry-failure/apps/auth-mock && pnpm start:dev
    curl http://localhost:4001/.well-known/jwks.json | jq .
    ```
 
@@ -247,7 +247,7 @@ Generate dev RSA 2048 keypair (RS256) di `apps/auth-mock`, expose `/.well-known/
 
 ```bash
 # Start auth-mock + test JWKS endpoint
-cd /apps/auth-mock && pnpm start:dev
+cd /home/z/my-project/retry-failure/apps/auth-mock && pnpm start:dev
 curl -s http://localhost:4001/.well-known/jwks.json | jq .
 
 # Verify kid di JWKS
@@ -258,18 +258,18 @@ echo "kid: $KID"
 echo "<token>" | cut -d. -f1 | base64 -d 2>/dev/null | jq .
 
 # Run unit + integration tests
-cd  && pnpm --filter auth-mock test
+cd /home/z/my-project/retry-failure && pnpm --filter auth-mock test
 
 # Run specific test file
-cd /apps/auth-mock && pnpm test keypair.spec.ts
+cd /home/z/my-project/retry-failure/apps/auth-mock && pnpm test keypair.spec.ts
 
 # Inspect dev keys (should be RSA 2048)
 openssl rsa -in apps/auth-mock/keys/dev-private.pem -text -noout | head -5
 openssl rsa -in apps/auth-mock/keys/dev-public.pem -pubin -text -noout | head -5
 
 # Typecheck + lint
-cd  && pnpm --filter auth-mock typecheck
-cd  && pnpm --filter auth-mock lint
+cd /home/z/my-project/retry-failure && pnpm --filter auth-mock typecheck
+cd /home/z/my-project/retry-failure && pnpm --filter auth-mock lint
 
 # Cleanup dev keys (untuk test regenerate)
 rm -f apps/auth-mock/keys/dev-*.pem

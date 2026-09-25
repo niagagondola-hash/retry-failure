@@ -401,25 +401,25 @@ Update semua dokumentasi Plan2 Fase 1 setelah implementation selesai:
 
 ```bash
 # Verify documentation cross-references
-cd  && pnpm markdownlint docs/
+cd /home/z/my-project/retry-failure && pnpm markdownlint docs/
 
 # Generate auth-openapi.json via Swagger (opsional — bila pakai @nestjs/swagger di auth-mock)
-cd  && pnpm --filter auth-mock start:dev &
+cd /home/z/my-project/retry-failure && pnpm --filter auth-mock start:dev &
 sleep 5
 curl -s http://localhost:4001/api-json -o docs/plan2-auth-integration/auth-openapi.json
 
 # Or validate the manually-written OpenAPI spec
-cd  && npx @redocly/cli@latest lint docs/plan2-auth-integration/auth-openapi.json
+cd /home/z/my-project/retry-failure && npx @redocly/cli@latest lint docs/plan2-auth-integration/auth-openapi.json
 
 # Verify links in markdown files
-cd  && npx markdown-link-check docs/plan2-auth-integration/README.md
-cd  && npx markdown-link-check docs/SANDBOX_NOTES.md
+cd /home/z/my-project/retry-failure && npx markdown-link-check docs/plan2-auth-integration/README.md
+cd /home/z/my-project/retry-failure && npx markdown-link-check docs/SANDBOX_NOTES.md
 
 # Typecheck (no code changes, just docs)
-cd  && pnpm typecheck
+cd /home/z/my-project/retry-failure && pnpm typecheck
 
 # Lint
-cd  && pnpm lint
+cd /home/z/my-project/retry-failure && pnpm lint
 
 # Final verify — open documentation:
 # 1. docs/SANDBOX_NOTES.md — Pre-flight Check + Auth env vars + troubleshooting

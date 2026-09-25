@@ -457,26 +457,26 @@ E2E test lintas-service dengan **real auth-mock running** (bukan mock openid-cli
 
 ```bash
 # Install deps
-cd  && pnpm --filter payment-api add axios tough-cookie axios-cookiejar-support
-cd  && pnpm --filter payment-api add -D @types/tough-cookie
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api add axios tough-cookie axios-cookiejar-support
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api add -D @types/tough-cookie
 
 # Start services (sandbox profile — no Redis)
-cd  && pnpm docker:up:sandbox
+cd /home/z/my-project/retry-failure && pnpm docker:up:sandbox
 
 # Verify services healthy
 curl -s http://localhost:3001/health
 curl -s http://localhost:4001/.well-known/openid-configuration | jq .
 
 # Run E2E tests
-cd  && pnpm --filter payment-api test:e2e
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api test:e2e
 
 # Run specific E2E test
-cd  && pnpm --filter payment-api test:e2e -- --testNamePattern="single-role"
-cd  && pnpm --filter payment-api test:e2e -- --testNamePattern="multi-role"
-cd  && pnpm --filter payment-api test:e2e -- --testNamePattern="super.admin"
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api test:e2e -- --testNamePattern="single-role"
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api test:e2e -- --testNamePattern="multi-role"
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api test:e2e -- --testNamePattern="super.admin"
 
 # Run with verbose output
-cd  && pnpm --filter payment-api test:e2e -- --verbose
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api test:e2e -- --verbose
 
 # Manual E2E verification (browser-based):
 # 1. Open http://localhost:3001/auth/login
@@ -490,14 +490,14 @@ cd  && pnpm --filter payment-api test:e2e -- --verbose
 # 1. Stop payment-api, set AUTH_MODE=disabled in .env
 # 2. Restart payment-api
 # 3. Run E2E tests:
-cd  && AUTH_MODE=disabled pnpm --filter payment-api test:e2e -- --testNamePattern="disabled"
+cd /home/z/my-project/retry-failure && AUTH_MODE=disabled pnpm --filter payment-api test:e2e -- --testNamePattern="disabled"
 
 # Stop services
-cd  && pnpm docker:down:sandbox
+cd /home/z/my-project/retry-failure && pnpm docker:down:sandbox
 
 # Typecheck + lint after changes
-cd  && pnpm --filter payment-api typecheck
-cd  && pnpm --filter payment-api lint
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api typecheck
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api lint
 ```
 
 ## Notes

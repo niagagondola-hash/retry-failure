@@ -337,16 +337,16 @@ Implementasi `LazySyncMiddleware` (stale-while-revalidate pattern) yang menjalan
 
 ```bash
 # Typecheck
-cd  && pnpm --filter @retry-failure/security typecheck
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security typecheck
 
 # Lint
-cd  && pnpm --filter @retry-failure/security lint
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security lint
 
 # Run sync tests
-cd  && pnpm --filter @retry-failure/security test -- --testPathPattern="(lazy-sync|auth-sync|sync-lock)"
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security test -- --testPathPattern="(lazy-sync|auth-sync|sync-lock)"
 
 # Run all security tests
-cd  && pnpm --filter @retry-failure/security test
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security test
 
 # Verify withTimeout helper
 node -e "

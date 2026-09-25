@@ -3,7 +3,7 @@
 > **Source plan**: `upload/PLAN1_Cockatiel_Retry_Failure_Scenario.md` (rev 2 - PostgreSQL + dual frontend)
 > **Execution model**: satu per satu (sequential, dengan checkpoint command di setiap task)
 > **Stack target**: NestJS 11 + TypeORM 0.3 + PostgreSQL 16 + Cockatiel + pnpm workspaces + dual frontend (Next.js + Vue+PrimeVue)
-> **Monorepo root**: `/`
+> **Monorepo root**: `/home/z/my-project/retry-failure/`
 
 ---
 
@@ -130,7 +130,7 @@ Setiap file task memakai template yang sama:
 
 1. **Goal** - apa yang dicapai
 2. **Scope** - in/out of scope
-3. **Files to create/modify** - path absolut (relatif ke `/` bila di monorepo, atau parent root untuk Next.js sandbox)
+3. **Files to create/modify** - path absolut (relatif ke `/home/z/my-project/retry-failure/` bila di monorepo, atau parent root untuk Next.js sandbox)
 4. **Implementation steps** - urutan konkret
 5. **Acceptance criteria** - checklist
 6. **Useful commands** - command yang WAJIB dijalankan setelah task selesai
@@ -143,34 +143,34 @@ corepack enable pnpm
 corepack prepare pnpm@latest --activate
 
 # Install dependencies monorepo (root)
-cd  && pnpm install
+cd /home/z/my-project/retry-failure && pnpm install
 
 # Lint (root)
-cd  && pnpm lint
+cd /home/z/my-project/retry-failure && pnpm lint
 
 # Typecheck (root)
-cd  && pnpm typecheck
+cd /home/z/my-project/retry-failure && pnpm typecheck
 
 # Build all
-cd  && pnpm build
+cd /home/z/my-project/retry-failure && pnpm build
 
 # Run all tests
-cd  && pnpm test
+cd /home/z/my-project/retry-failure && pnpm test
 
 # Run E2E tests
-cd  && pnpm test:e2e
+cd /home/z/my-project/retry-failure && pnpm test:e2e
 
 # DB migrations (TypeORM CLI)
-cd /apps/payment-api && pnpm db:migrate
-cd /apps/payment-api && pnpm db:migrate:revert
+cd /home/z/my-project/retry-failure/apps/payment-api && pnpm db:migrate
+cd /home/z/my-project/retry-failure/apps/payment-api && pnpm db:migrate:revert
 
 # Dev mode (semua apps)
-cd  && pnpm dev
+cd /home/z/my-project/retry-failure && pnpm dev
 
 # Dev mode per-app (port tergantung kondisi - lihat SANDBOX_NOTES.md)
-cd /apps/payment-api && pnpm start:dev
-cd /apps/payment-gateway-mock && pnpm start:dev
-cd /apps/frontend-vue && pnpm dev
+cd /home/z/my-project/retry-failure/apps/payment-api && pnpm start:dev
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && pnpm start:dev
+cd /home/z/my-project/retry-failure/apps/frontend-vue && pnpm dev
 
 # Next.js frontend (parent root)
 cd /home/z/my-project && bun run dev
@@ -201,8 +201,8 @@ Untuk komunikasi antar service, gunakan env variable (`process.env.GATEWAY_URL`,
 ## 4. Source of Truth Files
 
 - Original plan (rev 2): `/home/z/my-project/upload/PLAN1_Cockatiel_Retry_Failure_Scenario.md`
-- Subtask files: `/docs/tasks/TASK-*.md`
-- Sandbox notes (lingkungan-specific): `/docs/tasks/SANDBOX_NOTES.md`
+- Subtask files: `/home/z/my-project/retry-failure/docs/tasks/TASK-*.md`
+- Sandbox notes (lingkungan-specific): `/home/z/my-project/retry-failure/docs/tasks/SANDBOX_NOTES.md`
 - Database ERD: [`docs/DATABASE_ERD.md`](../DATABASE_ERD.md) (narasi) + [`docs/DATABASE_ERD.dbml`](../DATABASE_ERD.dbml) (format dbdiagram.io — copy-paste ke https://dbdiagram.io/d)
 - Gateway Mock Modes: [`docs/GATEWAY_MOCK_MODES.md`](../GATEWAY_MOCK_MODES.md) — detail 8 failure modes + arsitektur timeout 3 layer + use case per mode
 - Technical Debt: [`docs/TECHNICAL_DEBT.md`](../../TECHNICAL_DEBT.md) — catatan technical debt observability module (5 issues SOLID + clean code) untuk refactor mendatang

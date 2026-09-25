@@ -100,7 +100,7 @@ Dikutip dari `upload/PLAN1_Cockatiel_Retry_Failure_Scenario.md` section 17.2:
 
 ## Files to create
 
-Semua path relatif ke `/apps/frontend-vue/`:
+Semua path relatif ke `/home/z/my-project/retry-failure/apps/frontend-vue/`:
 
 ### Root config
 
@@ -2317,7 +2317,7 @@ pnpm --version  # verify
 # 1. Start backend services (di terminal terpisah, urutan penting)
 #    a. PostgreSQL (bila pakai docker-compose)
 # KONDISI LOCAL (Docker tersedia):
-cd  && docker compose up -d postgres
+cd /home/z/my-project/retry-failure && docker compose up -d postgres
 # Atau bila PostgreSQL managed eksternal, skip - pastikan DATABASE_URL reachable.
 
 # KONDISI SANDBOX (Docker tidak tersedia):
@@ -2326,45 +2326,45 @@ cd  && docker compose up -d postgres
 
 #    b. Gateway mock (port kondisional)
 # KONDISI LOCAL (port 3001 bebas):
-cd /apps/payment-gateway-mock && PORT=3001 pnpm start:dev
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && PORT=3001 pnpm start:dev
 # Expected log: "Gateway mock running on http://localhost:3001"
 
 # KONDISI SANDBOX (port 3002, karena 3001 dipakai payment-api):
-cd /apps/payment-gateway-mock && PORT=3002 pnpm start:dev
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && PORT=3002 pnpm start:dev
 # Expected log: "Gateway mock running on http://localhost:3002"
 
 #    c. Payment API (port kondisional)
 # KONDISI LOCAL (port 3000 bebas):
-cd /apps/payment-api && PORT=3000 pnpm start:dev
+cd /home/z/my-project/retry-failure/apps/payment-api && PORT=3000 pnpm start:dev
 # Expected log: "Payment API running on http://localhost:3000" + "Swagger UI: http://localhost:3000/docs"
 
 # KONDISI SANDBOX (port 3001, karena 3000 dipakai Next.js preview):
-cd /apps/payment-api && PORT=3001 pnpm start:dev
+cd /home/z/my-project/retry-failure/apps/payment-api && PORT=3001 pnpm start:dev
 # Expected log: "Payment API running on http://localhost:3001" + "Swagger UI: http://localhost:3001/docs"
 
 # 2. Install frontend dependencies (first time only) - sama kedua kondisi
-cd /apps/frontend-vue && pnpm install
+cd /home/z/my-project/retry-failure/apps/frontend-vue && pnpm install
 # Expected: lockfile created, node_modules populated, ~200 packages installed.
 
 # 3. Dev mode (port 5173) - sama kedua kondisi (Vite port 5173 tidak konflik)
-cd /apps/frontend-vue && pnpm dev
+cd /home/z/my-project/retry-failure/apps/frontend-vue && pnpm dev
 # Expected log: "VITE v5.4.x ready in ~300ms" + "Local: http://localhost:5173/"
 # Note: ini BUKAN port 3000 (Next.js preview) - buka tab baru di browser.
 
 # 4. Typecheck (vue-tsc) - sama kedua kondisi
-cd /apps/frontend-vue && pnpm typecheck
+cd /home/z/my-project/retry-failure/apps/frontend-vue && pnpm typecheck
 # Expected: exit 0, no output (all good).
 
 # 5. Lint (eslint) - sama kedua kondisi
-cd /apps/frontend-vue && pnpm lint
+cd /home/z/my-project/retry-failure/apps/frontend-vue && pnpm lint
 # Expected: exit 0, no warnings.
 
 # 6. Production build - sama kedua kondisi
-cd /apps/frontend-vue && pnpm build
+cd /home/z/my-project/retry-failure/apps/frontend-vue && pnpm build
 # Expected: "dist/index.html" + "dist/assets/index-*.js" + "dist/assets/index-*.css" + sourcemaps.
 
 # 7. Preview production build (port 4173) - sama kedua kondisi
-cd /apps/frontend-vue && pnpm preview
+cd /home/z/my-project/retry-failure/apps/frontend-vue && pnpm preview
 # Expected: "Local: http://localhost:4173/"
 
 # 8. Open browser

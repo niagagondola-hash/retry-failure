@@ -212,7 +212,7 @@ Implementasi `GET /.well-known/openid-configuration` di auth-mock yang mengembal
 
 ```bash
 # Start auth-mock + verify discovery
-cd /apps/auth-mock && pnpm start:dev
+cd /home/z/my-project/retry-failure/apps/auth-mock && pnpm start:dev
 
 # Get discovery document
 curl -s http://localhost:4001/.well-known/openid-configuration | jq .
@@ -246,14 +246,14 @@ pkill -f "nest start"
 # "
 
 # Run tests
-cd  && pnpm --filter auth-mock test
+cd /home/z/my-project/retry-failure && pnpm --filter auth-mock test
 
 # Run only discovery spec
-cd /apps/auth-mock && pnpm test discovery.controller.spec.ts
+cd /home/z/my-project/retry-failure/apps/auth-mock && pnpm test discovery.controller.spec.ts
 
 # Typecheck + lint
-cd  && pnpm --filter auth-mock typecheck
-cd  && pnpm --filter auth-mock lint
+cd /home/z/my-project/retry-failure && pnpm --filter auth-mock typecheck
+cd /home/z/my-project/retry-failure && pnpm --filter auth-mock lint
 ```
 
 ## Notes

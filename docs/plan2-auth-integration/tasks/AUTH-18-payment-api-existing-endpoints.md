@@ -378,18 +378,18 @@ Update existing endpoint di `apps/payment-api` (dari Plan1) supaya terintegrasi 
 
 ```bash
 # Typecheck
-cd  && pnpm --filter @retry-failure/security typecheck
-cd  && pnpm --filter payment-api typecheck
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security typecheck
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api typecheck
 
 # Lint
-cd  && pnpm --filter @retry-failure/security lint
-cd  && pnpm --filter payment-api lint
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security lint
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api lint
 
 # Run guard tests
-cd  && pnpm --filter @retry-failure/security test -- --testPathPattern="(session.guard|menu-access.guard)"
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security test -- --testPathPattern="(session.guard|menu-access.guard)"
 
 # Run payment-api controller test
-cd  && pnpm --filter payment-api test -- --testPathPattern="payments.controller.menu"
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api test -- --testPathPattern="payments.controller.menu"
 
 # Manual verify @RequireMenu metadata via TypeScript reflection
 node -e "

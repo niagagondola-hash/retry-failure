@@ -2,7 +2,8 @@
  * SecurityModule — dynamic module for Plan 2 auth integration.
  *
  * Plan reference: PLAN2 Section 9 (packages/security), Section 9.3 (AUTH_MODE),
- * Section 9.4.4 (Pemilihan store via factory).
+ * Section 9.4.4 (Pemilihan store via factory), Section 5.1 (JWKS verifier),
+ * Section 16 (JWT_CLOCK_TOLERANCE_SEC, JWKS_CACHE_TTL_SEC).
  *
  * Usage in payment-api:
  *   SecurityModule.forRoot({
@@ -22,8 +23,10 @@
  *  - SESSION_STORE     : SessionStore (RedisSessionStore | MemorySessionStore)
  *                        selected via `options.sessionStore` factory.
  *  - OAuthClientService: openid-client v5 wrapper (AUTH-09).
+ *  - JWT_VERIFIER      : JwtVerifier (MockVerifier | JwksVerifier) selected
+ *                        via `options.authMode` factory (AUTH-10).
  *
- * Stubs to be added by AUTH-10..15 (JWKS verifier, guards, middleware, etc.).
+ * Stubs to be added by AUTH-13..15 (guards, middleware, etc.).
  */
 
 import { DynamicModule, Module } from '@nestjs/common';
@@ -35,6 +38,8 @@ import {
   SESSION_STORE,
 } from './session-store';
 import type { SessionStore } from './session-store';
+import { JwksVerifier, MockVerifier, JWT_VERIFIER } from './verifiers';
+import type { JwtVerifier } from './verifiers';
 
 export interface SecurityOptions {
   authMode: 'oauth' | 'mock' | 'disabled';
@@ -47,6 +52,10 @@ export interface SecurityOptions {
   oauthRedirectUri?: string;
   oauthScopes?: string;
   redisUrl?: string;
+  /** JWKS cache TTL in seconds (env JWKS_CACHE_TTL_SEC, default 300). */
+  jwksCacheTtlSec?: number;
+  /** JWT clock tolerance in seconds (env JWT_CLOCK_TOLERANCE_SEC, default 5). */
+  jwtClockToleranceSec?: number;
   // AUTH_MODE=disabled
   disabledUserId?: string;
   disabledUsername?: string;
@@ -78,13 +87,30 @@ export class SecurityModule {
           return new RedisSessionStore(options.redisUrl);
         },
       },
+      // Verifier factory — pick MockVerifier when AUTH_MODE=mock, else JwksVerifier.
+      // Both share identical JWKS-fetch logic; MockVerifier is a marker subclass.
+      {
+        provide: JWT_VERIFIER,
+        useFactory: (): JwtVerifier => {
+          if (options.authMode === 'disabled') {
+            // AUTH-13 SessionGuard handles disabled mode by short-circuiting
+            // before calling verify(). We still return a verifier instance so
+            // DI doesn't fail at boot.
+            return new MockVerifier(options);
+          }
+          if (options.authMode === 'mock') {
+            return new MockVerifier(options);
+          }
+          return new JwksVerifier(options);
+        },
+      },
       OAuthClientService,
     ];
 
     return {
       module: SecurityModule,
       providers,
-      exports: [SECURITY_OPTIONS, SESSION_STORE, OAuthClientService],
+      exports: [SECURITY_OPTIONS, SESSION_STORE, JWT_VERIFIER, OAuthClientService],
     };
   }
 }

@@ -313,7 +313,7 @@ Implementasi 3 endpoint internal yang dipanggil BE payment-api (BFF) ke auth-moc
 
 ```bash
 # Start auth-mock
-cd /apps/auth-mock && pnpm start:dev
+cd /home/z/my-project/retry-failure/apps/auth-mock && pnpm start:dev
 
 # Step 1: Issue dev token (NODE_ENV=development)
 curl -s -X POST http://localhost:4001/dev/token \
@@ -357,14 +357,14 @@ curl -i -X POST http://localhost:4001/dev/token -H "Content-Type: application/js
 pkill -f "nest start"
 
 # Run tests
-cd  && pnpm --filter auth-mock test
+cd /home/z/my-project/retry-failure && pnpm --filter auth-mock test
 
 # Run e2e specifically
-cd /apps/auth-mock && pnpm test:e2e internal-flow.e2e-spec
+cd /home/z/my-project/retry-failure/apps/auth-mock && pnpm test:e2e internal-flow.e2e-spec
 
 # Typecheck + lint
-cd  && pnpm --filter auth-mock typecheck
-cd  && pnpm --filter auth-mock lint
+cd /home/z/my-project/retry-failure && pnpm --filter auth-mock typecheck
+cd /home/z/my-project/retry-failure && pnpm --filter auth-mock lint
 ```
 
 ## Notes

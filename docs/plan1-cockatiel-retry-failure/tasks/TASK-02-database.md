@@ -65,17 +65,17 @@ Mendefinisikan TypeORM entities `Payment` dan `PaymentAttempt` dengan native Pos
 
 ## Files to create
 
-- `/apps/payment-api/src/database/entities/enums.ts`
-- `/apps/payment-api/src/database/entities/payment.entity.ts`
-- `/apps/payment-api/src/database/entities/payment-attempt.entity.ts`
-- `/apps/payment-api/src/database/entities/index.ts`
-- `/apps/payment-api/src/database/data-source.ts`
-- `/apps/payment-api/src/database/database.module.ts`
-- `/apps/payment-api/src/database/repositories/payment.repository.ts`
-- `/apps/payment-api/src/database/repositories/payment-attempt.repository.ts`
-- `/apps/payment-api/src/database/migrations/0001_init.ts`
-- `/apps/payment-api/src/database/index.ts`
-- `/docker/postgres/init.sql`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/database/entities/enums.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/database/entities/payment.entity.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/database/entities/payment-attempt.entity.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/database/entities/index.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/database/data-source.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/database/database.module.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/database/repositories/payment.repository.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/database/repositories/payment-attempt.repository.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/database/migrations/0001_init.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/database/index.ts`
+- `/home/z/my-project/retry-failure/docker/postgres/init.sql`
 
 ## Implementation steps
 
@@ -265,7 +265,7 @@ corepack prepare pnpm@9.12.0 --activate
 
 # 1. Start PostgreSQL
 # KONDISI LOCAL (Docker tersedia):
-cd 
+cd /home/z/my-project/retry-failure
 docker compose up -d postgres
 sleep 5
 docker compose ps postgres
@@ -279,7 +279,7 @@ docker compose ps postgres
 # Document caveat environment di TASK-15 production caveats.
 
 # 2. Copy env example ke .env (pilih salah satu sesuai kondisi)
-cd /apps/payment-api
+cd /home/z/my-project/retry-failure/apps/payment-api
 
 # KONDISI LOCAL (Docker tersedia):
 cp ../../.env.example .env
@@ -302,13 +302,13 @@ pnpm db:migrate
 
 # 4. Verify schema
 # KONDISI LOCAL (psql via docker exec):
-docker compose -f /docker-compose.yml exec postgres \
+docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
   psql -U retry_failure -d retry_failure -c '\dt'
 
-docker compose -f /docker-compose.yml exec postgres \
+docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
   psql -U retry_failure -d retry_failure -c '\dT'
 
-docker compose -f /docker-compose.yml exec postgres \
+docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
   psql -U retry_failure -d retry_failure -c '\d payments'
 
 # KONDISI SANDBOX (psql di host, bila tersedia):
@@ -317,7 +317,7 @@ psql -h localhost -U retry_failure -d retry_failure -c '\dT'
 psql -h localhost -U retry_failure -d retry_failure -c '\d payments'
 
 # KONDISI SANDBOX (psql tidak tersedia -> verifikasi via Node script):
-cd /apps/payment-api
+cd /home/z/my-project/retry-failure/apps/payment-api
 pnpm exec ts-node -e "
 import { Client } from 'pg';
 const c = new Client({ host: 'localhost', port: 5432, user: 'retry_failure', password: 'retry_failure', database: 'retry_failure' });
@@ -330,7 +330,7 @@ await c.end();
 "
 
 # 4. Lint & typecheck - sama kedua kondisi
-cd /apps/payment-api
+cd /home/z/my-project/retry-failure/apps/payment-api
 pnpm lint
 pnpm typecheck
 

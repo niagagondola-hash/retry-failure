@@ -147,16 +147,16 @@ MAX_TOTAL_RETRIES  = 5   ── scheduler, lintas execution cycles
 
 ## Files to create
 
-- `/apps/payment-api/src/modules/payments/state-machine.ts`
-- `/apps/payment-api/src/modules/payments/idempotency.ts`
-- `/apps/payment-api/src/modules/payments/audit/audit-port.ts`
-- `/apps/payment-api/src/modules/payments/payments.service.ts`
-- `/apps/payment-api/src/modules/payments/payments.module.ts`
-- `/apps/payment-api/src/modules/payments/dto/create-payment.dto.ts`
-- `/apps/payment-api/src/modules/payments/index.ts`
-- `/apps/payment-api/test/modules/payments/state-machine.spec.ts`
-- `/apps/payment-api/test/modules/payments/idempotency.spec.ts`
-- `/apps/payment-api/test/modules/payments/payments.service.spec.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/payments/state-machine.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/payments/idempotency.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/payments/audit/audit-port.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/payments/payments.service.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/payments/payments.module.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/payments/dto/create-payment.dto.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/payments/index.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/test/modules/payments/state-machine.spec.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/test/modules/payments/idempotency.spec.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/test/modules/payments/payments.service.spec.ts`
 
 ## Implementation steps
 
@@ -805,14 +805,14 @@ Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih s
 
 ```bash
 # KONDISI LOCAL (gateway-mock default port 3001):
-cd /apps/payment-gateway-mock
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock
 PORT=3001 pnpm start:dev > /tmp/gateway-mock.log 2>&1 &
 sleep 5
 tail -n 20 /tmp/gateway-mock.log
 # Expected: "payment-gateway-mock listening on :3001"
 
 # KONDISI SANDBOX (port 3001 dipakai payment-api -> gateway-mock geser ke 3002):
-cd /apps/payment-gateway-mock
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock
 PORT=3002 pnpm start:dev > /tmp/gateway-mock.log 2>&1 &
 sleep 5
 tail -n 20 /tmp/gateway-mock.log
@@ -825,21 +825,21 @@ tail -n 20 /tmp/gateway-mock.log
 
 ```bash
 # KONDISI LOCAL (Docker tersedia):
-cd 
+cd /home/z/my-project/retry-failure
 docker compose up -d postgres
 sleep 5
 docker compose ps postgres
 
-cd /apps/payment-api
+cd /home/z/my-project/retry-failure/apps/payment-api
 pnpm db:migrate
 
 # Verify schema via docker exec
-docker compose -f /docker-compose.yml exec postgres \
+docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
   psql -U retry_failure -d retry_failure -c '\dt'
 
 # KONDISI SANDBOX (Docker tidak tersedia):
 # Opsi A - external PostgreSQL instance tersedia (set DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME di .env):
-cd /apps/payment-api
+cd /home/z/my-project/retry-failure/apps/payment-api
 # Edit .env terlebih dahulu: DB_HOST=..., DB_PORT=..., dst.
 pnpm db:migrate
 
@@ -863,14 +863,14 @@ await c.end();
 
 ```bash
 # KONDISI LOCAL (port 3000 bebas):
-cd /apps/payment-api
+cd /home/z/my-project/retry-failure/apps/payment-api
 PORT=3000 pnpm start:dev > /tmp/payment-api.log 2>&1 &
 sleep 8
 tail -n 30 /tmp/payment-api.log
 # Expected: "Nest application successfully started" + listening on :3000
 
 # KONDISI SANDBOX (port 3000 dipakai Next.js preview -> payment-api geser ke 3001):
-cd /apps/payment-api
+cd /home/z/my-project/retry-failure/apps/payment-api
 PORT=3001 pnpm start:dev > /tmp/payment-api.log 2>&1 &
 sleep 8
 tail -n 30 /tmp/payment-api.log
@@ -882,7 +882,7 @@ tail -n 30 /tmp/payment-api.log
 ### 4. Lint & typecheck
 
 ```bash
-cd 
+cd /home/z/my-project/retry-failure
 pnpm --filter payment-api typecheck
 pnpm --filter payment-api lint
 pnpm --filter payment-api test
@@ -974,7 +974,7 @@ async function run(label: string, fn: () => Promise<void>): Promise<void> {
 Jalankan:
 
 ```bash
-cd 
+cd /home/z/my-project/retry-failure
 
 # KONDISI LOCAL (gateway-mock port 3001):
 GATEWAY_URL=http://localhost:3001 pnpm --filter payment-api exec ts-node /tmp/smoke-payments-service.ts

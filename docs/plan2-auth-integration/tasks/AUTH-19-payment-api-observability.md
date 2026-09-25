@@ -468,17 +468,17 @@ Tambah observability untuk auth flow di payment-api:
 
 ```bash
 # Install deps
-cd  && pnpm --filter payment-api add nestjs-pino pino-http pino-pretty prom-client
-cd  && pnpm --filter payment-api add @opentelemetry/api @opentelemetry/sdk-node @opentelemetry/auto-instrumentations-node @opentelemetry/exporter-trace-otlp-http @opentelemetry/exporter-metrics-otlp-http @opentelemetry/sdk-metrics
-cd  && pnpm --filter @retry-failure/security add @opentelemetry/api prom-client
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api add nestjs-pino pino-http pino-pretty prom-client
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api add @opentelemetry/api @opentelemetry/sdk-node @opentelemetry/auto-instrumentations-node @opentelemetry/exporter-trace-otlp-http @opentelemetry/exporter-metrics-otlp-http @opentelemetry/sdk-metrics
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security add @opentelemetry/api prom-client
 
 # Typecheck + lint
-cd  && pnpm --filter payment-api typecheck
-cd  && pnpm --filter payment-api lint
-cd  && pnpm --filter @retry-failure/security typecheck
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api typecheck
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api lint
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security typecheck
 
 # Run payment-api + auth-mock + Jaeger
-cd  && pnpm docker:up  # or pnpm dev
+cd /home/z/my-project/retry-failure && pnpm docker:up  # or pnpm dev
 # Or manually:
 pnpm --filter auth-mock start:dev &
 pnpm --filter payment-api start:dev &
@@ -507,7 +507,7 @@ curl -s http://localhost:3001/metrics | grep -E "oauth_token_exchange_total|oaut
 # 5. Verify: refreshToken = "***REDACTED***"
 
 # Run any unit tests if added
-cd  && pnpm --filter payment-api test -- --testPathPattern="observability"
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api test -- --testPathPattern="observability"
 ```
 
 ## Notes

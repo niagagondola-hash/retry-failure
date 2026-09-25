@@ -134,16 +134,16 @@ Berikut nilai default yang dipakai policy builder. Konfigurasi dilewatkan sebaga
 
 ## Files to create
 
-- `/packages/resilience/src/policies/types.ts`
-- `/packages/resilience/src/policies/server-directed-backoff.ts`
-- `/packages/resilience/src/policies/policies.ts`
-- `/packages/resilience/src/policies/breaker-store.ts`
-- `/packages/resilience/src/policies/composition.ts`
-- `/packages/resilience/src/policies/index.ts`
-- `/packages/resilience/test/policies/policies.spec.ts`
-- `/packages/resilience/test/policies/breaker-store.spec.ts`
-- `/packages/resilience/test/policies/composition.spec.ts`
-- `/packages/resilience/test/policies/server-directed-backoff.spec.ts`
+- `/home/z/my-project/retry-failure/packages/resilience/src/policies/types.ts`
+- `/home/z/my-project/retry-failure/packages/resilience/src/policies/server-directed-backoff.ts`
+- `/home/z/my-project/retry-failure/packages/resilience/src/policies/policies.ts`
+- `/home/z/my-project/retry-failure/packages/resilience/src/policies/breaker-store.ts`
+- `/home/z/my-project/retry-failure/packages/resilience/src/policies/composition.ts`
+- `/home/z/my-project/retry-failure/packages/resilience/src/policies/index.ts`
+- `/home/z/my-project/retry-failure/packages/resilience/test/policies/policies.spec.ts`
+- `/home/z/my-project/retry-failure/packages/resilience/test/policies/breaker-store.spec.ts`
+- `/home/z/my-project/retry-failure/packages/resilience/test/policies/composition.spec.ts`
+- `/home/z/my-project/retry-failure/packages/resilience/test/policies/server-directed-backoff.spec.ts`
 
 ## Implementation steps
 
@@ -488,7 +488,7 @@ export * from './server-directed-backoff';
 ```bash
 # 1. Install dependencies monorepo (sekali saja bila belum)
 # KONDISI LOCAL (pnpm sudah terinstall) & KONDISI SANDBOX (pnpm via corepack):
-cd 
+cd /home/z/my-project/retry-failure
 # Bila pnpm belum terinstall (KONDISI SANDBOX), jalankan `corepack enable pnpm` dulu
 # (lihat SANDBOX_NOTES.md section 2.1). Setelah root package.json dipin ke
 # `packageManager: "pnpm@9.12.0"` (TASK-01), corepack akan otomatis activate versi yang sama.
@@ -496,7 +496,7 @@ corepack enable pnpm  # hanya bila belum di-enable; no-op bila sudah
 pnpm install
 
 # 2. Run Jest tests untuk packages/resilience - sama kedua kondisi
-cd 
+cd /home/z/my-project/retry-failure
 pnpm --filter @retry-failure/resilience test
 
 # 3. Lint & typecheck - sama kedua kondisi
@@ -504,7 +504,7 @@ pnpm --filter @retry-failure/resilience lint
 pnpm --filter @retry-failure/resilience typecheck
 
 # 4. Quick sanity check via ts-node - mock fn yang gagal 2x lalu sukses (sama kedua kondisi, pure TS, no port)
-cd /packages/resilience
+cd /home/z/my-project/retry-failure/packages/resilience
 pnpm exec ts-node -e '
 import { executeWithResilience } from "./src/policies";
 (async () => {
@@ -524,7 +524,7 @@ import { executeWithResilience } from "./src/policies";
 '
 
 # 5. Quick breaker trip test via ts-node (sama kedua kondisi, pure TS, no port)
-cd /packages/resilience
+cd /home/z/my-project/retry-failure/packages/resilience
 pnpm exec ts-node -e '
 import { executeWithResilience, resetBreakerStore } from "./src/policies";
 (async () => {
@@ -545,12 +545,12 @@ import { executeWithResilience, resetBreakerStore } from "./src/policies";
 #           call #4 -> breakerTripped=true, duration < 50ms (breaker OPEN, fast-fail)
 
 # 6. Verifikasi signature Cockatiel di node_modules - sama kedua kondisi
-cat /node_modules/cockatiel/dist/index.d.ts | head -200
+cat /home/z/my-project/retry-failure/node_modules/cockatiel/dist/index.d.ts | head -200
 ```
 
 ## Notes
 
-- **Cockatiel API verification**: sebelum menulis kode, **wajib** membaca `/node_modules/cockatiel/dist/index.d.ts` untuk konfirmasi:
+- **Cockatiel API verification**: sebelum menulis kode, **wajib** membaca `/home/z/my-project/retry-failure/node_modules/cockatiel/dist/index.d.ts` untuk konfirmasi:
   - Signature `retry(handler, options)` - `options.maxAttempts`, `options.backoff`.
   - Signature `circuitBreaker(handler, options)` - `options.halfOpenAfter`, `options.breaker` (instance dari `ConsecutiveBreaker` / `SampledBreaker`).
   - Signature `timeout(durationMs, options)` - `options.strategy: 'absolute' | 'aggressive'`.

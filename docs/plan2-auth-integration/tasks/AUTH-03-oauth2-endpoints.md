@@ -346,7 +346,7 @@ Implementasi endpoint OAuth2 lengkap di `auth-mock` mengikuti RFC 6749 + RFC 763
 
 ```bash
 # Start auth-mock
-cd /apps/auth-mock && pnpm start:dev
+cd /home/z/my-project/retry-failure/apps/auth-mock && pnpm start:dev
 
 # Step 1: GET /oauth/authorize (trigger login page)
 curl -i "http://localhost:4001/oauth/authorize?response_type=code&client_id=payment-api&redirect_uri=http://localhost:3001/auth/callback&state=abc123&code_challenge=$(node -e "console.log(require('crypto').createHash('sha256').update('verifier123456789012345678901234567890123456789012').digest('base64url'))")&code_challenge_method=S256&scope=openid%20profile"
@@ -373,7 +373,7 @@ curl -i -X POST http://localhost:4001/oauth/revoke \
   -d "token=<access_or_refresh>&client_id=payment-api&client_secret=dev-client-secret"
 
 # Run tests
-cd  && pnpm --filter auth-mock test
+cd /home/z/my-project/retry-failure && pnpm --filter auth-mock test
 
 # Decode access token (paste token, ambil header + payload)
 echo "<access_token>" | cut -d. -f1 | base64 -d 2>/dev/null | jq .  # header
@@ -390,8 +390,8 @@ const jwks = createRemoteJWKSet(new URL('http://localhost:4001/.well-known/jwks.
 "
 
 # Typecheck + lint
-cd  && pnpm --filter auth-mock typecheck
-cd  && pnpm --filter auth-mock lint
+cd /home/z/my-project/retry-failure && pnpm --filter auth-mock typecheck
+cd /home/z/my-project/retry-failure && pnpm --filter auth-mock lint
 ```
 
 ## Notes

@@ -273,19 +273,19 @@ Implementasi dynamic menu component (`AppMenu.vue`) di FE Vue yang render menu i
 
 ```bash
 # Install PrimeVue Menubar component (bila belum)
-cd  && pnpm --filter frontend-vue add primevue @primevue/themes primeicons
+cd /home/z/my-project/retry-failure && pnpm --filter frontend-vue add primevue @primevue/themes primeicons
 
 # Typecheck + lint
-cd  && pnpm --filter frontend-vue typecheck
-cd  && pnpm --filter frontend-vue lint
+cd /home/z/my-project/retry-failure && pnpm --filter frontend-vue typecheck
+cd /home/z/my-project/retry-failure && pnpm --filter frontend-vue lint
 
 # Run tests
-cd  && pnpm --filter frontend-vue test -- --run
+cd /home/z/my-project/retry-failure && pnpm --filter frontend-vue test -- --run
 
 # Dev mode
-cd  && pnpm --filter payment-api start:dev &
-cd  && pnpm --filter auth-mock start:dev &
-cd  && pnpm --filter frontend-vue dev
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api start:dev &
+cd /home/z/my-project/retry-failure && pnpm --filter auth-mock start:dev &
+cd /home/z/my-project/retry-failure && pnpm --filter frontend-vue dev
 
 # Manual verify:
 # 1. Login as budi_santoso (HRD: permissionCodes=['dashboard','payment.read','payment.write'])

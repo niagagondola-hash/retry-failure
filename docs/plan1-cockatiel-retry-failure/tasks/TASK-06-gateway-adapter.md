@@ -83,16 +83,16 @@ payment-gateway-mock (NestJS app, port 3002)   ← TASK-03
 
 ## Files to create
 
-- `/apps/payment-api/src/modules/gateway/types.ts`
-- `/apps/payment-api/src/modules/gateway/port.ts`
-- `/apps/payment-api/src/modules/gateway/idempotency-key.ts`
-- `/apps/payment-api/src/modules/gateway/http-adapter.ts`
-- `/apps/payment-api/src/modules/gateway/resilient-adapter.ts`
-- `/apps/payment-api/src/modules/gateway/index.ts`
-- `/apps/payment-api/src/modules/gateway/gateway.module.ts`
-- `/apps/payment-api/test/modules/gateway/http-adapter.spec.ts`
-- `/apps/payment-api/test/modules/gateway/resilient-adapter.spec.ts`
-- `/apps/payment-api/test/modules/gateway/idempotency-key.spec.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/gateway/types.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/gateway/port.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/gateway/idempotency-key.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/gateway/http-adapter.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/gateway/resilient-adapter.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/gateway/index.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/gateway/gateway.module.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/test/modules/gateway/http-adapter.spec.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/test/modules/gateway/resilient-adapter.spec.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/test/modules/gateway/idempotency-key.spec.ts`
 
 ## Implementation steps
 
@@ -599,14 +599,14 @@ Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih s
 
 ```bash
 # KONDISI LOCAL (port 3000 bebas; gateway-mock default 3001):
-cd /apps/payment-gateway-mock
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock
 PORT=3001 pnpm start:dev > /tmp/gateway-mock.log 2>&1 &
 sleep 5
 tail -n 20 /tmp/gateway-mock.log
 # Expected: "payment-gateway-mock listening on :3001"
 
 # KONDISI SANDBOX (port 3000 dipakai Next.js preview -> payment-api geser ke 3001; gateway-mock geser ke 3002):
-cd /apps/payment-gateway-mock
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock
 PORT=3002 pnpm start:dev > /tmp/gateway-mock.log 2>&1 &
 sleep 5
 tail -n 20 /tmp/gateway-mock.log
@@ -618,7 +618,7 @@ tail -n 20 /tmp/gateway-mock.log
 ### 2. Typecheck & lint
 
 ```bash
-cd 
+cd /home/z/my-project/retry-failure
 pnpm --filter payment-api typecheck
 pnpm --filter payment-api lint
 pnpm --filter payment-api test
@@ -693,7 +693,7 @@ async function smoke(mode: string, expectedDescription: string): Promise<void> {
 Jalankan:
 
 ```bash
-cd 
+cd /home/z/my-project/retry-failure
 
 # KONDISI LOCAL (gateway-mock di port 3001):
 GATEWAY_URL=http://localhost:3001 pnpm --filter payment-api exec ts-node /tmp/smoke-gateway-adapter.ts

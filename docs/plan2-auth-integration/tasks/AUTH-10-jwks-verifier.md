@@ -308,7 +308,7 @@ Implementasi `JwksVerifier` di `packages/security` yang verify JWT RS256 via JWK
 
 7. **Run tests**:
    ```bash
-   cd  && pnpm --filter @retry-failure/security test
+   cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security test
    ```
 
 ## Acceptance criteria
@@ -328,20 +328,20 @@ Implementasi `JwksVerifier` di `packages/security` yang verify JWT RS256 via JWK
 
 ```bash
 # Typecheck
-cd  && pnpm --filter @retry-failure/security typecheck
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security typecheck
 
 # Lint
-cd  && pnpm --filter @retry-failure/security lint
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security lint
 
 # Run verifier tests
-cd  && pnpm --filter @retry-failure/security test -- --testPathPattern=jwks-verifier
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security test -- --testPathPattern=jwks-verifier
 
 # Run all security tests
-cd  && pnpm --filter @retry-failure/security test
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security test
 
 # Integration test manual (butuh auth-mock running dengan AUTH-02 done)
 # 1. Start auth-mock
-cd /apps/auth-mock && pnpm start:dev &
+cd /home/z/my-project/retry-failure/apps/auth-mock && pnpm start:dev &
 
 # 2. Get dev token
 TOKEN=$(curl -s -X POST http://localhost:4001/dev/token -H 'Content-Type: application/json' -d '{"username":"budi_santoso"}' | jq -r .accessToken)

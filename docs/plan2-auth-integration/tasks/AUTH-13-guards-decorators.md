@@ -317,16 +317,16 @@ Implementasi `SessionGuard` (cookie `sid` → `req.user` dari session store) + `
 
 ```bash
 # Typecheck
-cd  && pnpm --filter @retry-failure/security typecheck
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security typecheck
 
 # Lint
-cd  && pnpm --filter @retry-failure/security lint
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security lint
 
 # Run guard tests
-cd  && pnpm --filter @retry-failure/security test -- --testPathPattern="(session.guard|menu-access.guard|auth-mode-disabled)"
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security test -- --testPathPattern="(session.guard|menu-access.guard|auth-mode-disabled)"
 
 # Run all security tests
-cd  && pnpm --filter @retry-failure/security test
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security test
 
 # Example usage in payment-api controller (reference):
 # @Controller('payments')

@@ -64,18 +64,18 @@ Setiap field di `payment_attempts` diisi dari sumber berikut. Field bertanda `nu
 
 Semua path absolut di monorepo:
 
-- `/apps/payment-api/src/modules/audit/audit.service.ts`
-- `/apps/payment-api/src/modules/audit/audit.module.ts`
-- `/apps/payment-api/src/modules/audit/index.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/audit/audit.service.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/audit/audit.module.ts`
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/audit/index.ts`
 
 File yang di-modify (di TASK-07 - wire AuditModule):
 
-- `/apps/payment-api/src/modules/payments/payments.module.ts` - hapus provider `{ provide: AUDIT_PORT, useClass: NoopAuditService }`, tambah `imports: [AuditModule]`.
+- `/home/z/my-project/retry-failure/apps/payment-api/src/modules/payments/payments.module.ts` - hapus provider `{ provide: AUDIT_PORT, useClass: NoopAuditService }`, tambah `imports: [AuditModule]`.
 
 File yang mungkin perlu di-modify (bila `replayed` column belum ada di entity TASK-02):
 
-- `/apps/payment-api/src/database/entities/payment-attempt.entity.ts` - tambah `@Column({ type: 'boolean', default: false }) replayed: boolean;`.
-- `/apps/payment-api/src/database/migrations/0002_add_replayed_column.ts` - migration baru (opsional bila schema belum di-deploy).
+- `/home/z/my-project/retry-failure/apps/payment-api/src/database/entities/payment-attempt.entity.ts` - tambah `@Column({ type: 'boolean', default: false }) replayed: boolean;`.
+- `/home/z/my-project/retry-failure/apps/payment-api/src/database/migrations/0002_add_replayed_column.ts` - migration baru (opsional bila schema belum di-deploy).
 
 ## Implementation steps
 
@@ -451,13 +451,13 @@ Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih s
 ```bash
 # 1. (Bila entity PaymentAttempt di-update untuk kolom `replayed`) Generate + run migration baru
 #    Sama untuk kedua kondisi (asalkan DB dapat diakses - bila SANDBOX tanpa external PG, skip).
-cd /apps/payment-api
+cd /home/z/my-project/retry-failure/apps/payment-api
 pnpm db:migration:generate src/database/migrations/0002_add_replayed_column
 pnpm db:migrate
 
 # 2. Start PostgreSQL (bila belum jalan)
 # KONDISI LOCAL (Docker tersedia):
-cd 
+cd /home/z/my-project/retry-failure
 docker compose up -d postgres
 sleep 5
 docker compose ps postgres
@@ -470,7 +470,7 @@ psql -h localhost -U retry_failure -d retry_failure -c "SELECT 1;" 2>/dev/null |
   echo "psql tidak tersedia / DB belum connectable - gunakan Node script fallback di step 7"
 
 # 3. Typecheck & lint
-cd 
+cd /home/z/my-project/retry-failure
 pnpm --filter payment-api typecheck
 pnpm --filter payment-api lint
 
@@ -479,12 +479,12 @@ pnpm --filter payment-api test -- --testPathPattern=audit.service.spec
 
 # 5. Start gateway mock + payment-api (di 2 terminal berbeda - port kondisional)
 # KONDISI LOCAL:
-cd /apps/payment-gateway-mock && PORT=3001 pnpm start:dev  # port 3001
-cd /apps/payment-api && PORT=3000 pnpm start:dev           # port 3000
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && PORT=3001 pnpm start:dev  # port 3001
+cd /home/z/my-project/retry-failure/apps/payment-api && PORT=3000 pnpm start:dev           # port 3000
 
 # KONDISI SANDBOX:
-cd /apps/payment-gateway-mock && PORT=3002 pnpm start:dev  # port 3002
-cd /apps/payment-api && PORT=3001 pnpm start:dev            # port 3001
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && PORT=3002 pnpm start:dev  # port 3002
+cd /home/z/my-project/retry-failure/apps/payment-api && PORT=3001 pnpm start:dev            # port 3001
 
 # Konvensi env var: API_PORT="${API_PORT:-3000}" (LOCAL) / API_PORT=3001 (SANDBOX)
 #                   GW_PORT="${GW_PORT:-3001}" (LOCAL) / GW_PORT=3002 (SANDBOX)
@@ -498,7 +498,7 @@ curl -sS -X POST "http://localhost:${API_PORT}/payments" \
 
 # 7. Verify audit rows di PostgreSQL (PostgreSQL - bukan SQLite)
 # KONDISI LOCAL (docker exec):
-docker compose -f /docker-compose.yml exec postgres \
+docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
   psql -U retry_failure -d retry_failure -c \
   "SELECT id, attempt_number, outcome, http_status, breaker_state, duration_ms, trace_id, replayed
    FROM payment_attempts
@@ -513,7 +513,7 @@ psql -h localhost -U retry_failure -d retry_failure -c \
    LIMIT 5;"
 
 # Bila psql CLI tidak tersedia di SANDBOX, gunakan Node script:
-cd /apps/payment-api
+cd /home/z/my-project/retry-failure/apps/payment-api
 pnpm exec ts-node -e "
 import { Client } from 'pg';
 const c = new Client({ host: 'localhost', port: 5432, user: 'retry_failure', password: 'retry_failure', database: 'retry_failure' });
@@ -525,7 +525,7 @@ await c.end();
 
 # 8. Verify counter di parent payment konsisten dengan jumlah attempts
 # KONDISI LOCAL:
-docker compose -f /docker-compose.yml exec postgres \
+docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
   psql -U retry_failure -d retry_failure -c \
   "SELECT p.id, p.order_id, p.status, p.attempt_count,
           (SELECT COUNT(*) FROM payment_attempts a WHERE a.payment_id = p.id) AS actual_rows
@@ -551,7 +551,7 @@ curl -sS "http://localhost:${API_PORT}/payments/${PAYMENT_ID}" | jq '.attempts'
 #     dashboard / admin endpoint TASK-03, lalu create payment berulang sampai
 #     breaker trip). Verify audit row dengan outcome='circuit_open' muncul:
 # KONDISI LOCAL:
-docker compose -f /docker-compose.yml exec postgres \
+docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
   psql -U retry_failure -d retry_failure -c \
   "SELECT payment_id, attempt_number, outcome, breaker_state, duration_ms
    FROM payment_attempts
@@ -566,7 +566,7 @@ psql -h localhost -U retry_failure -d retry_failure -c \
    ORDER BY created_at DESC LIMIT 5;"
 
 # 11. Revert migration (test)
-cd /apps/payment-api
+cd /home/z/my-project/retry-failure/apps/payment-api
 pnpm db:migrate:revert
 pnpm db:migrate  # re-apply
 ```

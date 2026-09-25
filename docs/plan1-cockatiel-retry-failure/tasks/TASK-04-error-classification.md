@@ -58,13 +58,13 @@ NEVER sum Retry-After + exponential backoff. Pilih salah satu:
 
 ## Files to create
 
-- `/packages/resilience/src/errors/types.ts`
-- `/packages/resilience/src/errors/classifier.ts`
-- `/packages/resilience/src/errors/retry-after.ts`
-- `/packages/resilience/src/errors/index.ts`
-- `/packages/resilience/test/errors/classifier.spec.ts`
-- `/packages/resilience/test/errors/retry-after.spec.ts`
-- `/packages/resilience/jest.config.js`
+- `/home/z/my-project/retry-failure/packages/resilience/src/errors/types.ts`
+- `/home/z/my-project/retry-failure/packages/resilience/src/errors/classifier.ts`
+- `/home/z/my-project/retry-failure/packages/resilience/src/errors/retry-after.ts`
+- `/home/z/my-project/retry-failure/packages/resilience/src/errors/index.ts`
+- `/home/z/my-project/retry-failure/packages/resilience/test/errors/classifier.spec.ts`
+- `/home/z/my-project/retry-failure/packages/resilience/test/errors/retry-after.spec.ts`
+- `/home/z/my-project/retry-failure/packages/resilience/jest.config.js`
 
 ## Implementation steps
 
@@ -149,7 +149,7 @@ NEVER sum Retry-After + exponential backoff. Pilih salah satu:
 ```bash
 # 1. Install deps untuk packages/resilience
 # KONDISI LOCAL (pnpm sudah terinstall) & KONDISI SANDBOX (pnpm via corepack):
-cd 
+cd /home/z/my-project/retry-failure
 pnpm install
 
 # Bila pnpm belum terinstall (KONDISI SANDBOX), jalankan `corepack enable pnpm` dulu
@@ -164,7 +164,7 @@ pnpm --filter @retry-failure/resilience lint
 pnpm --filter @retry-failure/resilience typecheck
 
 # 4. Quick sanity check via ts-node (bila mau cek manual) - sama kedua kondisi
-cd /packages/resilience
+cd /home/z/my-project/retry-failure/packages/resilience
 pnpm exec ts-node -e '
 import { classifyError, parseRetryAfter } from "./src/errors";
 console.log(classifyError({ kind: "http", status: 500 }));

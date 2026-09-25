@@ -86,7 +86,7 @@ Scaffold `packages/security` sebagai library NestJS yang berisi OAuth client, se
 
 1. Buat folder structure:
    ```bash
-   cd 
+   cd /home/z/my-project/retry-failure
    mkdir -p packages/security/src/{oauth,session-store,middleware,guards,decorators,verifiers,sync,cache,types}
    mkdir -p packages/security/test
    ```
@@ -455,28 +455,28 @@ Scaffold `packages/security` sebagai library NestJS yang berisi OAuth client, se
 
 ```bash
 # Install dependencies
-cd  && pnpm install
+cd /home/z/my-project/retry-failure && pnpm install
 
 # Typecheck (should pass — even stubs compile)
-cd  && pnpm --filter @retry-failure/security typecheck
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security typecheck
 
 # Lint
-cd  && pnpm --filter @retry-failure/security lint
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security lint
 
 # Test (minimal — endpoints + auth-user shape)
-cd  && pnpm --filter @retry-failure/security test
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security test
 
 # Verify barrel exports compile
-cd  && node -e "
+cd /home/z/my-project/retry-failure && node -e "
 const sec = require('./packages/security/src/index.ts');
 console.log(Object.keys(sec).sort());
 "
 
 # Verify folder structure
-find /packages/security/src -type f | sort
+find /home/z/my-project/retry-failure/packages/security/src -type f | sort
 
 # Verify deps installed
-ls /node_modules | grep -E "openid-client|jose|ioredis|lru-cache"
+ls /home/z/my-project/retry-failure/node_modules | grep -E "openid-client|jose|ioredis|lru-cache"
 ```
 
 ## Notes

@@ -457,7 +457,7 @@ PUT http://localhost:3002/admin/config
 ## Files to create
 
 ```text
-/apps/payment-api/test/
+/home/z/my-project/retry-failure/apps/payment-api/test/
 ├── jest-e2e.json
 ├── e2e/
 │   ├── helpers/
@@ -474,7 +474,7 @@ PUT http://localhost:3002/admin/config
 │   ├── payments.durable-scheduler.e2e-spec.ts   # Scenario 6
 │   └── payments.exhaustion.e2e-spec.ts          # Scenario 7
 
-/docs/
+/home/z/my-project/retry-failure/docs/
 ├── e2e-results.md                               # Hasil eksekusi + evidence (tabel PASS/FAIL)
 └── e2e-evidence/                                # Folder screenshot Agent Browser
     ├── demo-A-nextjs-<timestamp>.png
@@ -490,7 +490,7 @@ PUT http://localhost:3002/admin/config
 ```
 
 **Script files (Agent Browser - optional, bila skill butuh input script)**:
-- `/scripts/e2e-ui-demo.mjs` - Node.js script yang memanggil `agent-browser` CLI untuk automasi 10 demo runs (5 demos × 2 frontends). Bila `agent-browser` skill sudah interactive, ini optional.
+- `/home/z/my-project/retry-failure/scripts/e2e-ui-demo.mjs` - Node.js script yang memanggil `agent-browser` CLI untuk automasi 10 demo runs (5 demos × 2 frontends). Bila `agent-browser` skill sudah interactive, ini optional.
 
 ---
 
@@ -989,7 +989,7 @@ describe('Scenario 7 - Total retry exhaustion (MAX_TOTAL_RETRIES=5)', () => {
 ### Step 9 - Run E2E backend
 
 ```bash
-cd /apps/payment-api && pnpm test:e2e
+cd /home/z/my-project/retry-failure/apps/payment-api && pnpm test:e2e
 ```
 
 Tambahkan script di `apps/payment-api/package.json`:
@@ -1016,7 +1016,7 @@ Gunakan skill `agent-browser`:
    agent-browser click "button:has-text('Demo A')"
    agent-browser wait 30000
    agent-browser assert "text=Toast: PASSED"
-   agent-browser screenshot /docs/e2e-evidence/demo-A-vue-$(date +%s).png
+   agent-browser screenshot /home/z/my-project/retry-failure/docs/e2e-evidence/demo-A-vue-$(date +%s).png
    ```
 4. **Run demo A-E di Next.js sandbox (3000)**: repeat step 3 dengan URL `http://localhost:3000`.
 5. **Cross-check backend**: untuk setiap demo run, `curl /payments?orderId=E2E-DEMO-{A-E}-*` dan verify DB rows / metrics sesuai expected.
@@ -1152,7 +1152,7 @@ curl -s http://localhost:5173 -o /dev/null -w "%{http_code}\n" || echo "Vue dash
 
 # 2. Verify no orphaned processing payments via psql
 # KONDISI LOCAL (Docker tersedia, psql via docker exec):
-docker compose -f /docker-compose.yml exec postgres \
+docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
   psql -U retry_failure -d retry_failure -c \
   "SELECT count(*) FROM payments WHERE status = 'processing';"
 # Expected: 0
@@ -1162,7 +1162,7 @@ docker compose -f /docker-compose.yml exec postgres \
 #   psql "postgresql://retry_failure:retry_failure@localhost:5432/retry_failure" \
 #     -c "SELECT count(*) FROM payments WHERE status = 'processing';"
 # Opsi B - Node script via ts-node (bila psql tidak ada):
-#   cd /apps/payment-api && pnpm exec ts-node -e "
+#   cd /home/z/my-project/retry-failure/apps/payment-api && pnpm exec ts-node -e "
 #     import { Client } from 'pg';
 #     const c = new Client({ host: process.env.DB_HOST, port: Number(process.env.DB_PORT),
 #       user: process.env.DB_USER, password: process.env.DB_PASS, database: process.env.DB_NAME });
@@ -1184,7 +1184,7 @@ curl -s -X PUT "http://localhost:${GW_PORT}/admin/config" \
 
 # 5. Run backend E2E (Jest + supertest) - sama kedua kondisi (asalkan DB accessible)
 # KONDISI LOCAL (DB dari docker compose):
-cd /apps/payment-api && pnpm test:e2e
+cd /home/z/my-project/retry-failure/apps/payment-api && pnpm test:e2e
 
 # KONDISI SANDBOX (DB dari external instance atau skip):
 # - Bila external PG connectable: command sama, pnpm test:e2e jalan.
@@ -1202,17 +1202,17 @@ cd /apps/payment-api && pnpm test:e2e
 # Tests:       7+ passed, 7+ total
 
 # 6. View e2e-results.md (auto-generated documentation) - sama kedua kondisi
-cat /docs/e2e-results.md | head -n 60
+cat /home/z/my-project/retry-failure/docs/e2e-results.md | head -n 60
 
 # 7. Summary counts (PASS / FAIL) - sama kedua kondisi
-PASS_COUNT=$(grep -c 'PASS' /docs/e2e-results.md)
-FAIL_COUNT=$(grep -c 'FAIL' /docs/e2e-results.md)
+PASS_COUNT=$(grep -c 'PASS' /home/z/my-project/retry-failure/docs/e2e-results.md)
+FAIL_COUNT=$(grep -c 'FAIL' /home/z/my-project/retry-failure/docs/e2e-results.md)
 echo "PASS: $PASS_COUNT, FAIL: $FAIL_COUNT"
 # Expected: PASS: 17 (7 backend + 10 UI), FAIL: 0
 
 # 8. Verify no orphaned processing payments AFTER run - dua varian (sama seperti step 2)
 # KONDISI LOCAL:
-docker compose -f /docker-compose.yml exec postgres \
+docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
   psql -U retry_failure -d retry_failure -c \
   "SELECT count(*) FROM payments WHERE status = 'processing';"
 # Expected: 0
@@ -1236,15 +1236,15 @@ tail -n 200 /tmp/nextjs-sandbox.log 2>/dev/null | grep -iE "error|fatal" | head 
 # Expected: kosong
 
 # 11. List screenshot evidence - sama kedua kondisi
-ls -lah /docs/e2e-evidence/
+ls -lah /home/z/my-project/retry-failure/docs/e2e-evidence/
 # Expected: 10 file PNG (demo-A-nextjs, demo-A-vue, demo-B-nextjs, ..., demo-E-vue)
 
 # 12. Optional: cleanup test data - dua varien
 # KONDISI LOCAL (Docker):
-# docker compose -f /docker-compose.yml exec postgres \
+# docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
 #   psql -U retry_failure -d retry_failure -c \
 #   "DELETE FROM payment_attempts WHERE payment_id IN (SELECT id FROM payments WHERE order_id LIKE 'E2E-%');"
-# docker compose -f /docker-compose.yml exec postgres \
+# docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
 #   psql -U retry_failure -d retry_failure -c \
 #   "DELETE FROM payments WHERE order_id LIKE 'E2E-%' OR order_id LIKE 'BREAKER-RESET-%';"
 
@@ -1260,7 +1260,7 @@ ls -lah /docs/e2e-evidence/
 # agent-browser navigate http://localhost:5173
 # agent-browser click "button:has-text('Demo A')"
 # agent-browser wait 30000
-# agent-browser screenshot /docs/e2e-evidence/demo-A-vue-$(date +%s).png
+# agent-browser screenshot /home/z/my-project/retry-failure/docs/e2e-evidence/demo-A-vue-$(date +%s).png
 # ... ulangi untuk Demo B-E + Next.js sandbox (URL http://localhost:3000)
 # Agent Browser adalah tool sandbox; di KONDISI LOCAL bisa buka browser manual.
 

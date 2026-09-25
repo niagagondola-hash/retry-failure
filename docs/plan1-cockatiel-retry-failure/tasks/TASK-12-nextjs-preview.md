@@ -1480,9 +1480,9 @@ Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih s
 # 1. Start backend services (di terminal terpisah)
 #    a. PostgreSQL (bila belum running - sandbox mungkin pakai in-memory atau managed)
 # KONDISI LOCAL (Docker tersedia):
-docker compose -f /docker-compose.yml up -d postgres
+docker compose -f /home/z/my-project/retry-failure/docker-compose.yml up -d postgres
 sleep 3
-docker compose -f /docker-compose.yml ps postgres
+docker compose -f /home/z/my-project/retry-failure/docker-compose.yml ps postgres
 
 # KONDISI SANDBOX (Docker tidak tersedia):
 # - Butuh external PostgreSQL instance (set DB_HOST/DB_PORT/DB_USER/DB_PASS/DB_NAME di apps/payment-api/.env)
@@ -1490,20 +1490,20 @@ docker compose -f /docker-compose.yml ps postgres
 
 #    b. Gateway mock (port kondisional)
 # KONDISI LOCAL (port 3001 bebas):
-cd /apps/payment-gateway-mock && PORT=3001 pnpm start:dev
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && PORT=3001 pnpm start:dev
 # Expected log: "Gateway mock running on http://localhost:3001"
 
 # KONDISI SANDBOX (port 3002, karena 3001 dipakai payment-api):
-cd /apps/payment-gateway-mock && PORT=3002 pnpm start:dev
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && PORT=3002 pnpm start:dev
 # Expected log: "Gateway mock running on http://localhost:3002"
 
 #    c. Payment API (port kondisional)
 # KONDISI LOCAL (port 3000 bebas):
-cd /apps/payment-api && PORT=3000 pnpm start:dev
+cd /home/z/my-project/retry-failure/apps/payment-api && PORT=3000 pnpm start:dev
 # Expected log: "Payment API running on http://localhost:3000" + "Swagger UI: http://localhost:3000/docs"
 
 # KONDISI SANDBOX (port 3001, karena 3000 dipakai Next.js preview):
-cd /apps/payment-api && PORT=3001 pnpm start:dev
+cd /home/z/my-project/retry-failure/apps/payment-api && PORT=3001 pnpm start:dev
 # Expected log: "Payment API running on http://localhost:3001" + "Swagger UI: http://localhost:3001/docs"
 
 # 2. Start Next.js sandbox (port 3000)

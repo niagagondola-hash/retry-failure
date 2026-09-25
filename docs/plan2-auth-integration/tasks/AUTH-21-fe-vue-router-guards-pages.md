@@ -499,16 +499,16 @@ Implementasi router guards + 4 view pages untuk FE Vue:
 
 ```bash
 # Install PrimeVue components (bila belum)
-cd  && pnpm --filter frontend-vue add primevue @primevue/themes primeicons
+cd /home/z/my-project/retry-failure && pnpm --filter frontend-vue add primevue @primevue/themes primeicons
 
 # Typecheck + lint
-cd  && pnpm --filter frontend-vue typecheck
-cd  && pnpm --filter frontend-vue lint
+cd /home/z/my-project/retry-failure && pnpm --filter frontend-vue typecheck
+cd /home/z/my-project/retry-failure && pnpm --filter frontend-vue lint
 
 # Run FE Vue dev (Vite)
-cd  && pnpm --filter payment-api start:dev &
-cd  && pnpm --filter auth-mock start:dev &
-cd  && pnpm --filter frontend-vue dev
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api start:dev &
+cd /home/z/my-project/retry-failure && pnpm --filter auth-mock start:dev &
+cd /home/z/my-project/retry-failure && pnpm --filter frontend-vue dev
 
 # Manual test scenarios:
 # 1. Open http://localhost:5173/payments (not logged in)
@@ -525,7 +525,7 @@ cd  && pnpm --filter frontend-vue dev
 # Verify meta.public + meta.menu per route.
 
 # Run unit tests (bila ditulis)
-cd  && pnpm --filter frontend-vue test -- --run
+cd /home/z/my-project/retry-failure && pnpm --filter frontend-vue test -- --run
 ```
 
 ## Notes

@@ -301,7 +301,7 @@ Mengisi `UserService` di auth-mock dengan fixture users + roles + permissions le
 
 ```bash
 # Start auth-mock
-cd /apps/auth-mock && pnpm start:dev
+cd /home/z/my-project/retry-failure/apps/auth-mock && pnpm start:dev
 
 # Get dev token for budi
 curl -s -X POST http://localhost:4001/dev/token \
@@ -339,14 +339,14 @@ curl -s http://localhost:4001/api/v1/me/permissions -H "Authorization: Bearer $N
 # 3. Expected: select-role page with HRD + Finance radio buttons
 
 # Run tests
-cd  && pnpm --filter auth-mock test
+cd /home/z/my-project/retry-failure && pnpm --filter auth-mock test
 
 # Run only user.service spec
-cd /apps/auth-mock && pnpm test user.service.spec.ts
+cd /home/z/my-project/retry-failure/apps/auth-mock && pnpm test user.service.spec.ts
 
 # Typecheck + lint
-cd  && pnpm --filter auth-mock typecheck
-cd  && pnpm --filter auth-mock lint
+cd /home/z/my-project/retry-failure && pnpm --filter auth-mock typecheck
+cd /home/z/my-project/retry-failure && pnpm --filter auth-mock lint
 ```
 
 ## Notes

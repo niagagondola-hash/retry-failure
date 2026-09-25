@@ -373,19 +373,19 @@ Implementasi frontend Vue auth flow:
 
 ```bash
 # Install deps (axios + pinia likely already installed from Plan1 setup)
-cd  && pnpm --filter frontend-vue add axios pinia vue-router
-cd  && pnpm --filter frontend-vue add -D vitest @vitest/ui jsdom @testing-library/vue
+cd /home/z/my-project/retry-failure && pnpm --filter frontend-vue add axios pinia vue-router
+cd /home/z/my-project/retry-failure && pnpm --filter frontend-vue add -D vitest @vitest/ui jsdom @testing-library/vue
 
 # Typecheck + lint
-cd  && pnpm --filter frontend-vue typecheck
-cd  && pnpm --filter frontend-vue lint
+cd /home/z/my-project/retry-failure && pnpm --filter frontend-vue typecheck
+cd /home/z/my-project/retry-failure && pnpm --filter frontend-vue lint
 
 # Run tests
-cd  && pnpm --filter frontend-vue test -- --run
+cd /home/z/my-project/retry-failure && pnpm --filter frontend-vue test -- --run
 
 # Dev mode (Vite + payment-api)
-cd  && pnpm --filter payment-api start:dev &
-cd  && pnpm --filter frontend-vue dev  # port 5173
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api start:dev &
+cd /home/z/my-project/retry-failure && pnpm --filter frontend-vue dev  # port 5173
 
 # Manual test in browser
 # 1. Open http://localhost:5173

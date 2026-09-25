@@ -135,7 +135,7 @@ Test tidak expect `timeout` field di assertion.
 
 ```bash
 # Checkout file mock ke versi sebelum fix DelegateBackoff
-cd 
+cd /home/z/my-project/retry-failure
 git checkout 500ae7a -- packages/resilience/__mocks__/cockatiel-adapter.ts
 
 # Run tests yang fail

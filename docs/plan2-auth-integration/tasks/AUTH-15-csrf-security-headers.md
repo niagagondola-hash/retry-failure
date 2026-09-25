@@ -305,18 +305,18 @@ Implementasi tiga lapis pertahanan keamanan di sisi BFF payment-api: (1) CSRF mi
 
 ```bash
 # Install deps di payment-api
-cd  && pnpm --filter payment-api add helmet @nestjs/throttler
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api add helmet @nestjs/throttler
 
 # Typecheck security + payment-api
-cd  && pnpm --filter @retry-failure/security typecheck
-cd  && pnpm --filter payment-api typecheck
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security typecheck
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api typecheck
 
 # Lint
-cd  && pnpm --filter @retry-failure/security lint
-cd  && pnpm --filter payment-api lint
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security lint
+cd /home/z/my-project/retry-failure && pnpm --filter payment-api lint
 
 # Run CSRF + Helmet tests
-cd  && pnpm --filter @retry-failure/security test -- --testPathPattern="(csrf|helmet)"
+cd /home/z/my-project/retry-failure && pnpm --filter @retry-failure/security test -- --testPathPattern="(csrf|helmet)"
 
 # Manual verify headers (after payment-api running)
 curl -sI http://localhost:3001/health | grep -E "(X-Frame-Options|X-Content-Type-Options|Strict-Transport-Security|Content-Security-Policy|Referrer-Policy|Permissions-Policy)"

@@ -517,36 +517,36 @@ Setup Docker Compose untuk Plan 2:
 
 ```bash
 # Start full dev profile
-cd  && pnpm docker:up
+cd /home/z/my-project/retry-failure && pnpm docker:up
 # atau: docker compose up -d --build
 
 # Start sandbox profile
-cd  && pnpm docker:up:sandbox
+cd /home/z/my-project/retry-failure && pnpm docker:up:sandbox
 # atau: docker compose -f docker-compose.sandbox.yml up -d --build
 
 # Check services status
-cd  && docker compose ps
-cd  && docker compose -f docker-compose.sandbox.yml ps
+cd /home/z/my-project/retry-failure && docker compose ps
+cd /home/z/my-project/retry-failure && docker compose -f docker-compose.sandbox.yml ps
 
 # View logs (all services)
-cd  && docker compose logs -f
+cd /home/z/my-project/retry-failure && docker compose logs -f
 # Specific service:
 docker compose logs -f payment-api
 docker compose logs -f auth-mock
 
 # Stop services (volumes persist)
-cd  && pnpm docker:down
+cd /home/z/my-project/retry-failure && pnpm docker:down
 
 # Stop + remove volumes (full reset)
-cd  && docker compose down -v
-cd  && docker compose -f docker-compose.sandbox.yml down -v
+cd /home/z/my-project/retry-failure && docker compose down -v
+cd /home/z/my-project/retry-failure && docker compose -f docker-compose.sandbox.yml down -v
 
 # Rebuild specific service
-cd  && docker compose build payment-api
-cd  && docker compose up -d payment-api
+cd /home/z/my-project/retry-failure && docker compose build payment-api
+cd /home/z/my-project/retry-failure && docker compose up -d payment-api
 
 # Run migration (after payment-api up)
-cd  && docker compose exec payment-api pnpm migration:run
+cd /home/z/my-project/retry-failure && docker compose exec payment-api pnpm migration:run
 
 # Verify services healthy
 curl -s http://localhost:4001/.well-known/openid-configuration | jq .

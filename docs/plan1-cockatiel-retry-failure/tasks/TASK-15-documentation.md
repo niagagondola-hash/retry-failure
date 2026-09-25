@@ -26,11 +26,11 @@ Menyusun **dokumentasi final** project sebagai **single source of truth** untuk 
 
 **In scope**:
 
-- `/README.md` - main project README (root monorepo).
-- `/docs/DEMO_SCENARIOS.md` - narrative demo guide A–E + business impact.
-- `/docs/PRODUCTION_CAVEATS.md` - plan section 20 + sandbox adaptation caveats.
-- `/docs/ADAPTATION_NOTES.md` - comparison table plan vs implementation.
-- Modify `/docs/tasks/README.md` - add cross-links to the 4 new doc files + `docs/e2e-results.md`.
+- `/home/z/my-project/retry-failure/README.md` - main project README (root monorepo).
+- `/home/z/my-project/retry-failure/docs/DEMO_SCENARIOS.md` - narrative demo guide A–E + business impact.
+- `/home/z/my-project/retry-failure/docs/PRODUCTION_CAVEATS.md` - plan section 20 + sandbox adaptation caveats.
+- `/home/z/my-project/retry-failure/docs/ADAPTATION_NOTES.md` - comparison table plan vs implementation.
+- Modify `/home/z/my-project/retry-failure/docs/tasks/README.md` - add cross-links to the 4 new doc files + `docs/e2e-results.md`.
 
 **Out of scope**:
 
@@ -49,14 +49,14 @@ Menyusun **dokumentasi final** project sebagai **single source of truth** untuk 
 
 ### Files to create
 
-- `/README.md` - main project README.
-- `/docs/DEMO_SCENARIOS.md` - narrative demo A–E + business impact.
-- `/docs/PRODUCTION_CAVEATS.md` - plan section 20 + sandbox adaptation.
-- `/docs/ADAPTATION_NOTES.md` - comparison table plan vs implementation.
+- `/home/z/my-project/retry-failure/README.md` - main project README.
+- `/home/z/my-project/retry-failure/docs/DEMO_SCENARIOS.md` - narrative demo A–E + business impact.
+- `/home/z/my-project/retry-failure/docs/PRODUCTION_CAVEATS.md` - plan section 20 + sandbox adaptation.
+- `/home/z/my-project/retry-failure/docs/ADAPTATION_NOTES.md` - comparison table plan vs implementation.
 
 ### Files to modify
 
-- `/docs/tasks/README.md` - add section **"6. Final Documentation"** dengan link table ke 4 file baru + `docs/e2e-results.md`.
+- `/home/z/my-project/retry-failure/docs/tasks/README.md` - add section **"6. Final Documentation"** dengan link table ke 4 file baru + `docs/e2e-results.md`.
 
 ---
 
@@ -64,7 +64,7 @@ Menyusun **dokumentasi final** project sebagai **single source of truth** untuk 
 
 ### Step 1 - Root `README.md` (project overview + quick start)
 
-Buat `/README.md` dengan struktur:
+Buat `/home/z/my-project/retry-failure/README.md` dengan struktur:
 
 ```markdown
 # Cockatiel Payment Retry - Sandbox Monorepo
@@ -82,7 +82,7 @@ corepack enable pnpm
 corepack prepare pnpm@latest --activate
 
 # 2. Install dependencies
-cd 
+cd /home/z/my-project/retry-failure
 pnpm install
 
 # 3. Jalankan PostgreSQL (docker compose, recommended)
@@ -171,7 +171,7 @@ Internal sandbox - no license file. Plan source: `upload/PLAN1_Cockatiel_Retry_F
 
 ### Step 2 - `docs/DEMO_SCENARIOS.md` (narrative + business impact)
 
-Buat `/docs/DEMO_SCENARIOS.md` dengan struktur:
+Buat `/home/z/my-project/retry-failure/docs/DEMO_SCENARIOS.md` dengan struktur:
 
 ```markdown
 # Demo Scenarios - Cockatiel Payment Retry
@@ -493,7 +493,7 @@ Setiap demo punya baris terkait di `./e2e-results.md` dengan evidence lengkap.
 
 ### Step 3 - `docs/PRODUCTION_CAVEATS.md` (plan section 20 + sandbox adaptation)
 
-Buat `/docs/PRODUCTION_CAVEATS.md`:
+Buat `/home/z/my-project/retry-failure/docs/PRODUCTION_CAVEATS.md`:
 
 ```markdown
 # Production Caveats & Sandbox Adaptation
@@ -733,7 +733,7 @@ Future evolution - bukan bagian mandatory demo.
 
 ### Step 4 - `docs/ADAPTATION_NOTES.md` (comparison table)
 
-Buat `/docs/ADAPTATION_NOTES.md`:
+Buat `/home/z/my-project/retry-failure/docs/ADAPTATION_NOTES.md`:
 
 ```markdown
 # Adaptation Notes - Plan vs Implementation
@@ -807,7 +807,7 @@ explicit out-of-scope per section 19 + 20).
 
 ### Step 5 - Cross-link dari `docs/tasks/README.md`
 
-Modify `/docs/tasks/README.md` - add new section
+Modify `/home/z/my-project/retry-failure/docs/tasks/README.md` - add new section
 **"6. Final Documentation"** setelah section 5 (Definition of Done):
 
 ```markdown
@@ -835,16 +835,16 @@ Setelah TASK-15 selesai, dokumentasi final tersedia di:
 Setelah semua file dibuat:
 
 ```bash
-ls /README.md \
-   /docs/DEMO_SCENARIOS.md \
-   /docs/PRODUCTION_CAVEATS.md \
-   /docs/ADAPTATION_NOTES.md
+ls /home/z/my-project/retry-failure/README.md \
+   /home/z/my-project/retry-failure/docs/DEMO_SCENARIOS.md \
+   /home/z/my-project/retry-failure/docs/PRODUCTION_CAVEATS.md \
+   /home/z/my-project/retry-failure/docs/ADAPTATION_NOTES.md
 ```
 
 Verifikasi semua relative link valid (gunakan `grep` untuk relative path markdown link):
 
 ```bash
-cd 
+cd /home/z/my-project/retry-failure
 rg '\]\(\.\./?[^)]+\)' --no-filename README.md docs/*.md docs/tasks/README.md \
   | sort -u
 ```
@@ -855,29 +855,29 @@ Pastikan tidak ada link ke path yang tidak ada.
 
 ## Acceptance criteria
 
-- [ ] `/README.md` ada dan memuat:
+- [ ] `/home/z/my-project/retry-failure/README.md` ada dan memuat:
   - [ ] Section "Quick start" dengan 4-5 perintah copy-pasteable (`corepack enable pnpm` -> `pnpm install` -> `docker compose up -d postgres` -> `pnpm db:migrate` -> `pnpm dev`).
   - [ ] Section "Payment Retry Demo" dengan pointer ke `docs/DEMO_SCENARIOS.md`.
   - [ ] Tabel "Services & ports" dengan 8 service: payment-api 3001, gateway-mock 3002, frontend-vue 5173, Next.js sandbox 3000, postgres 5432, jaeger 16686, prometheus 9090, grafana 3003.
   - [ ] Section "Project structure" dengan tree diagram.
   - [ ] Link table ke 5 doc file: DEMO_SCENARIOS, PRODUCTION_CAVEATS, ADAPTATION_NOTES, e2e-results, tasks/README.
-- [ ] `/docs/DEMO_SCENARIOS.md` ada dan memuat:
+- [ ] `/home/z/my-project/retry-failure/docs/DEMO_SCENARIOS.md` ada dan memuat:
   - [ ] Cara menjalankan demo (2 opsi: Vue dashboard + curl).
   - [ ] 5 scenario A–E, masing-masing dengan: gateway mode, business impact, steps curl, expected outcome, link ke e2e-results row.
   - [ ] **Hero scenario D** dengan ≥3 paragraph emphasis (kenapa idempotency mandatory + standard industri Stripe/PayPal/Adyen + verifikasi gateway mock idempotency store).
   - [ ] Recap table di akhir dengan 5 row (A–E).
-- [ ] `/docs/PRODUCTION_CAVEATS.md` ada dan memuat:
+- [ ] `/home/z/my-project/retry-failure/docs/PRODUCTION_CAVEATS.md` ada dan memuat:
   - [ ] Plan section 20.1 (circuit breaker in-memory per-instance).
   - [ ] Plan section 20.2 (scheduler single-instance, no distributed lock).
   - [ ] Plan section 20.3 (retry only safe because idempotency key).
   - [ ] Plan section 20.4 (DB is source of truth, metrics/logs are signals).
   - [ ] ≥11 sandbox adaptation bullets (B.1-B.11): PostgreSQL vs MySQL, in-memory idempotency store, no distributed lock scheduler, no OTel SDK, no auth, no rate limit, sandbox without Docker, Node v24, Grafana port 3003, no GraphQL, sample PromQL queries.
   - [ ] Plan section 19 recap (hal yang sengaja tidak diimplementasikan).
-- [ ] `/docs/ADAPTATION_NOTES.md` ada dan memuat:
+- [ ] `/home/z/my-project/retry-failure/docs/ADAPTATION_NOTES.md` ada dan memuat:
   - [ ] Section "Yang dipertahankan utuh" dengan 7 bullet (Cockatiel engine, error classification, idempotency, durable retry, audit trail, metrics, payment lifecycle).
   - [ ] Comparison table dengan ≥22 row (database, ORM driver, persistence types, frontend, scheduler deployment, port assignments, OTel, Docker, Node version, idempotency store, distributed lock, auth, rate limit, Grafana JSON, logging, config, test framework, dsb.).
   - [ ] Ringkasan 7 adaptasi kunci di akhir.
-- [ ] `/docs/tasks/README.md` punya section **"6. Final Documentation"** dengan 5 cross-link valid.
+- [ ] `/home/z/my-project/retry-failure/docs/tasks/README.md` punya section **"6. Final Documentation"** dengan 5 cross-link valid.
 - [ ] Semua cross-link relative path (bukan `/home/z/...` absolute), tidak ada dead link.
 - [ ] `pnpm lint` clean (tidak ada issue lint yang muncul dari doc changes - bila TASK-15 murni docs, lint tidak terpengaruh, tapi tetap run untuk memastikan).
 - [ ] DoD checklist di `docs/tasks/README.md` section 5 di-recap di bawah file TASK-15 ini (lihat section "Final Definition of Done checklist" di akhir file ini).
@@ -901,29 +901,29 @@ Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih s
 
 ```bash
 # 1. Verify all 4 doc files exist - sama kedua kondisi
-ls -la /README.md \
-       /docs/DEMO_SCENARIOS.md \
-       /docs/PRODUCTION_CAVEATS.md \
-       /docs/ADAPTATION_NOTES.md
+ls -la /home/z/my-project/retry-failure/README.md \
+       /home/z/my-project/retry-failure/docs/DEMO_SCENARIOS.md \
+       /home/z/my-project/retry-failure/docs/PRODUCTION_CAVEATS.md \
+       /home/z/my-project/retry-failure/docs/ADAPTATION_NOTES.md
 
 # 2. Verify README content - quick start section (sama kedua kondisi)
 rg -n '## Quick start|## Payment Retry Demo|## Services & ports|## Project structure|## Documentation index' \
-  /README.md
+  /home/z/my-project/retry-failure/README.md
 
 # 3. Verify DEMO_SCENARIOS content (sama kedua kondisi)
 rg -n '## Demo [A-E]|## Hero|## Demo recap|## Cara menjalankan' \
-  /docs/DEMO_SCENARIOS.md
+  /home/z/my-project/retry-failure/docs/DEMO_SCENARIOS.md
 
 # 4. Verify PRODUCTION_CAVEATS content - all 4 plan caveats + adaptation bullets (sama)
 rg -n '### 20\.[1-4]|### B\.[0-9]+|## C\. Hal yang sengaja' \
-  /docs/PRODUCTION_CAVEATS.md
+  /home/z/my-project/retry-failure/docs/PRODUCTION_CAVEATS.md
 
 # 5. Verify ADAPTATION_NOTES comparison table row count (sama kedua kondisi)
-rg -n '^\| [0-9]+ ' /docs/ADAPTATION_NOTES.md | wc -l
+rg -n '^\| [0-9]+ ' /home/z/my-project/retry-failure/docs/ADAPTATION_NOTES.md | wc -l
 # expected: >= 22
 
 # 6. Quick link check - all relative markdown links resolve (sama kedua kondisi)
-cd 
+cd /home/z/my-project/retry-failure
 rg -o '\]\((\.\./[^)]+|README\.md|docs/[^)]+)\)' \
   --no-filename README.md docs/*.md docs/tasks/README.md \
   | sed 's/](//;s/)$//' | sort -u | while read -r p; do
@@ -932,21 +932,21 @@ rg -o '\]\((\.\./[^)]+|README\.md|docs/[^)]+)\)' \
     done
 
 # 7. Verify cross-link section added to docs/tasks/README.md (sama kedua kondisi)
-rg -n '## 6\. Final Documentation' /docs/tasks/README.md
+rg -n '## 6\. Final Documentation' /home/z/my-project/retry-failure/docs/tasks/README.md
 
 # 8. Final lint (catch stray TS issues if doc imports code - shouldn't, but run anyway)
 # KONDISI LOCAL:
-cd  && pnpm lint
+cd /home/z/my-project/retry-failure && pnpm lint
 
 # KONDISI SANDBOX (asalkan pnpm sudah ter-enable via corepack):
-cd  && pnpm lint
+cd /home/z/my-project/retry-failure && pnpm lint
 
 # 9. Final typecheck
 # KONDISI LOCAL:
-cd  && pnpm typecheck
+cd /home/z/my-project/retry-failure && pnpm typecheck
 
 # KONDISI SANDBOX (asalkan pnpm sudah ter-enable via corepack):
-cd  && pnpm typecheck
+cd /home/z/my-project/retry-failure && pnpm typecheck
 
 # 10. Sanity: open dashboard one last time via Agent Browser
 #     - Verify all 5 demo buttons visible (A/B/C/D/E)

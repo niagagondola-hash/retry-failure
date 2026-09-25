@@ -121,7 +121,7 @@ Setiap log line via `PinoLogger` (atau `console.log(JSON.stringify(...))` di min
 
 ## Files to create/modify
 
-**Create** (di `/apps/payment-api/src/modules/observability/`):
+**Create** (di `/home/z/my-project/retry-failure/apps/payment-api/src/modules/observability/`):
 
 - `logger.module.ts` - `LoggerModule` (wrapper untuk `LoggerModule.forRootAsync`).
 - `logger.service.ts` - `ObservabilityLogger` wrapper (opsional - bila ingin hide `nestjs-pino` API dari consumer).
@@ -163,7 +163,7 @@ Bila belum diinstall di TASK-01, tambahkan ke `apps/payment-api/package.json`:
 ```
 
 ```bash
-cd  && pnpm install
+cd /home/z/my-project/retry-failure && pnpm install
 ```
 
 ### 2. `observability/trace-context.ts`
@@ -992,17 +992,17 @@ Command di bawah ditulis dengan dua varian bila perlu (LOCAL / SANDBOX). Pilih s
 # 1. Start all services (gateway mock + payment-api + DB)
 # ============================================================
 # KONDISI LOCAL (Docker tersedia, port 3000 bebas):
-docker compose -f /docker-compose.yml up -d postgres
+docker compose -f /home/z/my-project/retry-failure/docker-compose.yml up -d postgres
 sleep 3
-docker compose -f /docker-compose.yml ps postgres
-cd /apps/payment-gateway-mock && PORT=3001 pnpm start:dev &
-cd /apps/payment-api && PORT=3000 pnpm start:dev
+docker compose -f /home/z/my-project/retry-failure/docker-compose.yml ps postgres
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && PORT=3001 pnpm start:dev &
+cd /home/z/my-project/retry-failure/apps/payment-api && PORT=3000 pnpm start:dev
 
 # KONDISI SANDBOX (Docker tidak tersedia, port 3000 dipakai Next.js preview):
 # - Butuh external PostgreSQL instance (set DB_HOST/DB_PORT/DB_USER/DB_PASS/DB_NAME di apps/payment-api/.env)
 # - Atau skip DB-dependent commands (step 5, 8c); inspect via Node script (lihat step 5 varian SANDBOX)
-cd /apps/payment-gateway-mock && PORT=3002 pnpm start:dev &
-cd /apps/payment-api && PORT=3001 pnpm start:dev
+cd /home/z/my-project/retry-failure/apps/payment-gateway-mock && PORT=3002 pnpm start:dev &
+cd /home/z/my-project/retry-failure/apps/payment-api && PORT=3001 pnpm start:dev
 # Expected early log (pino-pretty colorized):
 #   [Nest] LOG [NestApplication] Nest application successfully started
 #   INFO (app): api_request traceId=... method=POST path=/payments
@@ -1010,7 +1010,7 @@ cd /apps/payment-api && PORT=3001 pnpm start:dev
 # ============================================================
 # 2. Typecheck + lint - sama kedua kondisi (asumsi pnpm sudah ter-enable via corepack di SANDBOX)
 # ============================================================
-cd 
+cd /home/z/my-project/retry-failure
 pnpm --filter payment-api typecheck
 pnpm --filter payment-api lint
 
@@ -1046,7 +1046,7 @@ curl -sS "http://localhost:${API_PORT}/metrics" | grep 'payment_gateway_requests
 # 4. Inspect logs - grep for traceId + event fields (sama kedua kondisi; dev.log ada di parent root)
 # ============================================================
 # Redirect dev log to file (or set NODE_ENV + tail stdout).
-cd /apps/payment-api && pnpm start:dev > /tmp/payment-api.log 2>&1 &
+cd /home/z/my-project/retry-failure/apps/payment-api && pnpm start:dev > /tmp/payment-api.log 2>&1 &
 
 # 4a. All payment_start / payment_finish lines
 grep '"event":"payment_start"' /tmp/payment-api.log | jq .
@@ -1064,7 +1064,7 @@ grep -E '"event":"(payment_start|payment_finish|attempt_start|attempt_finish|ret
 # 5. Inspect payment_attempts.trace_id via psql
 # ============================================================
 # KONDISI LOCAL (Docker tersedia, psql via docker exec):
-docker compose -f /docker-compose.yml exec postgres \
+docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
   psql -U retry_failure -d retry_failure -c \
   "SELECT p.order_id, pa.attempt_number, pa.outcome, pa.trace_id, pa.created_at
    FROM payment_attempts pa
@@ -1081,7 +1081,7 @@ docker compose -f /docker-compose.yml exec postgres \
 #      FROM payment_attempts pa JOIN payments p ON p.id = pa.payment_id
 #      WHERE p.order_id LIKE 'OBS-%' ORDER BY p.created_at DESC, pa.attempt_number ASC;"
 # Opsi B - Node script via ts-node (bila psql tidak ada):
-#   cd /apps/payment-api && pnpm exec ts-node -e "
+#   cd /home/z/my-project/retry-failure/apps/payment-api && pnpm exec ts-node -e "
 #     import { Client } from 'pg';
 #     const c = new Client({ host: process.env.DB_HOST, port: Number(process.env.DB_PORT),
 #       user: process.env.DB_USER, password: process.env.DB_PASS, database: process.env.DB_NAME });
@@ -1155,7 +1155,7 @@ curl -sS "http://localhost:${API_PORT}/metrics" | grep 'gateway_idempotent_repla
 
 # 8c. Verify attempt rows: 1 row replayed=true, trace_id sama untuk kedua attempts.
 # KONDISI LOCAL (Docker tersedia, psql via docker exec):
-docker compose -f /docker-compose.yml exec postgres \
+docker compose -f /home/z/my-project/retry-failure/docker-compose.yml exec postgres \
   psql -U retry_failure -d retry_failure -c \
   "SELECT attempt_number, outcome, replayed, trace_id
    FROM payment_attempts
