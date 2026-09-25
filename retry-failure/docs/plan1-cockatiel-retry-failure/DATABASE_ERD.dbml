@@ -1,0 +1,144 @@
+// =============================================================================
+// Cockatiel Retry-Failure — Database ERD (dbdiagram.io format / DBML)
+// =============================================================================
+//
+// Cara pakai:
+//   1. Buka https://dbdiagram.io/d
+//   2. Copy seluruh isi file ini
+//   3. Paste di editor kiri (paste akan replace konten default)
+//   4. Diagram akan ter-render di panel kanan
+//   5. Klik "Export" → pilih format (PNG / SVG / PDF / SQL) kalau perlu
+//
+// Source of truth:
+//   - apps/payment-api/src/database/entities/payment.entity.ts
+//   - apps/payment-api/src/database/entities/payment-attempt.entity.ts
+//   - apps/payment-api/src/database/entities/enums.ts
+//   - apps/payment-api/src/database/migrations/0001_init.ts (PG-native schema)
+//   - apps/payment-api/src/database/migrations/0002_trace_id_varchar.ts
+//
+// Plan reference: docs/PLAN1_Cockatiel_Retry_Failure_Scenario.md section 11
+//
+// Notes:
+//   - DBML menggunakan PascalCase untuk enum values (label), tapi values
+//     actual di PostgreSQL snake_case (e.g., 'scheduled_for_retry').
+//     dbdiagram.io render enum dengan label yang kita kasih, jadi pakai
+//     label yang sama dengan PG values supaya akurat.
+//   - Numeric(12,2) di DBML ditulis sebagai `decimal(12,2)` (alias).
+//   - char(3) tidak didukung native DBML → pakai `varchar(3)`.
+//   - timestamp(3) → `timestamp` (DBML default tanpa precision, tapi
+//     kita dokumentasikan precision di note field).
+//
+// =============================================================================
+
+Enum payment_status_enum {
+  processing
+  succeeded
+  failed
+  scheduled_for_retry
+}
+
+Enum attempt_outcome_enum {
+  success
+  retryable_failure
+  permanent_failure
+  timeout
+  circuit_open
+}
+
+Enum breaker_state_enum {
+  closed
+  open
+  half_open
+}
+
+Table payments {
+  id              uuid           [pk, default: `gen_random_uuid()`, note: 'Native PG uuid PK']
+  order_id        varchar(64)    [unique, not null, note: 'Business order ID (unique)']
+  amount          decimal(12,2)  [not null, note: 'numeric(12,2) — preserve precision in JS as string']
+  currency        varchar(3)     [not null, default: 'IDR', note: 'ISO 4217 currency code, default IDR']
+  status          payment_status_enum [not null, default: 'processing', note: 'Payment lifecycle status']
+  gateway_reference varchar(64)  [note: 'Reference from gateway mock (null kalau belum sukses)']
+  attempt_count   int            [not null, default: 0, note: 'Attempts dalam satu execution cycle (reset ke 0 saat scheduler pick). Total across cycles lihat total_retry_count. Di-increment oleh AuditService.recordAttempt().']
+  total_retry_count int          [not null, default: 0, note: 'Durable retry cycles (scheduler-level). Di-increment oleh RetryScheduler.processOne() sebelum executePayment. Bisa sampai = MAX_TOTAL_RETRIES (5), tidak melebihi. Saat >= MAX, scheduler mark status=failed. PLAN1 section 10.2.']
+  next_retry_at   timestamp      [note: 'timestamp(3) ms precision. NULL saat initial createPayment. Terisi = NOW + delayMs kalau status jadi scheduled_for_retry (retry exhausted atau circuit_open). delayMs = retryAfterMs (dari 429) ?? SCHEDULER_BASE_DELAY_MS (2000ms default). Scheduler pick WHERE next_retry_at <= NOW().']
+  failure_reason  varchar(500)   [note: 'Human-readable failure reason, null kalau sukses. Contoh: "internal server error", "Card number invalid", "retry_exhausted", "max_total_retries_exceeded", "circuit breaker open - fast-fail without calling gateway"']
+  created_at      timestamp      [not null, default: `now()`, note: 'timestamp(3) ms precision']
+  updated_at      timestamp      [not null, default: `now()`, note: 'timestamp(3) ms precision, trigger update']
+
+  Indexes {
+    order_id        [unique, name: 'idx_payments_order_id']
+    status          [name: 'idx_payments_status']
+    next_retry_at   [name: 'idx_payments_next_retry_at']
+  }
+}
+
+Table payment_attempts {
+  id                uuid           [pk, default: `gen_random_uuid()`, note: 'Native PG uuid PK']
+  payment_id        uuid           [not null, note: 'FK -> payments.id ON DELETE CASCADE', ref: > payments.id]
+  attempt_number    int            [not null, note: '1-based, per execution cycle. Mulai dari 1 saat Cockatiel eksekusi fn() pertama kali. Reset ke 1 di setiap cycle (initial createPayment atau scheduler pick). Circuit_open case hardcoded = 1.']
+  outcome           attempt_outcome_enum [not null, note: 'Hasil attempt: success/retryable_failure/permanent_failure/timeout/circuit_open']
+  http_status       int            [note: 'HTTP status code dari gateway (null kalau network error atau circuit_open)']
+  error_code        varchar        [note: 'Error code dari gateway (e.g., invalid_card, circuit_open, ECONNREFUSED, retry_exhausted)']
+  error_message     varchar        [note: 'Error message dari gateway atau axios']
+  delay_before_next_ms int         [note: 'Backoff delay (ms) sebelum attempt berikutnya. Hanya terisi dari gateway Retry-After header (429 response). NULL untuk 500/503/timeout/attempt terakhir. Cockatiel exponential backoff internal tidak persist ke DB.']
+  breaker_state     varchar(12)    [not null, note: 'Breaker state saat attempt: closed/open/half_open (disimpan sebagai varchar, bukan enum)']
+  duration_ms       int            [not null, note: 'Duration attempt (ms). Dihitung dari Date.getTime() diff (finishedAt - startedAt). NOT NULL — circuit_open case = 0ms. Source: resilient-adapter.ts line 54-56 set startedAt + finishedAt.']
+  trace_id          varchar(64)    [note: 'Trace ID (UUIDv4 36 chars / W3C TraceParent 55 chars / future OTel). Char(32) → varchar(64) via migration 0002. Konsisten per execution cycle.']
+  idempotency_key   varchar(64)    [not null, note: 'Idempotency-Key header value (PLAN1 section 9 — derived from payment.id)']
+  gateway_reference varchar(64)    [note: 'Reference dari gateway (sama dengan payment.gateway_reference kalau sukses)']
+  replayed          boolean        [not null, default: false, note: 'true kalau attempt ini adalah replay (idempotent, no actual charge)']
+  created_at        timestamp      [not null, default: `now()`, note: 'timestamp(3) ms precision']
+
+  Indexes {
+    payment_id      [name: 'idx_payment_attempts_payment_id']
+    idempotency_key [name: 'idx_payment_attempts_idempotency_key']
+  }
+}
+
+// =============================================================================
+// Relations
+// =============================================================================
+
+// 1 Payment : N PaymentAttempts (cascade delete)
+Ref: payments.id < payment_attempts.payment_id [delete: cascade]
+
+// =============================================================================
+// Notes / Documentation Block (tidak dirender sebagai table)
+// =============================================================================
+//
+// ## Domain overview
+//
+// ### payments (PLAN1 section 11.1)
+//   - 1 record per payment lifecycle
+//   - status: processing → succeeded/failed/scheduled_for_retry
+//   - attempt_count: reset ke 0 setiap kali scheduler pick (new execution cycle)
+//   - total_retry_count: cumulatif across scheduler cycles (PLAN1 section 10.2:
+//     scheduler increments ini, bukan service)
+//   - MAX_TOTAL_RETRIES check ada di RetryScheduler.processOne() — kalau
+//     exceeded, scheduler update status=failed + failure_reason='max_total_retries_exceeded'
+//
+// ### payment_attempts (PLAN1 section 11.2)
+//   - 1 record per attempt (initial + retries dalam satu cycle)
+//   - outcome: success / retryable_failure / permanent_failure / timeout / circuit_open
+//   - circuit_open outcome = breaker OPEN → fast-fail tanpa call gateway
+//   - replayed=true = gateway detected Idempotency-Key sudah pernah diproses
+//     (no actual charge, hanya replay response) — PLAN1 section 9.2
+//   - trace_id: konsisten per execution cycle (1 trace ID untuk semua attempts
+//     dalam satu payment processing)
+//
+// ### Idempotency invariant (PLAN1 section 9.1)
+//   - Untuk 1 payment: actualCharges ≤ 1, walau HTTP calls ≥ 2
+//   - Idempotency-Key: <payment.id> — stable across retries + scheduler cycles
+//   - Gateway mock simpan idempotency store (in-memory, sandbox only)
+//
+// ### Migration history
+//   - 0001_init.ts: create tables + indexes + native PG enums
+//   - 0002_trace_id_varchar.ts: ALTER trace_id char(32) → varchar(64)
+//     (UUIDv4 = 36 chars, tidak muat di char(32))
+//
+// ### Dual environment support (TASK-14b)
+//   - PostgreSQL: production + local dev with Docker (synchronize=false, pakai migrations)
+//   - SQLite: sandbox/test (synchronize=true, skip migrations)
+//   - Helper functions: getUuidColumnType() + getTimestampColumnType() handle driver differences
+//
+// =============================================================================
