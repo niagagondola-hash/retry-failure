@@ -1,3 +1,0 @@
-# Ignore generated dev keys (*.pem) — auto-generated on first start.
-# Allow .gitkeep + README.md only.
-*.pem
