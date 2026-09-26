@@ -29,10 +29,13 @@
     "dev:sandbox": "pnpm --filter @retry-failure/resilience build && pnpm --filter auth-mock --filter payment-api --parallel run start:dev",
     "frontend:vue:dev": "pnpm --filter frontend-vue dev",
     "frontend:vue:build": "pnpm --filter frontend-vue build",
-    "build:resilience": "pnpm --filter @retry-failure/resilience build"
+    "build:resilience": "pnpm --filter @retry-failure/resilience build",
+    "check:duplication": "jscpd apps/auth-mock/src packages/security/src packages/resilience/src apps/payment-api/src --min-lines 10 --threshold 3 --format typescript",
+    "check:all": "pnpm lint && pnpm check:duplication && pnpm typecheck && pnpm test"
   },
   "devDependencies": {
-    "typescript": "^5.6.0",
-    "prettier": "^3.3.0"
+    "jscpd": "^5.3.2",
+    "prettier": "^3.3.0",
+    "typescript": "^5.6.0"
   }
 }

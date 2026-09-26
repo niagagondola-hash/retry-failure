@@ -1,15 +1,13 @@
 /**
- * ESLint flat config for @retry-failure/security package (CODING_STANDARDS.md compliance).
+ * ESLint flat config for auth-mock (CODING_STANDARDS.md compliance).
  *
  * Categories applied (per docs/CODING_STANDARDS.md §Tooling):
  *   - Kategori 1 (Wajib): unused-imports, import order, no-console, no-debugger
  *   - Kategori 2 (Recommended): max-lines, max-lines-per-function, max-params, complexity
  *
- * tsconfigRootDir di-set eksplisit ke __dirname (folder package ini) supaya
- * typescript-eslint parser tahu tsconfig.json mana yang dipakai (penting di
- * monorepo untuk menghindari "multiple candidate TSConfigRootDirs").
- *
- * Plan reference: PLAN2 Section 9 (packages/security structure).
+ * tsconfigRootDir di-set eksplisit ke __dirname (folder package ini).
+ * Wajib untuk monorepo: typescript-eslint butuh tahu tsconfig.json mana
+ * yang dipakai untuk resolve types.
  */
 import tseslint from 'typescript-eslint';
 import unusedImports from 'eslint-plugin-unused-imports';
@@ -24,7 +22,6 @@ export default tseslint.config(
     ignores: [
       'dist/**',
       'node_modules/**',
-      'coverage/**',
       '*.config.{mjs,js,ts}',
       '**/*.config.{mjs,js,ts}',
     ],
@@ -44,12 +41,14 @@ export default tseslint.config(
     rules: {
       // ===== Kategori 1 (Wajib) =====
 
+      // Auto-remove unused imports + warn unused vars
       'unused-imports/no-unused-imports': 'error',
       'unused-imports/no-unused-vars': [
         'warn',
         { vars: 'all', varsIgnorePattern: '^_', args: 'all', argsIgnorePattern: '^_' },
       ],
 
+      // Import order consistency (builtin → external → internal → parent → sibling)
       'import/order': [
         'error',
         {
@@ -60,32 +59,32 @@ export default tseslint.config(
       ],
       'import/no-duplicates': 'error',
 
+      // No console.log (use NestJS Logger instead)
       'no-console': ['error', { allow: ['warn', 'error'] }],
+
+      // No debugger statements
       'no-debugger': 'error',
 
       // ===== Kategori 2 (Recommended — SOLID indicators) =====
 
+      // SRP: max file length (warn di 300 lines)
       'max-lines': ['warn', { max: 300, skipBlankLines: true, skipComments: true }],
+
+      // SRP: max function length (warn di 50 lines)
       'max-lines-per-function': [
         'warn',
         { max: 50, skipBlankLines: true, skipComments: true },
       ],
+
+      // ISP: max params (warn di 4)
       'max-params': ['warn', { max: 4 }],
+
+      // Cyclomatic complexity (warn di 10)
       complexity: ['warn', { max: 10 }],
 
       // ===== TypeScript-specific =====
       '@typescript-eslint/no-unused-vars': 'off', // handled by unused-imports
       '@typescript-eslint/no-explicit-any': 'warn',
-    },
-  },
-  {
-    // Test files: jest mock factories use require() to grab the mocked module.
-    files: ['tests/**/*.ts'],
-    rules: {
-      '@typescript-eslint/no-require-imports': 'off',
-      '@typescript-eslint/no-explicit-any': 'off',
-      // Allow longer test functions (setup boilerplate is verbose)
-      'max-lines-per-function': 'off',
     },
   },
 );

@@ -1,103 +1,74 @@
 /**
- * UserService — fixture users stub (AUTH-03).
+ * UserService — fixture users with stable UUIDs + roles + permissions (AUTH-06).
  *
- * Plan reference: PLAN2 Section 10.4 (Fixture user), Section 5.2 (JWT payload claims).
+ * Plan reference: PLAN2 Section 10.4 (fixture user), Section 6.1 (menu codes),
+ * Section 5.2 (JWT payload), AUTH-06 task spec §2.
  *
- * Two fixture users per plan2 §10.4:
- *   - `superadmin`   / ChangeMe_123!  — single role, isSuperAdmin=true
- *   - `budi_santoso` / ChangeMe_123!  — multi role (Operator + Finance)
+ * Two fixture users:
+ *   - `superadmin`   / ChangeMe_123!  — single role (Super Admin), isSuperAdmin=true
+ *   - `budi_santoso` / ChangeMe_123!  — multi role (HRD + Finance), isSuperAdmin=false
  *
  * Passwords are stored as plaintext for dev mock (NOT for production). AUTH-06
- * will fill richer fixtures (permissions, menus, role descriptions); this stub
- * exposes the stable interface (`validateCredentials`, `findById`) used by
- * OAuthController.
+ * spec §Notes — production MUST use bcrypt/argon2. Catat di TODO.
+ *
+ * UUIDs are stable (hardcoded in fixtures.ts) so tests + payment-api contract
+ * tests can hardcode user IDs across restarts.
  *
  * User object shape (plan2 §10.6 / 9.2):
- *   { id, username, name, email, isSuperAdmin, roles: [{ id, name }] }
+ *   { id, username, passwordHash, name, email, isSuperAdmin, roles: [{ id, name, description, permissionCodes }] }
  */
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+
+import { FIXTURE_USERS } from './fixtures';
 
 export interface MockRole {
   id: string;
   name: string;
   description?: string;
-  /** Permission codes attached to this role (filled by AUTH-06). */
+  /** Permission codes attached to this role (plan2 §6.1 menu codes). */
   permissionCodes: string[];
 }
 
 export interface MockUser {
   id: string;
   username: string;
-  /** Plaintext dev password — DO NOT replicate in production. */
-  password: string;
+  /**
+   * Plaintext dev password — DO NOT replicate in production.
+   * Field name kept as `passwordHash` per AUTH-06 spec (misnamed but stable
+   * for spec compliance + cross-task contract).
+   */
+  passwordHash: string;
   name: string;
   email?: string;
   isSuperAdmin: boolean;
   roles: MockRole[];
 }
 
-const FIXTURE_USERS: MockUser[] = [
-  {
-    id: 'user-superadmin',
-    username: 'superadmin',
-    password: 'ChangeMe_123!',
-    name: 'Super Admin',
-    email: 'superadmin@example.test',
-    isSuperAdmin: true,
-    roles: [
-      {
-        id: 'role-super-admin',
-        name: 'Super Admin',
-        description: 'Bypass all menu checks',
-        permissionCodes: ['*'],
-      },
-    ],
-  },
-  {
-    id: 'user-budi',
-    username: 'budi_santoso',
-    password: 'ChangeMe_123!',
-    name: 'Budi Santoso',
-    email: 'budi@example.test',
-    isSuperAdmin: false,
-    roles: [
-      {
-        id: 'role-operator',
-        name: 'Operator',
-        description: 'Read + write payments',
-        permissionCodes: ['dashboard', 'payment.read', 'payment.write'],
-      },
-      {
-        id: 'role-finance',
-        name: 'Finance',
-        description: 'Read + retry payments',
-        permissionCodes: ['dashboard', 'payment.read', 'payment.retry'],
-      },
-    ],
-  },
-];
-
 @Injectable()
-export class UserService {
+export class UserService implements OnModuleInit {
+  private readonly logger = new Logger('UserService');
   private readonly users = new Map<string, MockUser>();
 
-  constructor() {
+  async onModuleInit(): Promise<void> {
     for (const u of FIXTURE_USERS) {
       this.users.set(u.id, u);
     }
+    this.logger.log(`Seeded ${this.users.size} fixture users`);
   }
 
   /**
    * Validate username + plaintext password. Returns the user or null.
    * Caller (OAuthController) decides what to do on null (401 re-render).
+   *
+   * DEV ONLY: plain text comparison. Production: bcrypt.compare(password, user.passwordHash).
    */
   async validateCredentials(
     username: string,
     password: string,
   ): Promise<MockUser | null> {
-    const user = [...this.users.values()].find((u) => u.username === username);
+    const user = await this.findByUsername(username);
     if (!user) return null;
-    if (user.password !== password) return null;
+    if (user.passwordHash !== password) return null;
     return user;
   }
 
@@ -108,8 +79,20 @@ export class UserService {
 
   /** Lookup by username (used by /dev/token in AUTH-05). */
   async findByUsername(username: string): Promise<MockUser | null> {
-    return (
-      [...this.users.values()].find((u) => u.username === username) ?? null
-    );
+    for (const u of this.users.values()) {
+      if (u.username === username) return u;
+    }
+    return null;
+  }
+
+  /**
+   * Find a role on a user by roleId. Used by AUTH-05 switch-role endpoint
+   * + AUTH-04 select-role page rendering.
+   */
+  async findRole(
+    user: MockUser,
+    roleId: string,
+  ): Promise<MockRole | undefined> {
+    return user.roles.find((r) => r.id === roleId);
   }
 }

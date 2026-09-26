@@ -31,13 +31,13 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 
+import { RevokeDto, TokenRequestDto } from './dto';
 import {
   InvalidClientError,
   InvalidGrantError,
   mapOAuthError,
   OAuthService,
 } from './oauth.service';
-import { RevokeDto, TokenRequestDto } from './dto';
 
 @Controller('oauth')
 export class TokenController {

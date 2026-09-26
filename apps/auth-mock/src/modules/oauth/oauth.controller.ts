@@ -1,8 +1,9 @@
 /**
- * OAuthController — `/oauth/authorize` + `/oauth/select-role` (AUTH-03).
+ * OAuthController — `/oauth/authorize` + `/oauth/select-role` (AUTH-03 + AUTH-04).
  *
  * Plan reference: PLAN2 Section 4.1 (OAuth2 flow), Section 10.7.3 (controller),
- * Section 10.5 (multi-role flow), AUTH-03 task spec §7.
+ * Section 10.5 (multi-role flow), Section 10.7.5-7 (EJS templates),
+ * CODING_STANDARDS.md §DRY, §SRP.
  *
  * Endpoints:
  *   GET  /oauth/authorize    — validate client + redirect_uri + PKCE; render
@@ -11,9 +12,15 @@
  *                              issue code (single-role) or render select-role.
  *   POST /oauth/select-role  — pick role from multi-role user; issue code + redirect.
  *
- * Login UI (EJS templates) is built in AUTH-04. For now GET returns a JSON
- * placeholder + POST redirects with `code` — sufficient to unblock payment-api
- * AUTH-17 integration tests.
+ * Login UI (EJS templates) built in AUTH-04:
+ *   - views/login.ejs       — login form with 6 hidden OAuth fields + dev hint
+ *   - views/select-role.ejs — radio button list of user roles
+ *   - views/error.ejs        — generic error page
+ *   - public/style.css      — minimal zero-build CSS
+ *
+ * DRY refactor (CODING_STANDARDS.md):
+ *   - validateClient() helper — eliminates client validation duplication in 3 methods
+ *   - toRoleDtos() helper     — eliminates role mapping duplication in 2 methods
  */
 import {
   Body,
@@ -29,14 +36,22 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 
-import { OAuthService } from './oauth.service';
 import { ClientService } from '../client/client.service';
-import { UserService } from '../user/user.service';
+import { UserService , MockRole } from '../user/user.service';
+
 import {
   AuthorizeQueryDto,
   AuthorizeSubmitDto,
   SelectRoleDto,
 } from './dto';
+import { OAuthService } from './oauth.service';
+
+/** Role DTO shape for select-role.ejs template. */
+interface RoleDto {
+  id: string;
+  name: string;
+  description?: string;
+}
 
 @Controller('oauth')
 export class OAuthController {
@@ -48,13 +63,61 @@ export class OAuthController {
     private readonly users: UserService,
   ) {}
 
+  // ----- Shared helpers (DRY refactor per CODING_STANDARDS.md §DRY) --------
+
+  /**
+   * Validate client_id + redirect_uri. Returns null if valid, or an error
+   * response that should be sent immediately.
+   *
+   * Used by authorize(), submitLogin(), selectRole() — eliminates 3x duplication
+   * of client validation logic.
+   */
+  private validateClient(
+    clientId: string,
+    redirectUri: string,
+  ): { valid: true } | { valid: false; status: number; message: string } {
+    const client = this.clients.findById(clientId);
+    if (!client) {
+      return {
+        valid: false,
+        status: HttpStatus.BAD_REQUEST,
+        message: `Unknown client_id: ${clientId}`,
+      };
+    }
+    if (!client.redirectUris.includes(redirectUri)) {
+      return {
+        valid: false,
+        status: HttpStatus.BAD_REQUEST,
+        message: 'redirect_uri not registered for client',
+      };
+    }
+    return { valid: true };
+  }
+
+  /**
+   * Map MockRole[] → RoleDto[] for select-role.ejs template.
+   *
+   * Eliminates 2x duplication of role mapping in authorize() + submitLogin().
+   */
+  private toRoleDtos(roles: MockRole[]): RoleDto[] {
+    return roles.map((r) => ({
+      id: r.id,
+      name: r.name,
+      description: r.description,
+    }));
+  }
+
+  /** Render the error page with a message. */
+  private renderError(res: Response, status: number, message: string) {
+    return res.status(status).render('error', { message });
+  }
+
   // ----- Step 1: GET /oauth/authorize --------------------------------
 
   /**
    * Validate client_id, redirect_uri, PKCE. If the user is already auth'd
    * (auth_sid cookie), short-circuit to code issuance (or select-role).
-   * Otherwise render the login page (placeholder JSON until AUTH-04 ships
-   * the EJS templates).
+   * Otherwise render the login page (EJS template — AUTH-04).
    */
   @Get('authorize')
   async authorize(
@@ -62,29 +125,23 @@ export class OAuthController {
     @Req() req: Request,
     @Res() res: Response,
   ) {
-    const client = this.clients.findById(query.client_id);
-    if (!client) {
-      return res.status(HttpStatus.BAD_REQUEST).json({
-        error: 'invalid_client',
-        error_description: `Unknown client_id: ${query.client_id}`,
-      });
-    }
-
-    if (!client.redirectUris.includes(query.redirect_uri)) {
-      return res.status(HttpStatus.BAD_REQUEST).json({
-        error: 'invalid_request',
-        error_description: 'redirect_uri not registered for client',
-      });
+    const clientCheck = this.validateClient(
+      query.client_id,
+      query.redirect_uri,
+    );
+    if (!clientCheck.valid) {
+      return this.renderError(res, clientCheck.status, clientCheck.message);
     }
 
     if (
       !query.code_challenge ||
       query.code_challenge_method !== 'S256'
     ) {
-      return res.status(HttpStatus.BAD_REQUEST).json({
-        error: 'invalid_request',
-        error_description: 'PKCE required (code_challenge_method=S256)',
-      });
+      return this.renderError(
+        res,
+        HttpStatus.BAD_REQUEST,
+        'PKCE required (code_challenge_method=S256)',
+      );
     }
 
     // Already-logged-in user? Skip the login page.
@@ -93,10 +150,11 @@ export class OAuthController {
       const user = await this.users.findById(session.userId);
       if (!user) {
         // Session exists but user was deleted — clear cookie, force re-login.
-        return res.status(HttpStatus.UNAUTHORIZED).json({
-          error: 'invalid_session',
-          error_description: 'user no longer exists',
-        });
+        return this.renderError(
+          res,
+          HttpStatus.UNAUTHORIZED,
+          'Session invalid — user no longer exists. Please login again.',
+        );
       }
       if (user.roles.length === 1) {
         // Single-role: issue code immediately.
@@ -111,40 +169,28 @@ export class OAuthController {
           state: query.state,
         });
       }
-      // Multi-role: respond with role list so the client can POST /oauth/select-role.
-      return res.status(HttpStatus.OK).json({
-        status: 'select_role',
-        user_id: user.id,
-        roles: user.roles.map((r) => ({ id: r.id, name: r.name, description: r.description })),
-        // Echo original OAuth params so the FE can re-submit them.
-        authorize: {
-          client_id: query.client_id,
-          redirect_uri: query.redirect_uri,
-          state: query.state,
-          code_challenge: query.code_challenge,
-          code_challenge_method: query.code_challenge_method,
-          scope: query.scope ?? '',
-        },
+      // Multi-role: render select-role page (AUTH-04).
+      return res.status(HttpStatus.OK).render('select-role', {
+        userId: user.id,
+        clientId: query.client_id,
+        redirectUri: query.redirect_uri,
+        state: query.state,
+        codeChallenge: query.code_challenge,
+        codeChallengeMethod: query.code_challenge_method,
+        scope: query.scope ?? '',
+        roles: this.toRoleDtos(user.roles),
       });
     }
 
-    // Not logged in: render login page.
-    // AUTH-04 will ship EJS templates. For now, return a JSON placeholder.
-    return res.status(HttpStatus.OK).json({
-      message:
-        'Login page not implemented yet. Use POST /oauth/authorize with username/password.',
-      fixtures: [
-        { username: 'superadmin', password: 'ChangeMe_123!', note: 'single role, super admin' },
-        { username: 'budi_santoso', password: 'ChangeMe_123!', note: 'multi role' },
-      ],
-      authorize: {
-        client_id: query.client_id,
-        redirect_uri: query.redirect_uri,
-        state: query.state,
-        code_challenge: query.code_challenge,
-        code_challenge_method: query.code_challenge_method,
-        scope: query.scope ?? '',
-      },
+    // Not logged in: render login page (AUTH-04 EJS template).
+    return res.status(HttpStatus.OK).render('login', {
+      clientId: query.client_id,
+      redirectUri: query.redirect_uri,
+      state: query.state,
+      codeChallenge: query.code_challenge,
+      codeChallengeMethod: query.code_challenge_method,
+      scope: query.scope ?? '',
+      error: null,
     });
   }
 
@@ -153,7 +199,7 @@ export class OAuthController {
   /**
    * Submit username + password. Validate via `UserService.validateCredentials`.
    * On success: create `auth_sid` cookie, then either issue code (single-role)
-   * or render select-role (multi-role). On failure: 401 + error message.
+   * or render select-role (multi-role). On failure: re-render login with error.
    */
   @Post('authorize')
   @HttpCode(HttpStatus.OK)
@@ -161,18 +207,12 @@ export class OAuthController {
     @Body() body: AuthorizeSubmitDto,
     @Res() res: Response,
   ) {
-    const client = this.clients.findById(body.client_id);
-    if (!client) {
-      return res.status(HttpStatus.BAD_REQUEST).json({
-        error: 'invalid_client',
-        error_description: `Unknown client_id: ${body.client_id}`,
-      });
-    }
-    if (!client.redirectUris.includes(body.redirect_uri)) {
-      return res.status(HttpStatus.BAD_REQUEST).json({
-        error: 'invalid_request',
-        error_description: 'redirect_uri not registered for client',
-      });
+    const clientCheck = this.validateClient(
+      body.client_id,
+      body.redirect_uri,
+    );
+    if (!clientCheck.valid) {
+      return this.renderError(res, clientCheck.status, clientCheck.message);
     }
 
     const user = await this.users.validateCredentials(
@@ -180,9 +220,15 @@ export class OAuthController {
       body.password,
     );
     if (!user) {
-      return res.status(HttpStatus.UNAUTHORIZED).json({
-        error: 'invalid_credentials',
-        error_description: 'username atau password salah',
+      // Re-render login page with error message (AUTH-04 AC #5).
+      return res.status(HttpStatus.UNAUTHORIZED).render('login', {
+        clientId: body.client_id,
+        redirectUri: body.redirect_uri,
+        state: body.state,
+        codeChallenge: body.code_challenge,
+        codeChallengeMethod: body.code_challenge_method,
+        scope: body.scope ?? '',
+        error: 'Username atau password salah',
       });
     }
 
@@ -203,19 +249,16 @@ export class OAuthController {
       });
     }
 
-    // Multi-role: respond with role list so the FE can POST /oauth/select-role.
-    return res.status(HttpStatus.OK).json({
-      status: 'select_role',
-      user_id: user.id,
-      roles: user.roles.map((r) => ({ id: r.id, name: r.name, description: r.description })),
-      authorize: {
-        client_id: body.client_id,
-        redirect_uri: body.redirect_uri,
-        state: body.state,
-        code_challenge: body.code_challenge,
-        code_challenge_method: body.code_challenge_method,
-        scope: body.scope ?? '',
-      },
+    // Multi-role: render select-role page (AUTH-04).
+    return res.status(HttpStatus.OK).render('select-role', {
+      userId: user.id,
+      clientId: body.client_id,
+      redirectUri: body.redirect_uri,
+      state: body.state,
+      codeChallenge: body.code_challenge,
+      codeChallengeMethod: body.code_challenge_method,
+      scope: body.scope ?? '',
+      roles: this.toRoleDtos(user.roles),
     });
   }
 
@@ -231,34 +274,30 @@ export class OAuthController {
     @Body() body: SelectRoleDto,
     @Res() res: Response,
   ) {
-    const client = this.clients.findById(body.client_id);
-    if (!client) {
-      return res.status(HttpStatus.BAD_REQUEST).json({
-        error: 'invalid_client',
-        error_description: `Unknown client_id: ${body.client_id}`,
-      });
-    }
-    if (!client.redirectUris.includes(body.redirect_uri)) {
-      return res.status(HttpStatus.BAD_REQUEST).json({
-        error: 'invalid_request',
-        error_description: 'redirect_uri not registered for client',
-      });
+    const clientCheck = this.validateClient(
+      body.client_id,
+      body.redirect_uri,
+    );
+    if (!clientCheck.valid) {
+      return this.renderError(res, clientCheck.status, clientCheck.message);
     }
 
     const user = await this.users.findById(body.user_id);
     if (!user) {
-      return res.status(HttpStatus.BAD_REQUEST).json({
-        error: 'invalid_request',
-        error_description: 'user not found',
-      });
+      return this.renderError(
+        res,
+        HttpStatus.BAD_REQUEST,
+        'User not found — please login again.',
+      );
     }
 
     const role = user.roles.find((r) => r.id === body.role_id);
     if (!role) {
-      return res.status(HttpStatus.BAD_REQUEST).json({
-        error: 'invalid_request',
-        error_description: 'role does not belong to user',
-      });
+      return this.renderError(
+        res,
+        HttpStatus.BAD_REQUEST,
+        'Role does not belong to user',
+      );
     }
 
     return this.oauth.issueCodeAndRedirect(res, {

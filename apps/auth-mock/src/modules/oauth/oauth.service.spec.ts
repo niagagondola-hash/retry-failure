@@ -13,17 +13,21 @@
  *
  * Plan reference: AUTH-03 task spec §11 (acceptance criteria).
  */
-import { SignJWT, exportJWK, generateKeyPair, jwtVerify } from 'jose';
 import { createHash } from 'node:crypto';
 
-import { OAuthService, InvalidGrantError, InvalidClientError } from './oauth.service';
-import { AuthCodeStore } from './auth-code.store';
-import { TokenStore } from './token.store';
-import { AuthSessionService } from './auth-session.service';
+import { SignJWT, exportJWK, generateKeyPair, jwtVerify } from 'jose';
+
+import { ClientService } from '../client/client.service';
 import { JwtSignerService } from '../keypair/jwt-signer.service';
 import { KeyPairService } from '../keypair/key-pair.service';
-import { ClientService } from '../client/client.service';
+import { TokenFactory } from '../keypair/token-factory';
 import { UserService } from '../user/user.service';
+
+import { AuthCodeStore } from './auth-code.store';
+import { AuthSessionService } from './auth-session.service';
+import { OAuthService, InvalidGrantError, InvalidClientError } from './oauth.service';
+import { TokenStore } from './token.store';
+
 
 /** Local S256 challenge (RFC 7636 §4.2) — duplicate of packages/security's helper. */
 function computeChallenge(verifier: string): string {
@@ -60,13 +64,15 @@ async function buildService(): Promise<{
 }> {
   const keyPair = await buildKeyPairService();
   const signer = new JwtSignerService(keyPair);
+  const tokenFactory = new TokenFactory(signer);
   const authCodes = new AuthCodeStore();
   const tokenStore = new TokenStore();
   // AuthSessionService — we don't exercise cookie logic here, but we need the instance.
   const authSessions = new AuthSessionService();
   const clients = new ClientService();
   const users = new UserService();
-  const service = new OAuthService(signer, authCodes, tokenStore, authSessions, clients);
+  await users.onModuleInit(); // AUTH-06: seed fixtures (was in constructor before)
+  const service = new OAuthService(signer, authCodes, tokenStore, authSessions, clients, tokenFactory);
   service.setUserLookup((id) => users.findById(id));
   return { service, tokenStore, authCodes, users, keyPair };
 }
@@ -121,8 +127,8 @@ describe('OAuthService', () => {
       await authCodes.store({
         code: 'code-1',
         clientId: CLIENT_ID,
-        userId: 'user-budi',
-        roleId: 'role-operator',
+        userId: '00000000-0000-1000-8000-000000000002',
+        roleId: '00000000-0000-1000-8000-000000000102',
         redirectUri: REDIRECT,
         codeChallenge: challenge,
         codeChallengeMethod: 'S256',
@@ -141,8 +147,8 @@ describe('OAuthService', () => {
       await authCodes.store({
         code: 'expired-code',
         clientId: CLIENT_ID,
-        userId: 'user-budi',
-        roleId: 'role-operator',
+        userId: '00000000-0000-1000-8000-000000000002',
+        roleId: '00000000-0000-1000-8000-000000000102',
         redirectUri: REDIRECT,
         codeChallenge: computeChallenge('v'.repeat(64)),
         codeChallengeMethod: 'S256',
@@ -164,8 +170,8 @@ describe('OAuthService', () => {
       await authCodes.store({
         code: 'code-good',
         clientId: CLIENT_ID,
-        userId: 'user-budi',
-        roleId: 'role-operator',
+        userId: '00000000-0000-1000-8000-000000000002',
+        roleId: '00000000-0000-1000-8000-000000000102',
         redirectUri: REDIRECT,
         codeChallenge: challenge,
         codeChallengeMethod: 'S256',
@@ -193,9 +199,9 @@ describe('OAuthService', () => {
         issuer: 'http://localhost:4001',
         audience: 'payment-api',
       });
-      expect(payload.sub).toBe('user-budi');
+      expect(payload.sub).toBe('00000000-0000-1000-8000-000000000002');
       expect(payload.username).toBe('budi_santoso');
-      expect(payload.roleId).toBe('role-operator');
+      expect(payload.roleId).toBe('00000000-0000-1000-8000-000000000102');
       expect(payload.type).toBe('access');
       expect(payload.jti).toBe(pair.accessJti);
     });
@@ -205,8 +211,8 @@ describe('OAuthService', () => {
       await authCodes.store({
         code: 'code-pkce',
         clientId: CLIENT_ID,
-        userId: 'user-budi',
-        roleId: 'role-operator',
+        userId: '00000000-0000-1000-8000-000000000002',
+        roleId: '00000000-0000-1000-8000-000000000102',
         redirectUri: REDIRECT,
         codeChallenge: computeChallenge('correct-verifier'),
         codeChallengeMethod: 'S256',
@@ -231,8 +237,8 @@ describe('OAuthService', () => {
       await authCodes.store({
         code: 'code-bad-client',
         clientId: CLIENT_ID,
-        userId: 'user-budi',
-        roleId: 'role-operator',
+        userId: '00000000-0000-1000-8000-000000000002',
+        roleId: '00000000-0000-1000-8000-000000000102',
         redirectUri: REDIRECT,
         codeChallenge: computeChallenge(verifier),
         codeChallengeMethod: 'S256',
@@ -270,8 +276,8 @@ describe('OAuthService', () => {
       await authCodes.store({
         code: 'code-redirect',
         clientId: CLIENT_ID,
-        userId: 'user-budi',
-        roleId: 'role-operator',
+        userId: '00000000-0000-1000-8000-000000000002',
+        roleId: '00000000-0000-1000-8000-000000000102',
         redirectUri: REDIRECT,
         codeChallenge: computeChallenge(verifier),
         codeChallengeMethod: 'S256',
@@ -296,8 +302,8 @@ describe('OAuthService', () => {
       await authCodes.store({
         code: 'code-onetime',
         clientId: CLIENT_ID,
-        userId: 'user-budi',
-        roleId: 'role-operator',
+        userId: '00000000-0000-1000-8000-000000000002',
+        roleId: '00000000-0000-1000-8000-000000000102',
         redirectUri: REDIRECT,
         codeChallenge: computeChallenge(verifier),
         codeChallengeMethod: 'S256',
@@ -334,8 +340,8 @@ describe('OAuthService', () => {
       await authCodes.store({
         code: 'code-refresh',
         clientId: CLIENT_ID,
-        userId: 'user-budi',
-        roleId: 'role-operator',
+        userId: '00000000-0000-1000-8000-000000000002',
+        roleId: '00000000-0000-1000-8000-000000000102',
         redirectUri: REDIRECT,
         codeChallenge: computeChallenge(verifier),
         codeChallengeMethod: 'S256',
@@ -376,7 +382,7 @@ describe('OAuthService', () => {
         issuer: 'http://localhost:4001',
         audience: 'payment-api',
       });
-      expect(payload.sub).toBe('user-budi');
+      expect(payload.sub).toBe('00000000-0000-1000-8000-000000000002');
     });
 
     it('reuse detection: presenting revoked refresh → InvalidGrantError + all user tokens revoked', async () => {
@@ -385,8 +391,8 @@ describe('OAuthService', () => {
       await authCodes.store({
         code: 'code-reuse',
         clientId: CLIENT_ID,
-        userId: 'user-budi',
-        roleId: 'role-operator',
+        userId: '00000000-0000-1000-8000-000000000002',
+        roleId: '00000000-0000-1000-8000-000000000102',
         redirectUri: REDIRECT,
         codeChallenge: computeChallenge(verifier),
         codeChallengeMethod: 'S256',
@@ -446,9 +452,9 @@ describe('OAuthService', () => {
       // Generate a different keypair + sign a refresh token with it.
       const otherKp = await generateKeyPair('RS256', { modulusLength: 2048 });
       const foreignToken = await new SignJWT({
-        sub: 'user-budi',
+        sub: '00000000-0000-1000-8000-000000000002',
         username: 'budi_santoso',
-        roleId: 'role-operator',
+        roleId: '00000000-0000-1000-8000-000000000102',
         type: 'refresh',
         client_id: CLIENT_ID,
       })
@@ -475,8 +481,8 @@ describe('OAuthService', () => {
       await authCodes.store({
         code: 'code-client-mismatch',
         clientId: CLIENT_ID,
-        userId: 'user-budi',
-        roleId: 'role-operator',
+        userId: '00000000-0000-1000-8000-000000000002',
+        roleId: '00000000-0000-1000-8000-000000000102',
         redirectUri: REDIRECT,
         codeChallenge: computeChallenge(verifier),
         codeChallengeMethod: 'S256',
@@ -510,8 +516,8 @@ describe('OAuthService', () => {
       await authCodes.store({
         code: 'code-revoke',
         clientId: CLIENT_ID,
-        userId: 'user-budi',
-        roleId: 'role-operator',
+        userId: '00000000-0000-1000-8000-000000000002',
+        roleId: '00000000-0000-1000-8000-000000000102',
         redirectUri: REDIRECT,
         codeChallenge: computeChallenge(verifier),
         codeChallengeMethod: 'S256',

@@ -16,14 +16,18 @@
  * This service is intentionally framework-light: it operates on plain data
  * and returns values. Controllers handle HTTP concerns (res.redirect, etc.).
  */
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { createHash, randomBytes } from 'node:crypto';
-import { JwtSignerService } from '../keypair/jwt-signer.service';
-import { AuthCodeStore, StoredAuthCode } from './auth-code.store';
-import { TokenStore } from './token.store';
-import { AuthSessionService } from './auth-session.service';
+
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+
 import { ClientService } from '../client/client.service';
+import { JwtSignerService } from '../keypair/jwt-signer.service';
+import { TokenFactory } from '../keypair/token-factory';
 import type { MockUser } from '../user/user.service';
+
+import { AuthCodeStore, StoredAuthCode } from './auth-code.store';
+import { AuthSessionService } from './auth-session.service';
+import { TokenStore } from './token.store';
 
 /** Issuer URL embedded in JWT `iss` claim + used by verifier (plan2 §5.2). */
 const AUTH_ISSUER =
@@ -100,6 +104,7 @@ export class OAuthService {
     private readonly tokens: TokenStore,
     private readonly authSessions: AuthSessionService,
     private readonly clients: ClientService,
+    private readonly tokenFactory: TokenFactory,
   ) {}
 
   // ----- Auth session (cookie) ------------------------------------------
@@ -372,7 +377,8 @@ export class OAuthService {
 
   /**
    * Issue a new (access, refresh) token pair. Both are RS256-signed via
-   * `JwtSignerService`. Tokens are stored in `TokenStore` for rotation/revoke.
+   * `TokenFactory` (DRY refactor per CODING_STANDARDS.md §DRY). Tokens are
+   * stored in `TokenStore` for rotation/revoke.
    *
    * Access token claims (plan2 §5.2):
    *   { sub, username, roleId, iss, aud, exp, iat, jti, type: "access" }
@@ -385,47 +391,14 @@ export class OAuthService {
     clientId: string,
     scope: string,
   ): Promise<TokenPair> {
-    const accessJti = crypto.randomUUID();
-    const refreshJti = crypto.randomUUID();
     const now = Date.now();
 
-    const accessToken = await this.signer.sign(
-      {
-        // `sub` is a registered JWT claim (RFC 7519 §4.1.2). jose's SignJWT
-        // accepts it via the payload object — see JwtSignerService.sign which
-        // spreads `claims` into `new SignJWT({...claims})`.
-        sub: user.id,
-        username: user.username,
-        roleId,
-        type: 'access',
-      },
-      {
-        issuer: AUTH_ISSUER,
-        audience: JWT_AUDIENCE,
-        expiresIn: ACCESS_TTL,
-        jti: accessJti,
-      },
-    );
-
-    const refreshToken = await this.signer.sign(
-      {
-        sub: user.id,
-        username: user.username,
-        roleId,
-        type: 'refresh',
-        client_id: clientId,
-      },
-      {
-        issuer: AUTH_ISSUER,
-        audience: JWT_AUDIENCE,
-        expiresIn: REFRESH_TTL,
-        jti: refreshJti,
-      },
-    );
+    // Sign via TokenFactory (centralized JWT signing logic)
+    const pair = await this.tokenFactory.issuePair(user, roleId, clientId);
 
     // Persist both tokens for rotation / reuse detection / revoke.
     await this.tokens.store({
-      jti: accessJti,
+      jti: pair.accessJti,
       userId: user.id,
       clientId,
       roleId,
@@ -434,7 +407,7 @@ export class OAuthService {
       revoked: false,
     });
     await this.tokens.store({
-      jti: refreshJti,
+      jti: pair.refreshJti,
       userId: user.id,
       clientId,
       roleId,
@@ -446,10 +419,10 @@ export class OAuthService {
     const expiresAt = Math.floor(now / 1000) + ACCESS_TTL_SEC;
 
     return {
-      accessToken,
-      refreshToken,
-      accessJti,
-      refreshJti,
+      accessToken: pair.accessToken,
+      refreshToken: pair.refreshToken,
+      accessJti: pair.accessJti,
+      refreshJti: pair.refreshJti,
       expiresAt,
       expiresIn: ACCESS_TTL_SEC,
       tokenType: 'Bearer',

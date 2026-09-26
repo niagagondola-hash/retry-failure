@@ -1,3 +1,8 @@
+import { generateKeyPairSync } from 'node:crypto';
+import { existsSync } from 'node:fs';
+import { readFile, writeFile, mkdir, chmod } from 'node:fs/promises';
+import { join } from 'node:path';
+
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import {
   importSPKI,
@@ -6,10 +11,6 @@ import {
   calculateJwkThumbprint,
   type KeyLike,
 } from 'jose';
-import { generateKeyPairSync } from 'node:crypto';
-import { readFile, writeFile, mkdir, chmod } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
 
 /**
  * Public JWK shape exposed via /.well-known/jwks.json

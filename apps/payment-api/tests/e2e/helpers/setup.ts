@@ -29,6 +29,7 @@ export async function getTestDataSource(): Promise<DataSource> {
         password: process.env.DB_PASS,
         database: process.env.DB_NAME,
         schema: process.env.DB_SCHEMA,
+        sqliteStorage: process.env.DB_SQLITE_PATH,
       }),
     );
     await dataSource.initialize();

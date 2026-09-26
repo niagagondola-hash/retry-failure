@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pilih Role — Auth Mock</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main class="container">
+    <header class="brand">
+      <h1>Auth Mock</h1>
+      <p class="subtitle">Development only — jangan dipakai di production</p>
+    </header>
+    <h2>Pilih Role</h2>
+    <p>Akun Anda memiliki beberapa role. Pilih salah satu untuk melanjutkan.</p>
+    <form method="POST" action="/oauth/select-role">
+      <input type="hidden" name="user_id" value="<%= userId %>">
+      <input type="hidden" name="client_id" value="<%= clientId %>">
+      <input type="hidden" name="redirect_uri" value="<%= redirectUri %>">
+      <input type="hidden" name="state" value="<%= state ?? '' %>">
+      <input type="hidden" name="code_challenge" value="<%= codeChallenge %>">
+      <input type="hidden" name="code_challenge_method" value="<%= codeChallengeMethod %>">
+      <input type="hidden" name="scope" value="<%= scope ?? '' %>">
+      <div class="roles">
+        <% roles.forEach(function(role) { %>
+          <label class="role-card">
+            <input type="radio" name="role_id" value="<%= role.id %>" required>
+            <span class="role-name"><%= role.name %></span>
+            <% if (role.description) { %>
+              <span class="role-desc"><%= role.description %></span>
+            <% } %>
+          </label>
+        <% }) %>
+      </div>
+      <button type="submit">Lanjutkan</button>
+    </form>
+  </main>
+</body>
+</html>

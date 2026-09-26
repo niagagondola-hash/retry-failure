@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — Auth Mock</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main class="container">
+    <header class="brand">
+      <h1>Auth Mock</h1>
+      <p class="subtitle">Development only — jangan dipakai di production</p>
+    </header>
+    <h2>Login</h2>
+    <% if (error) { %><p class="error"><%= error %></p><% } %>
+    <form method="POST" action="/oauth/authorize">
+      <input type="hidden" name="client_id" value="<%= clientId %>">
+      <input type="hidden" name="redirect_uri" value="<%= redirectUri %>">
+      <input type="hidden" name="state" value="<%= state ?? '' %>">
+      <input type="hidden" name="code_challenge" value="<%= codeChallenge %>">
+      <input type="hidden" name="code_challenge_method" value="<%= codeChallengeMethod %>">
+      <input type="hidden" name="scope" value="<%= scope ?? '' %>">
+      <label>
+        Username
+        <input type="text" name="username" required autofocus autocomplete="username">
+      </label>
+      <label>
+        Password
+        <input type="password" name="password" required autocomplete="current-password">
+      </label>
+      <button type="submit">Login</button>
+    </form>
+    <aside class="hint">
+      <strong>Fixture dev:</strong>
+      <ul>
+        <li><code>superadmin</code> / <code>ChangeMe_123!</code> — single role</li>
+        <li><code>budi_santoso</code> / <code>ChangeMe_123!</code> — multi role</li>
+      </ul>
+    </aside>
+  </main>
+</body>
+</html>

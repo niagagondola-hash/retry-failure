@@ -20,15 +20,17 @@
  * record (used for re-signing with the current username).
  */
 import { Module, OnModuleInit } from '@nestjs/common';
-import { KeyPairModule } from '../keypair/keypair.module';
+
 import { ClientModule } from '../client/client.module';
+import { KeyPairModule } from '../keypair/keypair.module';
 import { UserModule } from '../user/user.module';
 import { UserService } from '../user/user.service';
-import { OAuthController } from './oauth.controller';
-import { TokenController } from './token.controller';
-import { OAuthService } from './oauth.service';
-import { AuthSessionService } from './auth-session.service';
+
 import { AuthCodeStore } from './auth-code.store';
+import { AuthSessionService } from './auth-session.service';
+import { OAuthController } from './oauth.controller';
+import { OAuthService } from './oauth.service';
+import { TokenController } from './token.controller';
 import { TokenStore } from './token.store';
 
 @Module({

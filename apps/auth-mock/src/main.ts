@@ -1,7 +1,9 @@
+import { join } from 'node:path';
+
+import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { join } from 'node:path';
-import { Logger } from '@nestjs/common';
+
 import { AppModule } from './app.module';
 
 async function bootstrap() {

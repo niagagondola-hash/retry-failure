@@ -15,9 +15,11 @@
  *   - Max-Age=3600
  *   - Secure: only when AUTH_MOCK_TLS=on (dev is HTTP)
  */
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
+
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import type { CookieOptions, Request, Response } from 'express';
+
 import type { MockUser } from '../user/user.service';
 
 export const AUTH_SID_COOKIE = 'auth_sid';
