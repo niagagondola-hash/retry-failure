@@ -5,8 +5,8 @@
  *
  * Plan reference: AUTH-11 acceptance criteria — "Parity test catches drift".
  */
-import { RedisSessionStore } from '../src/session-store/redis-session.store';
 import { MemorySessionStore } from '../src/session-store/memory-session.store';
+import { RedisSessionStore } from '../src/session-store/redis-session.store';
 import type { Session, SessionStore } from '../src/session-store/session-store.interface';
 
 // Minimal ioredis mock backed by an in-memory Map. Real Redis semantics

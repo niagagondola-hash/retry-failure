@@ -26,6 +26,8 @@ import {
   errors as oidcErrors,
 } from 'openid-client';
 
+import type { SecurityOptions } from '../security.module';
+
 import { OAUTH_PATHS } from './endpoints';
 import {
   OAuthClientError,
@@ -34,7 +36,6 @@ import {
   TokenSet,
 } from './oauth-client.types';
 import { generatePkcePair } from './pkce.util';
-import type { SecurityOptions } from '../security.module';
 
 export const SECURITY_OPTIONS = 'SECURITY_OPTIONS';
 

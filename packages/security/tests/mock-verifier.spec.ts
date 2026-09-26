@@ -11,6 +11,7 @@
  */
 import { createServer } from 'node:http';
 import { AddressInfo } from 'node:net';
+
 import {
   SignJWT,
   exportJWK,
@@ -19,9 +20,9 @@ import {
   type KeyLike,
 } from 'jose';
 
+import type { SecurityOptions } from '../src/security.module';
 import { JwksVerifier } from '../src/verifiers/jwks-verifier';
 import { MockVerifier } from '../src/verifiers/mock-verifier';
-import type { SecurityOptions } from '../src/security.module';
 
 describe('MockVerifier', () => {
   let key: {

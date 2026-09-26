@@ -31,6 +31,7 @@ import {
 } from 'jose';
 
 import type { SecurityOptions } from '../security.module';
+
 import { JwtVerifier, VerifiedAuthUser } from './jwt-verifier.interface';
 
 /** Default cache + clock tolerance per plan2 §16. */

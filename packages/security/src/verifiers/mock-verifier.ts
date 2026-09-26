@@ -14,6 +14,7 @@
  * "why is this token verifying against localhost?" surprises).
  */
 import { Injectable } from '@nestjs/common';
+
 import { JwksVerifier } from './jwks-verifier';
 
 @Injectable()

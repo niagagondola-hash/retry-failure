@@ -14,8 +14,7 @@
  */
 import axios from 'axios';
 
-import { OAuthClientService } from '../src/oauth/oauth-client.service';
-import { SECURITY_OPTIONS } from '../src/oauth/oauth-client.service';
+import { OAuthClientService , SECURITY_OPTIONS } from '../src/oauth/oauth-client.service';
 import type { SecurityOptions } from '../src/security.module';
 
 const baseOptions: SecurityOptions = {
