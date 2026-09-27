@@ -140,21 +140,39 @@ AUTH-26
 
 #### Eksekusi aktual (sandbox)
 
-| Batch | Tasks | Status | Date |
-|---|---|---|---|
-| Batch 1 | AUTH-01 + AUTH-08 | ✅ DONE | 2026-09-24 |
-| Batch 2 | AUTH-02, AUTH-09, AUTH-11, AUTH-16, AUTH-23 | ✅ DONE | 2026-09-24 |
-| Batch 3 | AUTH-03 + AUTH-10 | ✅ DONE | 2026-09-25 |
-| Batch 4 | AUTH-04, AUTH-05, AUTH-06, AUTH-07 | ⏳ NEXT | - |
-| Batch 5 | AUTH-12 → AUTH-13 → AUTH-14 → AUTH-15 | Pending | - |
-| Batch 6 | AUTH-17 | Pending | - |
-| Batch 7 | AUTH-18, AUTH-19, AUTH-20, AUTH-27 | Pending | - |
-| Batch 8 | AUTH-21, AUTH-22 | Pending | - |
-| Batch 9 | AUTH-24 → AUTH-25 → AUTH-26 | Pending | - |
-| Batch 10 | AUTH-28 | Pending | - |
+| Batch | Tasks | Status | Date | Tests |
+|---|---|---|---|---|
+| Batch 1 | AUTH-01 + AUTH-08 (scaffold auth-mock + security) | ✅ DONE | 2026-09-24 | — |
+| Batch 2 | AUTH-02, AUTH-09, AUTH-11, AUTH-16, AUTH-23 (RS256 + OAuth client + SessionStore + DB + Docker) | ✅ DONE | 2026-09-24 | — |
+| Batch 3 | AUTH-03 + AUTH-10 (OAuth2 endpoints + JWKS verifier) | ✅ DONE | 2026-09-25 | 21 oauth + 16 verifier |
+| Batch 4 | AUTH-04, AUTH-05, AUTH-06, AUTH-07 (login UI + internal + fixtures + OIDC discovery) | ✅ DONE | 2026-09-25 | 86 auth-mock |
+| — | Coding Standards + Retrofit Batch 4 (TokenFactory + validateClient + status codes) | ✅ DONE | 2026-09-25 | — |
+| Batch 5 | AUTH-12, AUTH-13, AUTH-14, AUTH-15 (session + guards + lazy sync + CSRF/helmet) | ✅ DONE | 2026-09-26 | 278 security |
+| Batch 6 | AUTH-17 (payment-api BFF integration) | ⏳ NEXT | - | - |
+| Batch 7 | AUTH-18, AUTH-19, AUTH-20, AUTH-27 | Pending | - | - |
+| Batch 8 | AUTH-21, AUTH-22 | Pending | - | - |
+| Batch 9 | AUTH-24 → AUTH-25 → AUTH-26 | Pending | - | - |
+| Batch 10 | AUTH-28 (documentation) | Pending | - | - |
 
-**Completed**: 7/28 tasks (AUTH-01, 02, 08, 09, 11, 16, 23)
-**Tests**: 230 PASS (88 security + 58 resilience + 84 payment-api)
+**Completed**: 18/28 tasks (64%) — Batch 1-5 + Coding Standards + Retrofit
+**Tests**: 506 PASS total
+- resilience: 58/58 (Plan 1)
+- security: 278/278 (Plan 2 Batch 1-5: 104 existing + 174 new Batch 5)
+- auth-mock: 86/86 (Plan 2 Batch 1-4)
+- payment-api: 84/84 (Plan 1 + AUTH-15 throttler wiring)
+
+**Quality gates** (per CODING_STANDARDS.md):
+- typecheck: 0 errors (6 packages)
+- lint: 0 errors, 30 warnings (pre-existing tech debt)
+- jscpd duplication: 2.39% (17 clones — acceptable for codebase size)
+- `pnpm check:all` ready: lint + check:duplication + typecheck + test
+
+**Recent commits**:
+- `d5b1298` fix(auth-mock): add /health endpoint (TECHNICAL_DEBT issue #11)
+- `1e26e5e` feat(security): Batch 5 — AUTH-12, 13, 14, 15
+- `b642231` chore(sandbox-sync): eslint auto-fix + .env sqlite setup for sandbox
+- `15563b7` feat: Batch 4 + Coding Standards + Retrofit
+- `2228f69` feat: Batch 3 AUTH-03 + AUTH-10
 
 ---
 

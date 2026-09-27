@@ -1,7 +1,17 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+
+import {
+  CsrfMiddleware,
+  HelmetMiddleware,
+  LazySyncMiddleware,
+  MenuAccessGuard,
+  SessionGuard,
+} from '@retry-failure/security';
+
+import { AuthModule } from './auth/auth.module';
 import { ConfigAppModule } from './config/config.module';
 import { DatabaseModule } from './database/database.module';
 import { AppLoggerModule } from './modules/observability/logger.module';
@@ -29,9 +39,6 @@ const DEFAULT_THROTTLE_LIMIT = 100;
  *   - `THROTTLE_LIMIT`   — request count limit (default 100)
  *   - `THROTTLER_DISABLED` — `"true"` → skip throttler (dev)
  *   - `AUTH_MODE=disabled`  → skip throttler (skipIf checked per-request)
- *
- * `skipIf` is checked at request time (not config time), so toggling env
- * without restart still works for tests.
  */
 function buildThrottlerConfig() {
   const ttl = Number(process.env.THROTTLE_TTL) || DEFAULT_THROTTLE_TTL_MS;
@@ -55,6 +62,7 @@ function buildThrottlerConfig() {
     ObservabilityModule,
     DatabaseModule,
     GatewayModule,
+    AuthModule,
     PaymentsModule,
     HealthModule,
     MetricsModule,
@@ -63,9 +71,26 @@ function buildThrottlerConfig() {
   ],
   providers: [
     // Global throttler guard — applies the default 100 req/min/IP limit
-    // to every route. Per-endpoint overrides via `@Throttle({...})` decorator
-    // will be added in AUTH-17 on `/auth/login` + `/auth/callback` (10/min/IP).
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    // Global SessionGuard — cookie sid → req.user (skipped by @Public())
+    { provide: APP_GUARD, useClass: SessionGuard },
+    // Global MenuAccessGuard — @RequireMenu permission check (skipped by @Public())
+    { provide: APP_GUARD, useClass: MenuAccessGuard },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  /**
+   * Apply global middleware (plan2 §8.4):
+   *   1. HelmetMiddleware  — security headers (HSTS, CSP, X-Frame-Options, etc.)
+   *   2. CsrfMiddleware    — double-submit cookie pattern CSRF protection
+   *   3. LazySyncMiddleware — SWR pattern for permission sync
+   *
+   * Order matters: helmet first (set headers), csrf second (validate + issue token),
+   * lazy-sync last (read session for sync decision).
+   */
+  configure(consumer: MiddlewareConsumer): void {
+    consumer
+      .apply(HelmetMiddleware, CsrfMiddleware, LazySyncMiddleware)
+      .forRoutes({ path: '*', method: RequestMethod.ALL });
+  }
+}
