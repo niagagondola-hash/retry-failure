@@ -488,6 +488,119 @@ pnpm check:all
 
 ---
 
+## 🔧 Env Loading Patterns (NestJS Monorepo)
+
+> **3 layer env management dengan timing yang berbeda.**
+> Dipelajari dari AUTH-17 timing issue: `buildSecurityOptions()` baca `process.env` SEBELUM Joi validation apply defaults.
+
+### 3 Layer Env Management
+
+```
+Layer 1: VALIDATION (Joi)       — "Apakah env vars valid?"
+Layer 2: ACCESS (process.env)   — "Baca nilai saat module definition (sebelum DI)"
+Layer 3: ACCESS (ConfigService) — "Baca nilai di runtime (setelah DI siap)"
+```
+
+### Urutan Eksekusi (Critical!)
+
+```
+1. dotenv.config()          — load .env file → process.env (raw, no defaults)
+2. @Module decorator        — buildSecurityOptions() baca process.env (BEFORE Joi!)
+3. validateConfig()         — baca process.env (BEFORE Joi!)
+4. NestFactory.create()     —
+   4a. ConfigModule.forRoot() → Joi validation → defaults applied to process.env
+   4b. TypeOrmModule.forRootAsync() → ConfigService.get() (AFTER Joi ✅)
+   4c. SecurityModule (sudah instantiated di step 2 — BEFORE Joi ⚠️)
+```
+
+### Aturan: Kapan Pakai Apa
+
+| Pattern | Kapan Dipakai | Return Type | Setelah Joi? |
+|---|---|---|---|
+| **Joi schema** (`validation.schema.ts`) | Validasi + default values saat bootstrap | Throw error kalau invalid | — (validator) |
+| **`process.env.X`** | Factory function yang dipanggil saat `@Module` decorator (sebelum DI) | `string \| undefined` | ❌ Sebelum Joi |
+| **`ConfigService.get()`** | Services/Controllers dengan DI inject (setelah NestFactory.create) | Type-safe (`string`, `number`, dll) | ✅ Setelah Joi |
+
+### ⚠️ Timing Issue: `forRoot` vs `forRootAsync`
+
+**Problem**: `SecurityModule.forRoot(buildSecurityOptions())` — `buildSecurityOptions()` dipanggil saat `@Module` decorator di-evaluate, SEBELUM `ConfigModule.forRoot()` (Joi) berjalan.
+
+```typescript
+// ❌ BAD — forRoot synchronous, baca process.env sebelum Joi
+@Module({
+  imports: [
+    SecurityModule.forRoot(buildSecurityOptions()),  // ← timing issue!
+    // buildSecurityOptions() baca process.env AUTH_MODE = undefined
+    // (Joi belum apply default 'disabled')
+  ],
+})
+
+// ✅ GOOD — forRootAsync, baca ConfigService setelah Joi
+@Module({
+  imports: [
+    SecurityModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (cfg: ConfigService) => ({
+        authMode: cfg.get<string>('AUTH_MODE') ?? 'disabled',
+        // ↑ ConfigService baca AFTER Joi → defaults sudah applied ✅
+      }),
+    }),
+  ],
+})
+```
+
+### Aturan Env Loading
+
+1. **Joi schema** (`validation.schema.ts`): Define semua env vars + types + defaults + conditional required
+2. **`ConfigService.get()`**: Pilihan utama untuk runtime code (services, controllers, `forRootAsync` factories)
+3. **`process.env.X`**: Hanya untuk code yang jalan **sebelum** `NestFactory.create()` (CLI scripts, otel.ts, synchronous `@Module` decorators yang tidak bisa pakai `forRootAsync`)
+4. **`loadEnv()`** (env-loader.ts): Helper untuk load `.env` file dengan adaptive path (monorepo root OR per-app OR OS env). Dipakai di otel.ts + data-source.ts + security.config.ts.
+5. **Jangan hardcode defaults di 2 tempat**: Kalau Joi set default `AUTH_MODE='disabled'`, jangan juga hardcode `process.env.AUTH_MODE ?? 'disabled'` di `buildSecurityOptions()`. Pakai `forRootAsync` + `ConfigService.get()` supaya default dari Joi yang menang.
+
+### Contoh Benar
+
+```typescript
+// validation.schema.ts — Joi define default
+AUTH_MODE: Joi.string().valid('oauth', 'mock', 'disabled').default('disabled'),
+
+// auth.module.ts — forRootAsync baca via ConfigService (AFTER Joi)
+SecurityModule.forRootAsync({
+  inject: [ConfigService],
+  useFactory: (cfg: ConfigService) => ({
+    authMode: cfg.get<string>('AUTH_MODE'),  // ← Joi default sudah applied
+  }),
+})
+
+// runtime service — ConfigService inject
+@Injectable()
+export class SomeService {
+  constructor(private readonly config: ConfigService) {}
+  getPort() { return this.config.get<number>('PORT'); }
+}
+```
+
+### Contoh Salah (Timing Issue)
+
+```typescript
+// ❌ BAD — buildSecurityOptions() baca process.env BEFORE Joi
+@Module({
+  imports: [
+    SecurityModule.forRoot(buildSecurityOptions()),
+    // buildSecurityOptions() runs saat decorator evaluate
+    // process.env.AUTH_MODE mungkin undefined (Joi belum apply default)
+  ],
+})
+
+// ❌ BAD — hardcode default di 2 tempat
+// validation.schema.ts:
+AUTH_MODE: Joi.string().valid('oauth', 'mock', 'disabled').default('disabled'),
+// security.config.ts:
+authMode: process.env.AUTH_MODE ?? 'disabled',  // ← default hardcoded lagi!
+// Kalau seseorang ubah Joi default → inconsistency bug
+```
+
+---
+
 ## ✅ Pre-Task Checklist
 
 > **Sebelum mulai coding task baru, WAJIB jawab checklist ini.**

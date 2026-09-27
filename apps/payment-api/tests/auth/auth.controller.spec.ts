@@ -13,6 +13,28 @@ import request from 'supertest';
 
 import { AuthController } from '../../src/auth/auth.controller';
 import { AuthService } from '../../src/auth/auth.service';
+import { SessionService, CacheRepository } from '@retry-failure/security';
+
+/** Mock SessionService — returns canned session data. */
+function mockSessionService() {
+  return {
+    get: jest.fn(), // configured per-test
+    create: jest.fn(),
+    delete: jest.fn(),
+    touch: jest.fn(),
+    updateSync: jest.fn(),
+    updateOnSwitchRole: jest.fn(),
+  };
+}
+
+/** Mock CacheRepository — returns cached user data. */
+function mockCacheRepository() {
+  return {
+    findCachedUser: jest.fn(), // configured per-test
+    upsertCachedUser: jest.fn(),
+    deleteCachedUser: jest.fn(),
+  };
+}
 
 /** Mock AuthService — returns canned values for each method. */
 function mockAuthService() {
@@ -51,10 +73,16 @@ function mockAuthService() {
 
 async function buildApp(
   authService: ReturnType<typeof mockAuthService>,
+  sessionService: ReturnType<typeof mockSessionService>,
+  cacheRepository: ReturnType<typeof mockCacheRepository>,
 ): Promise<INestApplication> {
   const mod = await Test.createTestingModule({
     controllers: [AuthController],
-    providers: [{ provide: AuthService, useValue: authService }],
+    providers: [
+      { provide: AuthService, useValue: authService },
+      { provide: SessionService, useValue: sessionService },
+      { provide: CacheRepository, useValue: cacheRepository },
+    ],
   }).compile();
   const app = mod.createNestApplication();
   app.use(cookieParser());
@@ -67,12 +95,16 @@ async function buildApp(
 
 describe('AuthController', () => {
   let authService: ReturnType<typeof mockAuthService>;
+  let sessionService: ReturnType<typeof mockSessionService>;
+  let cacheRepository: ReturnType<typeof mockCacheRepository>;
   let app: INestApplication;
 
   beforeEach(async () => {
     authService = mockAuthService();
+    sessionService = mockSessionService();
+    cacheRepository = mockCacheRepository();
     delete process.env.AUTH_MODE;
-    app = await buildApp(authService);
+    app = await buildApp(authService, sessionService, cacheRepository);
   }, 15000); // 15s timeout for app init
 
   afterEach(async () => {
@@ -80,9 +112,41 @@ describe('AuthController', () => {
   }, 30000); // 30s timeout for app close (handles async cleanup)
 
   describe('GET /auth/session', () => {
-    it('returns 200 with user null when req.user not set', async () => {
+    it('returns 200 with user null when no sid cookie', async () => {
       const res = await request(app.getHttpServer())
         .get('/auth/session')
+        .expect(200);
+      expect(res.body.user).toBeNull();
+    });
+
+    it('returns 200 with user when sid cookie + session exists', async () => {
+      sessionService.get.mockResolvedValue({
+        sid: 'test-sid',
+        userId: 'user-uuid-1',
+        username: 'budi_santoso',
+        roleId: 'role-uuid-102',
+        permissionCodes: ['dashboard', 'payment.read'],
+      });
+      cacheRepository.findCachedUser.mockResolvedValue({
+        is_super_admin: false,
+      });
+      const res = await request(app.getHttpServer())
+        .get('/auth/session')
+        .set('Cookie', 'sid=test-sid')
+        .expect(200);
+      expect(res.body.user).toEqual({
+        userId: 'user-uuid-1',
+        username: 'budi_santoso',
+        roleId: 'role-uuid-102',
+        isSuperAdmin: false,
+      });
+    });
+
+    it('returns user null when session not found', async () => {
+      sessionService.get.mockResolvedValue(null);
+      const res = await request(app.getHttpServer())
+        .get('/auth/session')
+        .set('Cookie', 'sid=invalid-sid')
         .expect(200);
       expect(res.body.user).toBeNull();
     });

@@ -6,26 +6,27 @@
  *
  * Reads process.env + builds SecurityOptions for SecurityModule.forRoot().
  *
+ * Env loading: via loadEnv() helper yang adaptive (monorepo root OR
+ * standalone OR OS env vars). Lihat `env-loader.ts` untuk details.
+ *
+ * Timing: loadEnv() dipanggil SEBELUM buildSecurityOptions() supaya
+ * process.env sudah terisi saat SecurityModule di-instantiate.
+ *
  * Used by:
  *   - AuthModule — `SecurityModule.forRoot(buildSecurityOptions())`
- *
- * Single Responsibility: env → SecurityOptions mapping only.
  */
 import type { SecurityOptions } from '@retry-failure/security';
+
+import { loadEnv } from './env-loader';
+
+// Load env SEBELUM buildSecurityOptions() dipanggil.
+// Adaptive: monorepo root .env (dev) OR per-app .env (Docker) OR OS env (k8s).
+loadEnv();
 
 /**
  * Build SecurityOptions from process.env.
  *
- * Reads all Plan 2 auth env vars per plan2 §16:
- *   - AUTH_MODE (oauth | mock | disabled)
- *   - AUTH_ISSUER, JWT_AUDIENCE, OAUTH_CLIENT_*
- *   - SESSION_STORE, SESSION_SECRET, SESSION_TTL_SEC, SESSION_COOKIE_*
- *   - JWT_CLOCK_TOLERANCE_SEC, JWKS_CACHE_TTL_SEC
- *   - SYNC_FRESH_TTL_MS, SYNC_STALE_TTL_MS, SYNC_MAX_STALE_TTL_MS,
- *     SYNC_BLOCKING_TIMEOUT_MS, SYNC_LOCK_TTL_SEC
- *   - CSRF_ENABLED
- *   - AUTH_DISABLED_* (for AUTH_MODE=disabled)
- *   - REDIS_URL (for SESSION_STORE=redis)
+ * Reads all Plan 2 auth env vars per plan2 §16.
  *
  * @returns SecurityOptions object for SecurityModule.forRoot()
  */

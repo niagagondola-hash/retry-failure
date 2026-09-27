@@ -7,19 +7,23 @@
  *   - DB_TYPE=postgres (default): PostgreSQL with migrations
  *   - DB_TYPE=sqlite: SQLite with synchronize=true (skip migrations, auto-create)
  *
- * NOTE: CLI tidak punya akses ke NestJS ConfigService, jadi baca process.env
- * langsung. Env sudah di-load via `dotenv/config` import di bawah.
- * Factory config (buildDbConfig) tetap sama dengan NestJS runtime —
- * tidak ada duplikasi logic.
+ * Env loading: via loadEnv() helper yang adaptive (monorepo root OR
+ * standalone OR OS env vars). Lihat `config/env-loader.ts` untuk details.
+ *
+ * db:migrate script (`tsx --env-file=../../.env ...`) juga handle env loading
+ * via tsx flag — loadEnv() redundant tapi aman (dotenv tidak override existing).
  *
  * Usage:
  *   pnpm db:migrate            -> tsx typeorm migration:run -d src/database/data-source.ts
  *   pnpm db:migrate:revert     -> tsx typeorm migration:revert -d src/database/data-source.ts
  *   pnpm db:migration:generate -> tsx typeorm migration:generate -d src/database/data-source.ts
  */
-import 'dotenv/config';
 import { DataSource, type LoggerOptions } from 'typeorm';
 import { buildDbConfig } from './db-config';
+import { loadEnv } from '../config/env-loader';
+
+// Load env (adaptive — monorepo root OR per-app OR OS env vars)
+loadEnv();
 
 const dbType = process.env.DB_TYPE ?? 'postgres';
 const logging: LoggerOptions =

@@ -3,23 +3,31 @@
  *
  * Plan reference: PLAN2 Section 9 (packages/security), Section 9.3 (AUTH_MODE),
  * Section 9.4.4 (Pemilihan store via factory), Section 5.1 (JWKS verifier),
- * Section 16 (JWT_CLOCK_TOLERANCE_SEC, JWKS_CACHE_TTL_SEC), Section 7 (cache tables).
+ * Section 16 (JWT_CLOCK_TOLERANCE_SEC, JWKS_CACHE_TTL_SEC), Section 7 (cache tables),
+ * CODING_STANDARDS.md §Env Loading Patterns.
  *
- * Usage in payment-api:
- *   SecurityModule.forRoot({
- *     authMode: 'mock',
- *     sessionStore: 'memory',
- *     authBaseUrl: 'http://localhost:4001',
- *     authIssuer: 'http://localhost:4001',
- *     jwtAudience: 'payment-api',
- *     oauthClientId: 'payment-api',
- *     oauthClientSecret: 'dev-client-secret',
- *     oauthRedirectUri: 'http://localhost:3001/auth/callback',
- *     oauthScopes: 'openid profile',
+ * Two registration methods:
+ *   - `forRoot(options)` — synchronous, baca options langsung (BEFORE Joi validation)
+ *   - `forRootAsync({ inject, useFactory })` — async, baca via ConfigService (AFTER Joi ✅)
+ *
+ * RECOMMENDED: Use `forRootAsync` in payment-api to avoid timing issue
+ * where env vars are read BEFORE Joi applies defaults.
+ *
+ * Usage (recommended — forRootAsync):
+ *   SecurityModule.forRootAsync({
+ *     inject: [ConfigService],
+ *     useFactory: (cfg: ConfigService) => ({
+ *       authMode: cfg.get<string>('AUTH_MODE') ?? 'disabled',
+ *       sessionStore: cfg.get<string>('SESSION_STORE') as 'redis' | 'memory',
+ *       ...
+ *     }),
  *   })
  *
+ * Usage (legacy — forRoot, synchronous):
+ *   SecurityModule.forRoot({ authMode: 'mock', sessionStore: 'memory', ... })
+ *
  * Providers wired:
- *  - SECURITY_OPTIONS    : SecurityOptions value (config from env)
+ *  - SECURITY_OPTIONS    : SecurityOptions value (from forRoot OR forRootAsync factory)
  *  - SESSION_STORE       : SessionStore (Redis | Memory) via factory
  *  - OAuthClientService  : openid-client v5 wrapper (AUTH-09)
  *  - JWT_VERIFIER        : JwtVerifier (MockVerifier | JwksVerifier) via factory (AUTH-10)
@@ -32,13 +40,9 @@
  *  - LazySyncMiddleware  : 4-tier SWR sync middleware (AUTH-14)
  *  - CsrfMiddleware      : double-submit cookie CSRF validation (AUTH-15)
  *  - HelmetMiddleware    : security headers via `helmet` (AUTH-15)
- *
- * AUTH-15 (CSRF + helmet) providers exposed via exports so payment-api
- * `AppModule` can apply them via `consumer.apply(...)` — they are NOT
- * registered as `APP_GUARD` (consumers decide route binding).
  */
 
-import { DynamicModule, Module } from '@nestjs/common';
+import { DynamicModule, Module, Provider, Type } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { CacheRepository } from './cache/cache.repository';
@@ -83,95 +87,163 @@ export interface SecurityOptions {
   disabledIsSuperAdmin?: boolean;
   disabledPermissionCodes?: string;
   // AUTH-14 lazy sync TTLs (env SYNC_* per plan2 §16)
-  /** Fresh window — no sync if `age < this` (env SYNC_FRESH_TTL_MS, default 300000). */
   syncFreshTtlMs?: number;
-  /** Background-sync window — non-blocking sync if `age < this` (env SYNC_STALE_TTL_MS, default 1800000). */
   syncStaleTtlMs?: number;
-  /** Max stale — invalidate session if `age >= this` (env SYNC_MAX_STALE_TTL_MS, default 7200000). */
   syncMaxStaleTtlMs?: number;
-  /** Blocking sync max wait in milliseconds (env SYNC_BLOCKING_TIMEOUT_MS, default 2000). */
   syncBlockingTimeoutMs?: number;
-  /** Per-session lock TTL in seconds (env SYNC_LOCK_TTL_SEC, default 10). */
   syncLockTtlSec?: number;
-  // AUTH-15 CSRF toggle (env CSRF_ENABLED, default true; false skips validation
-  // — cookie is still issued so FE can fetch it via GET /auth/csrf).
-  /** Set to `false` to disable CSRF validation (cookie still issued). Default `true`. */
+  // AUTH-15 CSRF toggle
   csrfEnabled?: boolean;
+}
+
+/** Options for forRootAsync — async factory pattern. */
+export interface SecurityModuleAsyncOptions {
+  /** Dependencies to inject into the factory (e.g., [ConfigService]). */
+  inject?: Type<unknown>[];
+  /**
+   * Factory function that returns SecurityOptions (sync or async).
+   * Uses `any[]` for args (NestJS convention) supaya caller bisa
+   * specify typed params (e.g., `(cfg: ConfigService) => ...`).
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  useFactory: (...args: any[]) => SecurityOptions | Promise<SecurityOptions>;
+  /** Optional extra imports (e.g., ConfigModule). */
+  imports?: Type<unknown>[];
+}
+
+/** Exports list — shared between forRoot + forRootAsync. */
+const EXPORTS = [
+  SECURITY_OPTIONS,
+  SESSION_STORE,
+  JWT_VERIFIER,
+  OAuthClientService,
+  SessionService,
+  CacheRepository,
+  SessionGuard,
+  MenuAccessGuard,
+  AuthSyncService,
+  SyncLockService,
+  LazySyncMiddleware,
+  CsrfMiddleware,
+  HelmetMiddleware,
+  TypeOrmModule,
+];
+
+/**
+ * Build providers that depend on SECURITY_OPTIONS via DI inject.
+ *
+ * Both forRoot + forRootAsync use this — the only difference is how
+ * SECURITY_OPTIONS itself is provided (useValue vs useFactory).
+ *
+ * SESSION_STORE + JWT_VERIFIER inject SECURITY_OPTIONS, so they work
+ * regardless of whether options came from forRoot or forRootAsync.
+ */
+function buildDependentProviders(): Provider[] {
+  return [
+    // SESSION_STORE — inject SECURITY_OPTIONS (resolved by forRoot/forRootAsync)
+    {
+      provide: SESSION_STORE,
+      inject: [SECURITY_OPTIONS],
+      useFactory: (opts: SecurityOptions): SessionStore => {
+        if (opts.sessionStore === 'memory') {
+          return new MemorySessionStore();
+        }
+        // 'redis'
+        if (!opts.redisUrl) {
+          throw new Error(
+            'SecurityModule: SESSION_STORE="redis" requires redisUrl to be set in SecurityOptions',
+          );
+        }
+        return new RedisSessionStore(opts.redisUrl);
+      },
+    },
+    // JWT_VERIFIER — inject SECURITY_OPTIONS, pick MockVerifier | JwksVerifier
+    {
+      provide: JWT_VERIFIER,
+      inject: [SECURITY_OPTIONS],
+      useFactory: (opts: SecurityOptions): JwtVerifier => {
+        if (opts.authMode === 'disabled') {
+          // AUTH-13 SessionGuard short-circuits before calling verify().
+          return new MockVerifier(opts);
+        }
+        if (opts.authMode === 'mock') {
+          return new MockVerifier(opts);
+        }
+        return new JwksVerifier(opts);
+      },
+    },
+    // Non-dependent providers (just need to be registered)
+    OAuthClientService,
+    SessionService,
+    CacheRepository,
+    SessionGuard,
+    MenuAccessGuard,
+    AuthSyncService,
+    SyncLockService,
+    LazySyncMiddleware,
+    CsrfMiddleware,
+    HelmetMiddleware,
+  ];
 }
 
 @Module({})
 export class SecurityModule {
+  /**
+   * Synchronous registration — baca options langsung.
+   *
+   * ⚠️ TIMING ISSUE: `options` harus sudah terisi saat decorator evaluate.
+   * Kalau options baca `process.env`, pastikan dotenv sudah load + Joi
+   * sudah apply defaults SEBELUM forRoot() dipanggil.
+   *
+   * RECOMMENDED: Use `forRootAsync` instead to avoid timing issues.
+   */
   static forRoot(options: SecurityOptions): DynamicModule {
-    const providers = [
-      {
-        provide: SECURITY_OPTIONS,
-        useValue: options,
-      },
-      {
-        provide: SESSION_STORE,
-        useFactory: (): SessionStore => {
-          if (options.sessionStore === 'memory') {
-            return new MemorySessionStore();
-          }
-          // 'redis'
-          if (!options.redisUrl) {
-            throw new Error(
-              'SecurityModule: SECURITY_OPTIONS.sessionStore="redis" requires SECURITY_OPTIONS.redisUrl to be set',
-            );
-          }
-          return new RedisSessionStore(options.redisUrl);
-        },
-      },
-      // Verifier factory — pick MockVerifier when AUTH_MODE=mock, else JwksVerifier.
-      // Both share identical JWKS-fetch logic; MockVerifier is a marker subclass.
-      {
-        provide: JWT_VERIFIER,
-        useFactory: (): JwtVerifier => {
-          if (options.authMode === 'disabled') {
-            // AUTH-13 SessionGuard handles disabled mode by short-circuiting
-            // before calling verify(). We still return a verifier instance so
-            // DI doesn't fail at boot.
-            return new MockVerifier(options);
-          }
-          if (options.authMode === 'mock') {
-            return new MockVerifier(options);
-          }
-          return new JwksVerifier(options);
-        },
-      },
-      OAuthClientService,
-      SessionService,
-      CacheRepository,
-      SessionGuard,
-      MenuAccessGuard,
-      AuthSyncService,
-      SyncLockService,
-      LazySyncMiddleware,
-      CsrfMiddleware,
-      HelmetMiddleware,
-    ];
-
     return {
       module: SecurityModule,
-      // TypeOrmModule.forFeature so CacheRepository can @InjectRepository(CachedUser)
       imports: [TypeOrmModule.forFeature([CachedUser])],
-      providers,
-      exports: [
-        SECURITY_OPTIONS,
-        SESSION_STORE,
-        JWT_VERIFIER,
-        OAuthClientService,
-        SessionService,
-        CacheRepository,
-        SessionGuard,
-        MenuAccessGuard,
-        AuthSyncService,
-        SyncLockService,
-        LazySyncMiddleware,
-        CsrfMiddleware,
-        HelmetMiddleware,
-        TypeOrmModule,
+      providers: [
+        // SECURITY_OPTIONS — synchronous value
+        { provide: SECURITY_OPTIONS, useValue: options },
+        ...buildDependentProviders(),
       ],
+      exports: EXPORTS,
+    };
+  }
+
+  /**
+   * Async registration — baca options via factory (e.g., ConfigService).
+   *
+   * ✅ RECOMMENDED — avoids timing issue. Factory runs AFTER NestJS DI
+   * container is ready, so ConfigService (with Joi defaults) is available.
+   *
+   * Usage:
+   *   SecurityModule.forRootAsync({
+   *     inject: [ConfigService],
+   *     useFactory: (cfg: ConfigService) => ({
+   *       authMode: cfg.get<string>('AUTH_MODE') ?? 'disabled',
+   *       sessionStore: cfg.get<string>('SESSION_STORE') as 'redis' | 'memory',
+   *     }),
+   *   })
+   */
+  static forRootAsync(
+    asyncOptions: SecurityModuleAsyncOptions,
+  ): DynamicModule {
+    return {
+      module: SecurityModule,
+      imports: [
+        TypeOrmModule.forFeature([CachedUser]),
+        ...(asyncOptions.imports ?? []),
+      ],
+      providers: [
+        // SECURITY_OPTIONS — async factory (runs after DI ready)
+        {
+          provide: SECURITY_OPTIONS,
+          inject: asyncOptions.inject ?? [],
+          useFactory: asyncOptions.useFactory,
+        },
+        ...buildDependentProviders(),
+      ],
+      exports: EXPORTS,
     };
   }
 }

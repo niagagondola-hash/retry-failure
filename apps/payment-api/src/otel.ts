@@ -11,28 +11,19 @@
  *
  * IMPORTANT: env file (.env) harus di-load DI SINI sebelum evaluate IS_OTEL,
  * karena otel.ts di-import SEBELUM NestJS ConfigModule load .env file.
- * Tanpa dotenv.config() di sini, process.env.IS_OTEL akan undefined saat
- * otel.ts di-evaluate (lihat bug report: otel.ts baca undefined, trace-context.ts
- * baca 'true' karena trace-context di-import via AppModule setelah ConfigModule jalan).
+ * Tanpa loadEnv() di sini, process.env.IS_OTEL akan undefined saat
+ * otel.ts di-evaluate.
+ *
+ * Env loading: via loadEnv() helper (adaptive — monorepo root OR per-app
+ * OR OS env vars). Lihat `config/env-loader.ts` untuk details.
+ * DRY: tidak duplicate env path logic — reuse loadEnv().
  */
 
-import { resolve } from 'node:path';
-// dotenv sudah ter-install sebagai transitive dep dari @nestjs/config
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const dotenv = require('dotenv');
+import { loadEnv } from './config/env-loader';
 
-// Load .env files SEBELUM evaluate IS_OTEL.
-// Path: relative ke __dirname (dist/otel.js → parent = apps/payment-api/ → .env ada di sini).
-// Fallback: process.cwd() kalau di-start dari root monorepo.
-const envPaths = [
-  resolve(__dirname, '..', '.env'),        // dist/ → apps/payment-api/.env (normal case)
-  resolve(__dirname, '..', '.env.local'),  // dist/ → apps/payment-api/.env.local (override)
-  resolve(process.cwd(), '.env'),          // CWD/.env (fallback kalau start dari root)
-  resolve(process.cwd(), 'apps', 'payment-api', '.env'),  // root/apps/payment-api/.env
-];
-for (const p of envPaths) {
-  dotenv.config({ path: p });
-}
+// Load env SEBELUM evaluate IS_OTEL.
+// Adaptive: monorepo root .env (dev) OR per-app .env (Docker) OR OS env (k8s).
+loadEnv();
 
 // Gate by IS_OTEL + NODE_ENV — supaya sandbox (no Jaeger) tidak spam ECONNREFUSED
 const IS_OTEL = process.env.IS_OTEL === 'true';
@@ -41,15 +32,16 @@ const isTestEnv = process.env.NODE_ENV === 'test';
 if (IS_OTEL && !isTestEnv) {
   // Lazy require supaya kalau IS_OTEL=false, OTel SDK tidak di-load (reduce startup time)
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { NodeSDK } = require('@opentelemetry/sdk-node');
+  const { NodeSDK } = require('@opentelemetry/sdk-node') as typeof import('@opentelemetry/sdk-node');
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-http');
+  const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-http') as typeof import('@opentelemetry/exporter-trace-otlp-http');
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { resourceFromAttributes } = require('@opentelemetry/resources');
+  const { resourceFromAttributes } = require('@opentelemetry/resources') as typeof import('@opentelemetry/resources');
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { SEMRESATTRS_SERVICE_NAME, SEMRESATTRS_SERVICE_VERSION } = require('@opentelemetry/semantic-conventions');
+  const semanticConventions = require('@opentelemetry/semantic-conventions') as typeof import('@opentelemetry/semantic-conventions');
+  const { SEMRESATTRS_SERVICE_NAME, SEMRESATTRS_SERVICE_VERSION } = semanticConventions;
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { getNodeAutoInstrumentations } = require('@opentelemetry/auto-instrumentations-node');
+  const { getNodeAutoInstrumentations } = require('@opentelemetry/auto-instrumentations-node') as typeof import('@opentelemetry/auto-instrumentations-node');
 
   const exporterUrl =
     process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? 'http://localhost:4318/v1/traces';

@@ -79,6 +79,8 @@ export interface ExchangeCodeParams {
 export interface TokenPair {
   accessToken: string;
   refreshToken: string;
+  /** OIDC id_token — user identity for client (OIDC Core §2). */
+  idToken: string;
   accessJti: string;
   refreshJti: string;
   /** Unix epoch seconds when access token expires. */
@@ -421,6 +423,7 @@ export class OAuthService {
     return {
       accessToken: pair.accessToken,
       refreshToken: pair.refreshToken,
+      idToken: pair.idToken,
       accessJti: pair.accessJti,
       refreshJti: pair.refreshJti,
       expiresAt,

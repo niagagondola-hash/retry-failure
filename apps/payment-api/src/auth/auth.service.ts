@@ -21,11 +21,12 @@ import { Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/commo
 import { randomBytes } from 'node:crypto';
 
 import {
-  OAuthClientService,
-  SessionService,
   JwtVerifier,
+  JWT_VERIFIER,
+  OAuthClientService,
   SECURITY_OPTIONS,
   SecurityOptions,
+  SessionService,
   AuthUser,
 } from '@retry-failure/security';
 
@@ -59,7 +60,7 @@ export class AuthService {
   constructor(
     private readonly oauthClient: OAuthClientService,
     private readonly sessionService: SessionService,
-    @Inject('JWT_VERIFIER') private readonly jwksVerifier: JwtVerifier,
+    @Inject(JWT_VERIFIER) private readonly jwksVerifier: JwtVerifier,
     @Inject(SECURITY_OPTIONS) private readonly options: SecurityOptions,
   ) {}
 

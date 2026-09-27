@@ -40,6 +40,13 @@ import {
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 
+import {
+  CacheRepository,
+  parseSessionCookie,
+  Public,
+  SessionService,
+} from '@retry-failure/security';
+
 import { AuthService } from './auth.service';
 import { SwitchRoleDto } from './dto/switch-role.dto';
 
@@ -52,21 +59,54 @@ const SESSION_COOKIE_MAX_AGE = 8 * 60 * 60 * 1000;
 /** OAuth state + verifier cookie TTL — 5 minutes (short-lived). */
 const OAUTH_COOKIE_MAX_AGE = 5 * 60 * 1000;
 
+/**
+ * AuthController — BFF endpoints for OAuth2 flow + session management (AUTH-17).
+ *
+ * All endpoints marked @Public() — BFF uses cookie-based session, not JWT.
+ * SessionGuard + MenuAccessGuard still apply globally via APP_GUARD, but @Public()
+ * skips them for these BFF endpoints (which manage the session themselves).
+ */
 @Controller('auth')
+@Public()
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly sessionService: SessionService,
+    private readonly cacheRepository: CacheRepository,
+  ) {}
 
   /**
    * GET /auth/session — return current user (or null).
    *
-   * Response: { user: { userId, username, roleId, isSuperAdmin } | null }
+   * Manually reads `sid` cookie + looks up session via SessionService.
+   * This is needed because @Public() skips SessionGuard (req.user not set).
    *
-   * In AUTH_MODE=disabled, SessionGuard sets req.user from env (fake user).
+   * Returns:
+   *   - { user: { userId, username, roleId, isSuperAdmin } } if logged in
+   *   - { user: null } if not logged in (no sid cookie or session expired)
    */
   @Get('session')
-  async session(@Req() req: Request & { user?: unknown }) {
-    const user = req.user;
-    return { user: user ?? null };
+  async session(
+    @Req() req: Request,
+  ): Promise<{ user: { userId: string; username: string; roleId: string; isSuperAdmin: boolean } | null }> {
+    const sid = parseSessionCookie(req);
+    if (!sid) return { user: null };
+
+    const session = await this.sessionService.get(sid);
+    if (!session) return { user: null };
+
+    // Lookup cached_users for isSuperAdmin (plan2 §6.3 — stable across sessions)
+    const cached = await this.cacheRepository.findCachedUser(session.userId);
+    const isSuperAdmin = cached?.is_super_admin ?? false;
+
+    return {
+      user: {
+        userId: session.userId,
+        username: session.username,
+        roleId: session.roleId,
+        isSuperAdmin,
+      },
+    };
   }
 
   /**
@@ -256,10 +296,13 @@ export class AuthController {
    *
    * CsrfMiddleware sets `res.locals.csrfToken` on every request.
    * Frontend reads it from this endpoint for SPA initial load.
+   *
+   * Uses `@Res({ passthrough: true })` so NestJS still handles the response
+   * serialization (return value → JSON body), but we can access `res.locals`.
    */
   @Get('csrf')
   async csrf(
-    @Res() res: Response & { locals?: { csrfToken?: string } },
+    @Res({ passthrough: true }) res: Response & { locals?: { csrfToken?: string } },
   ): Promise<{ csrfToken: string }> {
     return { csrfToken: res.locals?.csrfToken ?? '' };
   }

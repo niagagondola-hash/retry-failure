@@ -253,6 +253,9 @@ importers:
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7
+      dotenv:
+        specifier: ^18.0.4
+        version: 18.0.4
       helmet:
         specifier: ^8.0.0
         version: 8.3.0
@@ -3395,6 +3398,11 @@ packages:
   dotenv@16.6.1:
     resolution: {integrity: sha512-uBq4egWHTcTt33a72vpSG0z3HnPuIl6NqYcTrKEg2azoEyl2hpW0zqlxysq2pK9HlDIHyHyakeYaYnSAwd8bow==}
     engines: {node: '>=12'}
+
+  dotenv@18.0.4:
+    resolution: {integrity: sha512-jGt9uI5BIxpVO15kvy+iEFqNAwxYClKWnkptLjSNPnFLC003Imd0ofr3aEVsbpHdSBdSsbcApNIlz4nbyGMwdA==}
+    engines: {node: '>=12'}
+    hasBin: true
 
   dunder-proto@1.0.1:
     resolution: {integrity: sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==}
@@ -9255,6 +9263,8 @@ snapshots:
   dotenv@16.4.5: {}
 
   dotenv@16.6.1: {}
+
+  dotenv@18.0.4: {}
 
   dunder-proto@1.0.1:
     dependencies:

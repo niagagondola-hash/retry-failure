@@ -2,16 +2,18 @@
  * TokenController — `/oauth/token` + `/oauth/revoke` (AUTH-03).
  *
  * Plan reference: PLAN2 Section 4.1 (OAuth2 flow), Section 5.3 (expiry),
- * Section 5.4 (refresh rotation), Section 5.5 (revoke), AUTH-03 task spec §8.
+ * Section 5.4 (refresh rotation), Section 5.5 (revoke), AUTH-03 task spec §8,
+ * OIDC Core 1.0 §3.1.3.3 (token response with id_token).
  *
  * Endpoints:
- *   POST /oauth/token    — grant_type=authorization_code: code → access + refresh.
+ *   POST /oauth/token    — grant_type=authorization_code: code → access + id + refresh.
  *                          grant_type=refresh_token: refresh rotation.
  *   POST /oauth/revoke   — RFC 7009 token revocation (always 200).
  *
- * Response shape for /oauth/token (RFC 6749 §5.1):
+ * Response shape for /oauth/token (OIDC Core §3.1.3.3 + RFC 6749 §5.1):
  *   {
- *     "access_token": "eyJ...",
+ *     "access_token": "eyJ...",      ← API access token
+ *     "id_token": "eyJ...",          ← OIDC identity token (scope=openid only)
  *     "token_type": "Bearer",
  *     "expires_in": 900,
  *     "refresh_token": "eyJ...",
@@ -67,6 +69,7 @@ export class TokenController {
         });
         return res.status(HttpStatus.OK).json({
           access_token: pair.accessToken,
+          id_token: pair.idToken,
           token_type: pair.tokenType,
           expires_in: pair.expiresIn,
           refresh_token: pair.refreshToken,
@@ -88,6 +91,7 @@ export class TokenController {
       });
       return res.status(HttpStatus.OK).json({
         access_token: pair.accessToken,
+        id_token: pair.idToken,
         token_type: pair.tokenType,
         expires_in: pair.expiresIn,
         refresh_token: pair.refreshToken,
