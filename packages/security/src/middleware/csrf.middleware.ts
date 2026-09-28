@@ -90,14 +90,16 @@ export class CsrfMiddleware implements NestMiddleware {
     }
 
     // 2. Issue XSRF-TOKEN cookie if absent (always, even when validation off)
-    const cookieToken = parseSessionCookie(req, CSRF_COOKIE_NAME);
-    if (!cookieToken) {
-      const fresh = generateCsrfToken();
-      this.setCookie(res, fresh);
-      // Expose on res.locals so controllers (e.g. GET /auth/csrf) can read it
-      res.locals = res.locals ?? {};
-      res.locals.csrfToken = fresh;
+    //    Always expose token on res.locals so controllers (e.g. GET /auth/csrf)
+    //    can return it to the frontend — whether cookie was just issued or
+    //    already existed from a previous request.
+    const existingToken = parseSessionCookie(req, CSRF_COOKIE_NAME);
+    const token = existingToken ?? generateCsrfToken();
+    if (!existingToken) {
+      this.setCookie(res, token);
     }
+    res.locals = res.locals ?? {};
+    res.locals.csrfToken = token;
 
     // 3. CSRF_ENABLED=false → skip validation, but cookie was still issued
     if (!this.enabled) return next();
@@ -115,9 +117,9 @@ export class CsrfMiddleware implements NestMiddleware {
     // 6. Validate double-submit (cookie vs header)
     const headerToken = req.headers[CSRF_HEADER_NAME] as string | undefined;
     if (
-      !cookieToken ||
+      !existingToken ||
       !headerToken ||
-      !safeEqual(cookieToken, headerToken)
+      !safeEqual(existingToken, headerToken)
     ) {
       this.logger.warn(
         `CSRF validation failed path=${req.path} method=${req.method}`,

@@ -137,7 +137,7 @@ describe('CsrfMiddleware', () => {
       );
       expect(next).toHaveBeenCalledTimes(1);
       expect(m.setHeader).not.toHaveBeenCalled();
-      expect(m.locals.csrfToken).toBeUndefined();
+      expect(m.locals.csrfToken).toBe("existing-token");
     });
   });
 
