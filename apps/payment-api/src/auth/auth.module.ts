@@ -42,6 +42,7 @@ import { AuthService } from './auth.service';
         oauthScopes: cfg.get<string>('OAUTH_SCOPES') ?? 'openid profile',
         redisUrl: cfg.get<string>('REDIS_URL'),
         sessionStore: cfg.get<string>('SESSION_STORE') as SecurityOptions['sessionStore'],
+        sessionAudit: cfg.get<string>('SESSION_AUDIT') === 'true',
         jwksCacheTtlSec: cfg.get<number>('JWKS_CACHE_TTL_SEC') ?? 300,
         jwtClockToleranceSec: cfg.get<number>('JWT_CLOCK_TOLERANCE_SEC') ?? 5,
         syncFreshTtlMs: cfg.get<number>('SYNC_FRESH_TTL_MS') ?? 300000,

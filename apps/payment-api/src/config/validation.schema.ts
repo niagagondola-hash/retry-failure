@@ -116,7 +116,7 @@ export const validationSchema = Joi.object({
 
   // Session store (plan2 §9.4)
   SESSION_STORE: Joi.string()
-    .valid('redis', 'memory')
+    .valid('redis', 'memory', 'database')
     .default('memory'),
   SESSION_SECRET: Joi.string().min(32).required(),
   SESSION_TTL_SEC: Joi.number().integer().positive().default(28800),
@@ -124,6 +124,7 @@ export const validationSchema = Joi.object({
   SESSION_COOKIE_SAMESITE: Joi.string()
     .valid('Lax', 'None', 'Strict')
     .default('Lax'),
+  SESSION_AUDIT: Joi.boolean().default(false),
   SESSION_ENCRYPTION_KEY: Joi.string().optional(),
 
   // Lazy sync TTLs (plan2 §8.2)

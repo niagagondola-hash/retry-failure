@@ -43,10 +43,12 @@
  */
 
 import { DynamicModule, Module, Provider, Type } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { TypeOrmModule, getRepositoryToken } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 
 import { CacheRepository } from './cache/cache.repository';
 import { CachedUser } from './cache/cached-user.entity';
+import { SessionEntity } from './cache/session.entity';
 import { MenuAccessGuard } from './guards/menu-access.guard';
 import { SessionGuard } from './guards/session.guard';
 import { CsrfMiddleware } from './middleware/csrf.middleware';
@@ -56,8 +58,10 @@ import { OAuthClientService, SECURITY_OPTIONS } from './oauth/oauth-client.servi
 import { SessionService } from './oauth/session.service';
 import {
   MemorySessionStore,
+  PostgresSessionStore,
   RedisSessionStore,
   SESSION_STORE,
+  WriteThroughSessionStore,
 } from './session-store';
 import type { SessionStore } from './session-store';
 import { AuthSyncService } from './sync/auth-sync.service';
@@ -67,7 +71,7 @@ import type { JwtVerifier } from './verifiers';
 
 export interface SecurityOptions {
   authMode: 'oauth' | 'mock' | 'disabled';
-  sessionStore: 'redis' | 'memory';
+  sessionStore: 'memory' | 'database' | 'redis';
   authBaseUrl?: string;
   authIssuer?: string;
   jwtAudience?: string;
@@ -80,6 +84,8 @@ export interface SecurityOptions {
   jwksCacheTtlSec?: number;
   /** JWT clock tolerance in seconds (env JWT_CLOCK_TOLERANCE_SEC, default 5). */
   jwtClockToleranceSec?: number;
+  /** SESSION_AUDIT=true → write-through to sessions table (only when SESSION_STORE=redis). */
+  sessionAudit?: boolean;
   // AUTH_MODE=disabled
   disabledUserId?: string;
   disabledUsername?: string;
@@ -138,41 +144,64 @@ const EXPORTS = [
  * SESSION_STORE + JWT_VERIFIER inject SECURITY_OPTIONS, so they work
  * regardless of whether options came from forRoot or forRootAsync.
  */
-function buildDependentProviders(): Provider[] {
+/**
+ * Build SESSION_STORE provider — selects MemorySessionStore or RedisSessionStore
+ * based on SecurityOptions. For 'database' + 'redis+audit' modes, throws error
+ * (must use forRootAsync which has access to Repository<SessionEntity>).
+ *
+ * Extracted from buildDependentProviders() to keep function under 50 lines
+ * (CODING_STANDARDS.md §SRP — max-lines-per-function).
+ */
+function buildSessionStoreProvider(): Provider {
+  return {
+    provide: SESSION_STORE,
+    inject: [SECURITY_OPTIONS],
+    useFactory: (opts: SecurityOptions): SessionStore => {
+      if (opts.sessionStore === 'memory') {
+        return new MemorySessionStore();
+      }
+      if (opts.sessionStore === 'database') {
+        throw new Error(
+          'SESSION_STORE=database requires SecurityModule.forRootAsync with TypeOrmModule.forFeature([SessionEntity])',
+        );
+      }
+      // 'redis'
+      if (!opts.redisUrl) {
+        throw new Error(
+          'SecurityModule: SESSION_STORE="redis" requires redisUrl to be set in SecurityOptions',
+        );
+      }
+      if (opts.sessionAudit) {
+        throw new Error(
+          'SESSION_AUDIT=true requires SecurityModule.forRootAsync with TypeOrmModule.forFeature([SessionEntity])',
+        );
+      }
+      return new RedisSessionStore(opts.redisUrl);
+    },
+  };
+}
+
+/**
+ * Build JWT_VERIFIER provider — selects MockVerifier or JwksVerifier
+ * based on SecurityOptions.authMode.
+ */
+function buildJwtVerifierProvider(): Provider {
+  return {
+    provide: JWT_VERIFIER,
+    inject: [SECURITY_OPTIONS],
+    useFactory: (opts: SecurityOptions): JwtVerifier => {
+      if (opts.authMode === 'disabled' || opts.authMode === 'mock') {
+        return new MockVerifier(opts);
+      }
+      return new JwksVerifier(opts);
+    },
+  };
+}
+
+/** Build providers EXCLUDING SESSION_STORE (for forRootAsync which provides it separately). */
+function buildDependentProvidersWithoutSessionStore(): Provider[] {
   return [
-    // SESSION_STORE — inject SECURITY_OPTIONS (resolved by forRoot/forRootAsync)
-    {
-      provide: SESSION_STORE,
-      inject: [SECURITY_OPTIONS],
-      useFactory: (opts: SecurityOptions): SessionStore => {
-        if (opts.sessionStore === 'memory') {
-          return new MemorySessionStore();
-        }
-        // 'redis'
-        if (!opts.redisUrl) {
-          throw new Error(
-            'SecurityModule: SESSION_STORE="redis" requires redisUrl to be set in SecurityOptions',
-          );
-        }
-        return new RedisSessionStore(opts.redisUrl);
-      },
-    },
-    // JWT_VERIFIER — inject SECURITY_OPTIONS, pick MockVerifier | JwksVerifier
-    {
-      provide: JWT_VERIFIER,
-      inject: [SECURITY_OPTIONS],
-      useFactory: (opts: SecurityOptions): JwtVerifier => {
-        if (opts.authMode === 'disabled') {
-          // AUTH-13 SessionGuard short-circuits before calling verify().
-          return new MockVerifier(opts);
-        }
-        if (opts.authMode === 'mock') {
-          return new MockVerifier(opts);
-        }
-        return new JwksVerifier(opts);
-      },
-    },
-    // Non-dependent providers (just need to be registered)
+    buildJwtVerifierProvider(),
     OAuthClientService,
     SessionService,
     CacheRepository,
@@ -184,6 +213,39 @@ function buildDependentProviders(): Provider[] {
     CsrfMiddleware,
     HelmetMiddleware,
   ];
+}
+
+/** Build SESSION_STORE provider for forRootAsync — injects Repository<SessionEntity>. */
+function buildAsyncSessionStoreProvider(): Provider {
+  return {
+    provide: SESSION_STORE,
+    inject: [SECURITY_OPTIONS, getRepositoryToken(SessionEntity)],
+    useFactory: (
+      opts: SecurityOptions,
+      sessionRepo: Repository<SessionEntity>,
+    ): SessionStore => {
+      if (opts.sessionStore === 'memory') {
+        return new MemorySessionStore();
+      }
+      if (opts.sessionStore === 'database') {
+        // DB only — no Redis needed
+        return new PostgresSessionStore(sessionRepo);
+      }
+      // 'redis'
+      if (!opts.redisUrl) {
+        throw new Error(
+          'SecurityModule: SESSION_STORE="redis" requires redisUrl to be set in SecurityOptions',
+        );
+      }
+      const redis = new RedisSessionStore(opts.redisUrl);
+      if (opts.sessionAudit) {
+        // Write-through: Redis primary + DB audit
+        const db = new PostgresSessionStore(sessionRepo);
+        return new WriteThroughSessionStore(redis, db);
+      }
+      return redis;
+    },
+  };
 }
 
 @Module({})
@@ -200,11 +262,12 @@ export class SecurityModule {
   static forRoot(options: SecurityOptions): DynamicModule {
     return {
       module: SecurityModule,
-      imports: [TypeOrmModule.forFeature([CachedUser])],
+      imports: [TypeOrmModule.forFeature([CachedUser, SessionEntity])],
       providers: [
         // SECURITY_OPTIONS — synchronous value
         { provide: SECURITY_OPTIONS, useValue: options },
-        ...buildDependentProviders(),
+        buildSessionStoreProvider(),
+        ...buildDependentProvidersWithoutSessionStore(),
       ],
       exports: EXPORTS,
     };
@@ -231,7 +294,7 @@ export class SecurityModule {
     return {
       module: SecurityModule,
       imports: [
-        TypeOrmModule.forFeature([CachedUser]),
+        TypeOrmModule.forFeature([CachedUser, SessionEntity]),
         ...(asyncOptions.imports ?? []),
       ],
       providers: [
@@ -241,7 +304,10 @@ export class SecurityModule {
           inject: asyncOptions.inject ?? [],
           useFactory: asyncOptions.useFactory,
         },
-        ...buildDependentProviders(),
+        // SESSION_STORE — async factory with Repository<SessionEntity> injection
+        // Supports all 3 modes: memory, database, redis+audit
+        buildAsyncSessionStoreProvider(),
+        ...buildDependentProvidersWithoutSessionStore(),
       ],
       exports: EXPORTS,
     };
