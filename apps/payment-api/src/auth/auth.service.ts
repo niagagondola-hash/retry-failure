@@ -21,6 +21,7 @@ import { Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/commo
 import { randomBytes } from 'node:crypto';
 
 import {
+  CacheRepository,
   JwtVerifier,
   JWT_VERIFIER,
   OAuthClientService,
@@ -62,6 +63,7 @@ export class AuthService {
     private readonly sessionService: SessionService,
     @Inject(JWT_VERIFIER) private readonly jwksVerifier: JwtVerifier,
     @Inject(SECURITY_OPTIONS) private readonly options: SecurityOptions,
+    private readonly cacheRepository: CacheRepository,
   ) {}
 
   /**
@@ -113,6 +115,20 @@ export class AuthService {
     // 4. Fetch permissions (user info + role + permissionCodes)
     const perms = await this.oauthClient.fetchPermissions(
       tokenSet.accessToken,
+    );
+
+    // 4.5. Initial sync — upsert cached_users (plan2 §8.1)
+    // This ensures cached_users table is populated immediately on login,
+    // not waiting for lazy sync (AUTH-14) which only runs when stale (>5min).
+    await this.cacheRepository.upsertCachedUser({
+      user_id: perms.user.id,
+      username: perms.user.username,
+      email: perms.user.email ?? null,
+      name: perms.user.name,
+      is_super_admin: perms.user.isSuperAdmin,
+    });
+    this.logger.log(
+      `Initial sync: cached_users upserted for userId=${perms.user.id} isSuperAdmin=${perms.user.isSuperAdmin}`,
     );
 
     // 5. Create session

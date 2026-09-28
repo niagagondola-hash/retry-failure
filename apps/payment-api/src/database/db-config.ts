@@ -1,5 +1,5 @@
 import type { DataSourceOptions, LoggerOptions } from 'typeorm';
-import { CachedUser } from '@retry-failure/security';
+import { CachedUser, SessionEntity } from '@retry-failure/security';
 import { Payment } from './entities/payment.entity';
 import { PaymentAttempt } from './entities/payment-attempt.entity';
 
@@ -17,9 +17,9 @@ export type DbConfigInput = {
 
 export type DbConfigFactory = (input: DbConfigInput) => DataSourceOptions;
 
-// Daftar entitas terpusat — include CachedUser from @retry-failure/security
-// (plan2 §7.1 — cached_users table for isSuperAdmin lookup)
-const entitiesList = [Payment, PaymentAttempt, CachedUser];
+// Daftar entitas terpusat — include CachedUser + SessionEntity from
+// @retry-failure/security (plan2 §7.1 cached_users + §7.2 sessions table)
+const entitiesList = [Payment, PaymentAttempt, CachedUser, SessionEntity];
 
 const SQLITE_CONFIG: DbConfigFactory = (input) => ({
   type: 'better-sqlite3',
