@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "jest",
+    "test:contract": "jest --config jest.contract.config.js --runInBand",
     "test:e2e": "jest --config ./tests/e2e/jest-e2e.json --runInBand",
     "test:e2e:file": "jest --config ./tests/e2e/jest-e2e.json --runInBand",
     "test:e2e:transient": "jest --config ./tests/e2e/jest-e2e.json --runInBand tests/e2e/payments.transient.e2e-spec.ts",

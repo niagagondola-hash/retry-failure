@@ -215,21 +215,23 @@ function buildDependentProvidersWithoutSessionStore(): Provider[] {
   ];
 }
 
-/** Build SESSION_STORE provider for forRootAsync — injects Repository<SessionEntity>. */
+/** Build SESSION_STORE provider for forRootAsync — injects Repository<SessionEntity> + Repository<CachedUser>. */
 function buildAsyncSessionStoreProvider(): Provider {
   return {
     provide: SESSION_STORE,
-    inject: [SECURITY_OPTIONS, getRepositoryToken(SessionEntity)],
+    inject: [SECURITY_OPTIONS, getRepositoryToken(SessionEntity), getRepositoryToken(CachedUser)],
     useFactory: (
       opts: SecurityOptions,
       sessionRepo: Repository<SessionEntity>,
+      userRepo: Repository<CachedUser>,
     ): SessionStore => {
       if (opts.sessionStore === 'memory') {
         return new MemorySessionStore();
       }
       if (opts.sessionStore === 'database') {
         // DB only — no Redis needed
-        return new PostgresSessionStore(sessionRepo);
+        // userRepo injected for username lookup from cached_users (DRY)
+        return new PostgresSessionStore(sessionRepo, userRepo);
       }
       // 'redis'
       if (!opts.redisUrl) {
@@ -240,7 +242,7 @@ function buildAsyncSessionStoreProvider(): Provider {
       const redis = new RedisSessionStore(opts.redisUrl);
       if (opts.sessionAudit) {
         // Write-through: Redis primary + DB audit
-        const db = new PostgresSessionStore(sessionRepo);
+        const db = new PostgresSessionStore(sessionRepo, userRepo);
         return new WriteThroughSessionStore(redis, db);
       }
       return redis;

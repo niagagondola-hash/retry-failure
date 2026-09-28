@@ -49,6 +49,16 @@ export class TokenController {
 
   // ----- POST /oauth/token -------------------------------------------
 
+  /**
+   * OAuth 2.1 token endpoint. Handles `authorization_code` + `refresh_token`
+   * grant types per RFC 6749 §4.1.3 (auth code) and §6 (refresh).
+   *
+   * Why `max-lines-per-function` is disabled: the OAuth token endpoint is
+   * inherently a grant-type dispatcher with input validation per branch
+   * (RFC 6749 §5.2 error responses). Extracting per-grant helpers would
+   * scatter the spec's dispatch table without reducing real complexity.
+   */
+  // eslint-disable-next-line max-lines-per-function -- OAuth token endpoint: grant-type dispatch per RFC 6749 §4.1.3 + §6
   @Post('token')
   async token(@Body() body: TokenRequestDto, @Res() res: Response) {
     try {

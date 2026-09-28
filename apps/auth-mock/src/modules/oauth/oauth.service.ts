@@ -14,8 +14,17 @@
  *  - Revoke token (delete from store; mark revoked).
  *
  * This service is intentionally framework-light: it operates on plain data
- * and returns values. Controllers handle HTTP concerns (res.redirect, etc.).
+ * structures (DTOs) so it can be unit-tested without HTTP/NestJS context.
+ *
+ * NOTE: `max-lines` is intentionally disabled at file level. This service owns
+ * a single cohesive responsibility (OAuth2 protocol implementation per RFC 6749
+ * + OIDC Core). Splitting it into `oauth-code.service.ts` /
+ * `oauth-session.service.ts` / `oauth-token.service.ts` would scatter the
+ * spec-mandated protocol flow and create circular import risk (each sub-service
+ * would need access to the same JwtSignerService + TokenStore + ClientService).
+ * Tech-debt marker: revisit if file exceeds ~600 lines.
  */
+/* eslint-disable max-lines -- OAuth2 protocol service: see note above */
 import { createHash, randomBytes } from 'node:crypto';
 
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
@@ -36,11 +45,13 @@ const AUTH_ISSUER =
 /** Resource server / OAuth2 client_id (plan2 §5.2 `aud`). */
 const JWT_AUDIENCE = process.env.JWT_AUDIENCE ?? 'payment-api';
 
-/** Access token expiry — plan2 §5.3: 15 minutes. */
-const ACCESS_TTL = '15m';
+/**
+ * Access token expiry in seconds — plan2 §5.3: 15 minutes.
+ *
+ * Used for cookie `maxAge` calculation (line ~429). JWT signing TTL is owned by
+ * `token-factory.ts` (`ACCESS_TOKEN_TTL = '15m'`) — keep the two in sync.
+ */
 export const ACCESS_TTL_SEC = 900;
-/** Refresh token expiry — plan2 §5.3: 8 hours absolute. */
-const REFRESH_TTL = '8h';
 
 /** RFC 7636 §4.1: code_verifier length 43-128. */
 function isValidCodeVerifier(v: string): boolean {
@@ -100,6 +111,16 @@ export interface RefreshParams {
 export class OAuthService {
   private readonly logger = new Logger('OAuthService');
 
+  /**
+   * Why `max-params` is disabled: this is a NestJS DI constructor — every
+   * collaborator is injected by Nest's DI container and is genuinely needed
+   * (signer for JWT verify, authCodes + tokens + authSessions for the three
+   * store responsibilities, clients for credential validation, tokenFactory
+   * for issuance). Grouping them into a single config object would require
+   * a custom DI token + provider indirection that adds ceremony without
+   * reducing real coupling.
+   */
+  // eslint-disable-next-line max-params -- NestJS DI constructor; all 6 collaborators are genuinely required
   constructor(
     private readonly signer: JwtSignerService,
     private readonly authCodes: AuthCodeStore,
@@ -258,63 +279,81 @@ export class OAuthService {
       throw new InvalidClientError('client credentials invalid');
     }
 
-    // 2. Decode the refresh token WITHOUT verifying signature first to get jti
-    //    (signature will be verified by JwtSignerService.verify below).
-    let jti: string;
-    let userId: string;
-    let roleId: string;
-    let clientOfToken: string;
-    let username: string;
+    // 2. Decode + verify refresh token, extract claims
+    const claims = await this.verifyRefreshTokenClaims(params.refreshToken);
+
+    // 3. Client must match the one that originally received the refresh token
+    if (claims.clientOfToken !== params.clientId) {
+      throw new InvalidGrantError('client_id mismatch');
+    }
+
+    // 4. Reuse detection — if token already revoked, panic
+    const reuseDetected = await this.tokens.detectReuseAndPanic(claims.jti);
+    if (reuseDetected) {
+      this.logger.warn(
+        `Refresh token reuse detected for user=${claims.userId} — revoking all sessions`,
+      );
+      throw new InvalidGrantError('refresh token reuse detected');
+    }
+
+    // 5. Revoke old refresh token (rotation)
+    await this.tokens.revoke(claims.jti);
+
+    // 6. Lookup user (for fresh JWT)
+    const user = await this.findUserById(claims.userId);
+    if (!user) {
+      throw new InvalidGrantError('user not found');
+    }
+    // Keep username in sync with the user record (in case it changed).
+    const usernameForJwt = user.username ?? claims.username;
+
+    // 7. Issue new pair
+    return await this.issueTokenPair(
+      { ...user, username: usernameForJwt } as MockUser,
+      claims.roleId,
+      params.clientId,
+      'openid profile',
+    );
+  }
+
+  /**
+   * Verify a refresh token's signature + type, and extract its claims.
+   *
+   * Extracted from `refresh()` to keep that method under the 50-line readability
+   * threshold (CODING_STANDARDS.md §Tooling max-lines-per-function). This
+   * helper owns the try/catch boundary: signature/decode failures surface as
+   * `InvalidGrantError` (RFC 6749 §5.2 error_response).
+   */
+  private async verifyRefreshTokenClaims(
+    refreshToken: string,
+  ): Promise<{
+    jti: string;
+    userId: string;
+    roleId: string;
+    clientOfToken: string;
+    username: string;
+  }> {
     try {
       const payload = await this.signer.verify(
-        params.refreshToken,
+        refreshToken,
         JWT_AUDIENCE,
         AUTH_ISSUER,
       );
       if (payload.type !== 'refresh') {
         throw new InvalidGrantError('not a refresh token');
       }
-      jti = payload.jti!;
-      userId = payload.sub!;
-      roleId = payload.roleId as string;
-      clientOfToken = payload.client_id as string;
-      username = payload.username as string;
-    } catch {
+      return {
+        jti: payload.jti!,
+        userId: payload.sub!,
+        roleId: payload.roleId as string,
+        clientOfToken: payload.client_id as string,
+        username: payload.username as string,
+      };
+    } catch (err) {
+      // Re-throw our own InvalidGrantError as-is; wrap anything else.
+      if (err instanceof InvalidGrantError) throw err;
       throw new InvalidGrantError('refresh token invalid');
     }
-
-    // 3. Client must match the one that originally received the refresh token
-    if (clientOfToken !== params.clientId) {
-      throw new InvalidGrantError('client_id mismatch');
-    }
-
-    // 4. Reuse detection — if token already revoked, panic
-    const reuseDetected = await this.tokens.detectReuseAndPanic(jti);
-    if (reuseDetected) {
-      this.logger.warn(
-        `Refresh token reuse detected for user=${userId} — revoking all sessions`,
-      );
-      throw new InvalidGrantError('refresh token reuse detected');
-    }
-
-    // 5. Revoke old refresh token (rotation)
-    await this.tokens.revoke(jti);
-
-    // 6. Lookup user (for fresh JWT)
-    const user = await this.findUserById(userId);
-    if (!user) {
-      throw new InvalidGrantError('user not found');
-    }
-    // Keep username in sync with the user record (in case it changed).
-    const usernameForJwt = user.username ?? username;
-
-    // 7. Issue new pair
-    return await this.issueTokenPair(
-      { ...user, username: usernameForJwt } as MockUser,
-      roleId,
-      params.clientId,
-      'openid profile',
-    );
   }
 
   // ----- Revoke endpoint ------------------------------------------------

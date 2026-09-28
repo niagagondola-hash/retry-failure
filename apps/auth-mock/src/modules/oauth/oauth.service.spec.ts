@@ -121,7 +121,7 @@ describe('OAuthService', () => {
 
   describe('authorization code', () => {
     it('stores code and consumes (one-time use)', async () => {
-      const { service, authCodes } = await buildService();
+      const { authCodes } = await buildService();
       const verifier = 'v'.repeat(64);
       const challenge = computeChallenge(verifier);
       await authCodes.store({

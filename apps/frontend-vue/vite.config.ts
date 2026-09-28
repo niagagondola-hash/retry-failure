@@ -23,5 +23,27 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
+    // Proxy BFF routes so the SPA + payment-api share an origin in dev → cookie
+    // `sid` + `XSRF-TOKEN` stay same-origin (no `SameSite=None` needed).
+    // In prod the FE is typically deployed separately and relies on CORS
+    // credentials (AUTH-17) + `SameSite=None; Secure` cookies.
+    proxy: {
+      '/auth': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+      '/payments': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+      '/health': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+    },
   },
 });

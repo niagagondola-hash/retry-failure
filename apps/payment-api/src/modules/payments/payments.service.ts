@@ -34,6 +34,7 @@ export interface PaymentView {
   totalRetryCount: number;
   nextRetryAt: Date | null;
   failureReason: string | null;
+  userId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -59,7 +60,7 @@ export class PaymentsService {
     this.schedulerBaseDelayMs = config.get<number>('SCHEDULER_BASE_DELAY_MS') ?? 30_000;
   }
 
-  async createPayment(input: CreatePaymentDto): Promise<PaymentView> {
+  async createPayment(input: CreatePaymentDto, userId?: string): Promise<PaymentView> {
     const amountStr = this.formatAmount(input.amount);
     const payment = await this.payments.create({
       orderId: input.orderId,
@@ -71,6 +72,7 @@ export class PaymentsService {
       gatewayReference: null,
       nextRetryAt: null,
       failureReason: null,
+      userId: userId ?? null,
     });
     this.logger.log({ paymentId: payment.id, orderId: payment.orderId, traceId: getTraceId() }, 'payment created');
     this.metrics?.incPaymentStatus('processing');
@@ -317,6 +319,7 @@ export class PaymentsService {
       totalRetryCount: p.totalRetryCount,
       nextRetryAt: p.nextRetryAt,
       failureReason: p.failureReason,
+      userId: p.userId ?? null,
       createdAt: p.createdAt,
       updatedAt: p.updatedAt,
     };

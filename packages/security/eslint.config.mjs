@@ -80,12 +80,17 @@ export default tseslint.config(
   },
   {
     // Test files: jest mock factories use require() to grab the mocked module.
+    // Test setup boilerplate is also inherently verbose (long `beforeEach`
+    // blocks, many assertions, mock factory functions). Relax the structural
+    // rules `max-lines-per-function`, `max-lines`, and `complexity` for tests
+    // — same override pattern as `apps/auth-mock/eslint.config.mjs`.
     files: ['tests/**/*.ts'],
     rules: {
       '@typescript-eslint/no-require-imports': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
-      // Allow longer test functions (setup boilerplate is verbose)
       'max-lines-per-function': 'off',
+      'max-lines': 'off',
+      complexity: 'off',
     },
   },
 );

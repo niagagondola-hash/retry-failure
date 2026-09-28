@@ -79,10 +79,18 @@ export class CsrfMiddleware implements NestMiddleware {
    * Always calls `next()` on success. On validation failure, sends a `403`
    * response with a JSON body and does NOT call `next()`.
    *
+   * Why `complexity` is disabled: this is a linear guard-clause validation flow
+   * — 6 numbered steps (authMode skip / cookie issue / enabled skip / safe-method
+   * exempt / path exempt / double-submit verify) each ending in `next()` or a
+   * `403` response. Each branch is one validation concern; extracting them to
+   * helpers would scatter the spec-mandated sequence (double-submit cookie
+   * pattern, OWASP CSRF cheatsheet) without reducing real complexity.
+   *
    * @param req - Express request
    * @param res - Express response (used to set XSRF-TOKEN cookie + 403 body)
    * @param next - Next middleware
    */
+  // eslint-disable-next-line complexity -- linear CSRF guard-clause flow per OWASP CSRF cheatsheet
   async use(req: Request, res: Response, next: NextFunction): Promise<void> {
     // 1. AUTH_MODE=disabled → skip entirely
     if (this.authMode === 'disabled') {

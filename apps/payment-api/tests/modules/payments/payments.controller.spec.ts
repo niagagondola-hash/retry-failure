@@ -4,6 +4,15 @@ import { PaymentsService } from '../../../src/modules/payments/payments.service'
 import { PaymentStatus } from '../../../src/database/entities/enums';
 import type { PaymentView } from '../../../src/modules/payments/payments.service';
 
+const mockSuperAdmin = {
+  userId: '00000000-0000-1000-8000-000000000001',
+  username: 'superadmin',
+  roleId: '00000000-0000-1000-8000-000000000101',
+  isSuperAdmin: true,
+  permissionCodes: ['*'],
+};
+
+
 function makePaymentView(overrides: Partial<PaymentView> = {}): PaymentView {
   return {
     id: 'pay-001',
@@ -16,6 +25,7 @@ function makePaymentView(overrides: Partial<PaymentView> = {}): PaymentView {
     totalRetryCount: 0,
     nextRetryAt: null,
     failureReason: null,
+    userId: null,
     createdAt: new Date('2026-01-01'),
     updatedAt: new Date('2026-01-01'),
     ...overrides,
@@ -43,7 +53,7 @@ describe('PaymentsController - create', () => {
       orderId: 'ORD-1',
       amount: 100,
       currency: 'IDR',
-    });
+    }, mockSuperAdmin);
 
     expect(result.payment).toBeDefined();
     expect(result.payment.id).toBe('pay-001');
@@ -53,7 +63,7 @@ describe('PaymentsController - create', () => {
       orderId: 'ORD-1',
       amount: 100,
       currency: 'IDR',
-    });
+    }, mockSuperAdmin.userId);
   });
 });
 
@@ -62,7 +72,7 @@ describe('PaymentsController - list', () => {
     const svc = makeMockService();
     const ctrl = new PaymentsController(svc);
 
-    const result = await ctrl.list({ status: PaymentStatus.SUCCEEDED, limit: 50, offset: 0 });
+    const result = await ctrl.list({ status: PaymentStatus.SUCCEEDED, limit: 50, offset: 0 }, mockSuperAdmin);
 
     expect(result.payments).toHaveLength(2);
     expect(result.limit).toBe(50);
@@ -78,7 +88,7 @@ describe('PaymentsController - list', () => {
     ) as never;
     const ctrl = new PaymentsController(svc);
 
-    const result = await ctrl.list({ limit: 2, offset: 1 });
+    const result = await ctrl.list({ limit: 2, offset: 1 }, mockSuperAdmin);
 
     expect(result.payments).toHaveLength(2);
     expect(result.payments[0].id).toBe('pay-2');
@@ -113,7 +123,7 @@ describe('PaymentsController - getById', () => {
     })) as never;
     const ctrl = new PaymentsController(svc);
 
-    const result = await ctrl.getById('pay-001');
+    const result = await ctrl.getById('pay-001', mockSuperAdmin);
 
     expect(result.payment.id).toBe('pay-001');
     expect(result.attempts).toHaveLength(1);
@@ -126,7 +136,7 @@ describe('PaymentsController - retry', () => {
     const svc = makeMockService();
     const ctrl = new PaymentsController(svc);
 
-    const result = await ctrl.retry('pay-001');
+    const result = await ctrl.retry('pay-001', mockSuperAdmin);
 
     expect(result.payment.status).toBe(PaymentStatus.SUCCEEDED);
     expect(svc.manualRetry).toHaveBeenCalledWith('pay-001');
@@ -140,7 +150,7 @@ describe('PaymentsController - retry', () => {
     }) as never;
     const ctrl = new PaymentsController(svc);
 
-    await expect(ctrl.retry('pay-001')).rejects.toThrow('retry not allowed');
+    await expect(ctrl.retry('pay-001', mockSuperAdmin)).rejects.toThrow('retry not allowed');
   });
 
   it('re-throws unknown errors (not InvalidTransitionError)', async () => {
@@ -150,6 +160,6 @@ describe('PaymentsController - retry', () => {
     }) as never;
     const ctrl = new PaymentsController(svc);
 
-    await expect(ctrl.retry('pay-001')).rejects.toThrow('Unexpected error');
+    await expect(ctrl.retry('pay-001', mockSuperAdmin)).rejects.toThrow('Unexpected error');
   });
 });

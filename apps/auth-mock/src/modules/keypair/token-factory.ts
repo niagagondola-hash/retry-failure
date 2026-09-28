@@ -40,6 +40,22 @@ const REFRESH_TOKEN_TTL = '8h';
 const ID_TOKEN_TTL = '15m';
 
 /**
+ * Optional overrides for `issueAccessToken` / `issueRefreshToken` signing.
+ *
+ * Each field defaults to env-driven fallback (see `resolveSignOptions`):
+ *   - `issuer`     → `process.env.AUTH_ISSUER`    → `DEFAULT_ISSUER`
+ *   - `audience`   → `process.env.JWT_AUDIENCE`    → `DEFAULT_AUDIENCE`
+ *   - `expiresIn`  → `ACCESS_TOKEN_TTL` / `REFRESH_TOKEN_TTL` (caller-scoped)
+ *   - `jti`        → `randomUUID()`
+ */
+export interface TokenSignOptions {
+  jti?: string;
+  issuer?: string;
+  audience?: string;
+  expiresIn?: string;
+}
+
+/**
  * Token pair returned by issuePair(). Contains access + refresh + id tokens
  * + their jti (JWT ID) claims so callers can persist them in TokenStore for
  * rotation / reuse detection / revoke.
@@ -62,6 +78,32 @@ export class TokenFactory {
   constructor(private readonly jwtSigner: JwtSignerService) {}
 
   /**
+   * Resolve JWT signing options from `options` arg → env → default fallback.
+   *
+   * Extracted from `issueAccessToken` + `issueRefreshToken` (DRY — CODING_STANDARDS.md §3.2):
+   * both methods had identical 4-chain `??` resolution that pushed cyclomatic
+   * complexity past the warn threshold (10). Centralizing here drops each
+   * method's complexity back to ~1 (single call to this helper + call to sign).
+   *
+   * Note: complexity 11 here is intentional — each `??` operator is a branch,
+   * and there are 4 of them (issuer/audience/expiresIn/jti). Splitting into 4
+   * separate methods would be silly since this is the canonical "options with
+   * env fallback" pattern.
+   */
+  // eslint-disable-next-line complexity -- intentional: 4 `??` chains for option/env/default resolution
+  private resolveSignOptions(
+    options: TokenSignOptions | undefined,
+    defaultExpiresIn: string,
+  ): { issuer: string; audience: string; expiresIn: string; jti: string } {
+    return {
+      issuer: options?.issuer ?? process.env.AUTH_ISSUER ?? DEFAULT_ISSUER,
+      audience: options?.audience ?? process.env.JWT_AUDIENCE ?? DEFAULT_AUDIENCE,
+      expiresIn: options?.expiresIn ?? defaultExpiresIn,
+      jti: options?.jti ?? randomUUID(),
+    };
+  }
+
+  /**
    * Issue an access token (15m TTL) per plan2 §5.2.
    *
    * Claims: { sub, username, roleId, type: 'access' }
@@ -75,18 +117,12 @@ export class TokenFactory {
   async issueAccessToken(
     user: MockUser,
     roleId: string,
-    options?: {
-      jti?: string;
-      issuer?: string;
-      audience?: string;
-      expiresIn?: string;
-    },
+    options?: TokenSignOptions,
   ): Promise<{ token: string; jti: string }> {
-    const issuer = options?.issuer ?? process.env.AUTH_ISSUER ?? DEFAULT_ISSUER;
-    const audience =
-      options?.audience ?? process.env.JWT_AUDIENCE ?? DEFAULT_AUDIENCE;
-    const expiresIn = options?.expiresIn ?? ACCESS_TOKEN_TTL;
-    const jti = options?.jti ?? randomUUID();
+    const { issuer, audience, expiresIn, jti } = this.resolveSignOptions(
+      options,
+      ACCESS_TOKEN_TTL,
+    );
 
     const token = await this.jwtSigner.sign(
       {
@@ -116,18 +152,12 @@ export class TokenFactory {
     user: MockUser,
     roleId: string,
     clientId: string,
-    options?: {
-      jti?: string;
-      issuer?: string;
-      audience?: string;
-      expiresIn?: string;
-    },
+    options?: TokenSignOptions,
   ): Promise<{ token: string; jti: string }> {
-    const issuer = options?.issuer ?? process.env.AUTH_ISSUER ?? DEFAULT_ISSUER;
-    const audience =
-      options?.audience ?? process.env.JWT_AUDIENCE ?? DEFAULT_AUDIENCE;
-    const expiresIn = options?.expiresIn ?? REFRESH_TOKEN_TTL;
-    const jti = options?.jti ?? randomUUID();
+    const { issuer, audience, expiresIn, jti } = this.resolveSignOptions(
+      options,
+      REFRESH_TOKEN_TTL,
+    );
 
     const token = await this.jwtSigner.sign(
       {

@@ -15,6 +15,7 @@
 import { Logger } from '@nestjs/common';
 import { Repository } from 'typeorm';
 
+import { CachedUser } from '../cache/cached-user.entity';
 import { SessionEntity } from '../cache/session.entity';
 
 import { Session, SessionStore } from './session-store.interface';
@@ -29,7 +30,10 @@ export class PostgresSessionStore implements SessionStore {
   private readonly locks = new Map<string, LockEntry>();
   private readonly lockTimers = new Set<NodeJS.Timeout>();
 
-  constructor(private readonly repo: Repository<SessionEntity>) {}
+  constructor(
+    private readonly repo: Repository<SessionEntity>,
+    private readonly userRepo?: Repository<CachedUser>,
+  ) {}
 
   async get(sid: string): Promise<Session | null> {
     const entity = await this.repo.findOne({ where: { sid } });
@@ -81,8 +85,7 @@ export class PostgresSessionStore implements SessionStore {
   }
 
   async touch(sid: string): Promise<void> {
-    const now = new Date();
-    await this.repo.update({ sid }, { last_seen_at: now });
+    await this.repo.update({ sid }, { last_seen_at: new Date() });
   }
 
   async updateSync(sid: string, permissionCodes: string[], lastSyncAt: number): Promise<void> {
@@ -101,7 +104,12 @@ export class PostgresSessionStore implements SessionStore {
       .createQueryBuilder('s')
       .where('s.refresh_expires_at > :now', { now })
       .getMany();
-    return entities.map((e) => this.entityToSession(e)!).filter(Boolean);
+    const sessions: Session[] = [];
+    for (const e of entities) {
+      const s = await this.entityToSession(e);
+      if (s) sessions.push(s);
+    }
+    return sessions;
   }
 
   async acquireLock(key: string, ttlSec: number): Promise<boolean> {
@@ -127,22 +135,56 @@ export class PostgresSessionStore implements SessionStore {
     this.locks.delete(key);
   }
 
-  /** Convert SessionEntity → Session domain object. */
-  private entityToSession(entity: SessionEntity): Session | null {
+  /**
+   * Convert SessionEntity → Session domain object.
+   *
+   * Username is NOT stored in sessions table (DRY — it's in cached_users).
+   * If userRepo is available, lookup cached_users for username.
+   * If not, username is empty string (caller should merge from cached_users).
+   */
+  private async entityToSession(entity: SessionEntity): Promise<Session | null> {
     if (!entity) return null;
+
+    // Lookup username from cached_users (DRY — username not duplicated in sessions)
+    let username = '';
+    if (this.userRepo) {
+      const cached = await this.userRepo.findOne({ where: { user_id: entity.user_id } });
+      if (cached) {
+        username = cached.username;
+      }
+    }
+
     return {
       sid: entity.sid,
       userId: entity.user_id,
-      username: '', // Not stored in sessions table — fetch from cached_users
+      username,
       roleId: entity.role_id,
       permissionCodes: entity.permission_codes ?? [],
       accessToken: entity.access_token ?? '',
       refreshToken: entity.refresh_token ?? '',
-      accessExpiresAt: entity.access_expires_at ? new Date(entity.access_expires_at).getTime() : 0,
-      refreshExpiresAt: entity.refresh_expires_at ? new Date(entity.refresh_expires_at).getTime() : 0,
-      createdAt: entity.created_at ? new Date(entity.created_at).getTime() : Date.now(),
-      lastSeenAt: entity.last_seen_at ? new Date(entity.last_seen_at).getTime() : Date.now(),
-      lastSyncAt: entity.last_sync_at ? new Date(entity.last_sync_at).getTime() : Date.now(),
+      accessExpiresAt: toTimestamp(entity.access_expires_at, 0),
+      refreshExpiresAt: toTimestamp(entity.refresh_expires_at, 0),
+      createdAt: toTimestamp(entity.created_at, Date.now()),
+      lastSeenAt: toTimestamp(entity.last_seen_at, Date.now()),
+      lastSyncAt: toTimestamp(entity.last_sync_at, Date.now()),
     };
   }
+}
+
+/**
+ * Convert a nullable DB timestamp value to epoch milliseconds.
+ *
+ * Extracted from `entityToSession()` to reduce cyclomatic complexity (each
+ * `entity.X ? new Date(...).getTime() : fallback` was a branch — 5 of them
+ * pushed the method past the warn threshold). Single-responsibility helper
+ * that's easy to test in isolation.
+ *
+ * Accepts `Date | string | null | undefined` because TypeORM may materialize
+ * timestamp columns either as `Date` instances (PostgreSQL native) or as
+ * ISO strings (SQLite fallback in tests).
+ */
+function toTimestamp(value: Date | string | null | undefined, fallback: number): number {
+  if (!value) return fallback;
+  const ms = typeof value === 'number' ? value : new Date(value).getTime();
+  return Number.isNaN(ms) ? fallback : ms;
 }

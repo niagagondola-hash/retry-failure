@@ -15,7 +15,6 @@ import {
   timeout,
   circuitBreaker,
   handleAll,
-  ExponentialBackoff,
   DelegateBackoff,
   ConsecutiveBreaker,
   TimeoutStrategy,
@@ -47,7 +46,10 @@ export function buildRetryPolicy(config: ResilienceConfig): RetryPolicy {
   // Custom backoff: DelegateBackoff yang baca retryAfterMs dari error context.
   // Context shape: { attempt, result: { error: unknown } | { value: unknown } }
   // State: { exponential: number } untuk track exponential backoff across retries.
-  const customBackoff = new DelegateBackoff((context: any, state?: { exponential: number }) => {
+  // Type kept loose (Record<string, unknown>) karena cockatiel v4 exports context
+  // with internal FailureReason typing — we narrow at use sites below.
+  type BackoffContext = { attempt: number; result?: { error?: unknown } | { value?: unknown } };
+  const customBackoff = new DelegateBackoff((context: BackoffContext, state?: { exponential: number }) => {
     // Calculate exponential backoff (mirroring ExponentialBackoff behavior)
     const baseExponential = state?.exponential ?? config.retryBaseDelayMs;
     const nextExponential = Math.min(baseExponential * 2, config.retryMaxDelayMs);

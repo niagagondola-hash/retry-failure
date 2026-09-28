@@ -9,7 +9,7 @@ import {
 } from 'typeorm';
 import { PaymentStatus } from './enums';
 import { PaymentAttempt } from './payment-attempt.entity';
-import { getTimestampColumnType } from '../helpers/db-types.helper';
+import { getUuidColumnType, getTimestampColumnType } from '../helpers/db-types.helper';
 
 /**
  * Payment entity (plan section 11.1 rev 2 - PostgreSQL-native).
@@ -60,6 +60,10 @@ export class Payment {
 
   @Column({ name: 'failure_reason', type: 'varchar', length: 500, nullable: true })
   failureReason: string | null = null;
+
+  // plan2 §7.3 — user_id nullable (existing Plan1 payments don't have user)
+  @Column({ name: 'user_id', type: getUuidColumnType(), nullable: true })
+  userId: string | null = null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;

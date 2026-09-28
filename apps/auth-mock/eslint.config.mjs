@@ -87,4 +87,19 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'warn',
     },
   },
+  {
+    // Test files: spec / e2e-spec setup boilerplate is inherently verbose
+    // (long `beforeEach` blocks, many assertions, mock factory functions).
+    // The structural rules `max-lines-per-function`, `max-lines`, and
+    // `complexity` flag legitimate test patterns. Relax them for tests —
+    // mirrors the override already in `packages/security/eslint.config.mjs`.
+    files: ['**/*.spec.ts', '**/*.e2e-spec.ts'],
+    rules: {
+      'max-lines-per-function': 'off',
+      'max-lines': 'off',
+      complexity: 'off',
+      // Test factories sometimes need `require()` for jest.mock hoisting.
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
 );

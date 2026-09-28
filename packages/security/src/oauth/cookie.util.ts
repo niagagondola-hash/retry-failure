@@ -141,6 +141,19 @@ export function parseSessionCookie(
 
   // Fallback: manual parse from Cookie header
   const rawCookie = req.headers?.cookie ?? '';
+  return parseCookieHeader(rawCookie, name);
+}
+
+/**
+ * Parse a single cookie value from a raw `Cookie` request header.
+ *
+ * Extracted from `parseSessionCookie()` to reduce cyclomatic complexity: the
+ * manual parse loop had multiple branches (empty check, split, trim, indexOf,
+ * name match, value presence) that pushed the parent function past the warn
+ * threshold. This helper owns the manual-parse code path; the parent function
+ * now only dispatches between middleware output and this fallback.
+ */
+function parseCookieHeader(rawCookie: string, name: string): string | null {
   if (!rawCookie) return null;
 
   for (const part of rawCookie.split(';')) {

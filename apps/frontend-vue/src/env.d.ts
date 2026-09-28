@@ -9,6 +9,7 @@ declare module '*.vue' {
 interface ImportMetaEnv {
   readonly VITE_PAYMENT_API_URL?: string;
   readonly VITE_GATEWAY_MOCK_URL?: string;
+  readonly VITE_API_URL?: string;
 }
 
 interface ImportMeta {

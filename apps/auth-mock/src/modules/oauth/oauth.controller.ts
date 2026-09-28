@@ -118,8 +118,17 @@ export class OAuthController {
    * Validate client_id, redirect_uri, PKCE. If the user is already auth'd
    * (auth_sid cookie), short-circuit to code issuance (or select-role).
    * Otherwise render the login page (EJS template — AUTH-04).
+   *
+   * Why `max-lines-per-function` is disabled here: this is the OAuth authorize
+   * endpoint, whose spec (RFC 6749 §4.1.1 + OIDC §3.1.2.4) mandates a linear
+   * sequence of validation steps each ending in a distinct user-facing
+   * response (error / login page / role-select / code redirect). Each branch
+   * is one HTTP response; extracting them to helpers would scatter the flow
+   * without reducing real complexity.
    */
+  // eslint-disable-next-line max-lines-per-function -- OAuth authorize: linear guard-clause flow per RFC 6749 §4.1.1
   @Get('authorize')
+  // (disable directive must precede the @Get decorator — `max-lines-per-function` reports the decorator location as the function start)
   async authorize(
     @Query() query: AuthorizeQueryDto,
     @Req() req: Request,
@@ -200,8 +209,14 @@ export class OAuthController {
    * Submit username + password. Validate via `UserService.validateCredentials`.
    * On success: create `auth_sid` cookie, then either issue code (single-role)
    * or render select-role (multi-role). On failure: re-render login with error.
+   *
+   * Same rationale as `authorize()` above: linear guard-clause flow where each
+   * branch is a distinct HTTP response. Extracting helpers would scatter the
+   * spec-mandated sequence without benefit.
    */
+  // eslint-disable-next-line max-lines-per-function -- OAuth submit: linear guard-clause flow per RFC 6749 §4.1.3
   @Post('authorize')
+  // (disable directive must precede the @Post decorator — `max-lines-per-function` reports the decorator location)
   @HttpCode(HttpStatus.OK)
   async submitLogin(
     @Body() body: AuthorizeSubmitDto,
