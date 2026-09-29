@@ -11,6 +11,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AppMenu: typeof import('./src/components/AppMenu.vue')['default']
     AttemptTimeline: typeof import('./src/components/AttemptTimeline.vue')['default']
     Button: typeof import('primevue/button')['default']
     Card: typeof import('primevue/card')['default']

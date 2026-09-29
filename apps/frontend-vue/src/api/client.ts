@@ -1,5 +1,6 @@
 // Plan reference: PLAN2 Section 11.3 (Aturan), Section 11.4 (Axios interceptor),
-// Section 12.3 (CSRF). Task: AUTH-20 — FE Vue auth flow.
+// Section 12.3 (CSRF). Task: AUTH-20 — FE Vue auth flow; updated in AUTH-21
+// to forward `from` + `retryAfter` query params when pushing 403/429 routes.
 //
 // Single responsibility: configure the SHARED axios instances used by every
 // FE→BE call. There is exactly one auth-aware instance (`apiClient`) for the
@@ -50,6 +51,12 @@ const LOGIN_PATH = '/auth/login';
 /** HTTP methods exempt from CSRF validation per AUTH-15 (RFC 7231 §4.2.1 safe methods). */
 const CSRF_EXEMPT_METHODS = new Set(['get', 'head', 'options']);
 
+/** Default countdown (seconds) shown on the 429 page when no `Retry-After` header is present. */
+const DEFAULT_RETRY_AFTER_SEC = 60;
+
+/** Fallback route for the `from` query when the failing request has no URL. */
+const FROM_FALLBACK = '/';
+
 /**
  * Auth-aware axios instance for ALL BFF (payment-api) calls.
  *
@@ -88,7 +95,7 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
     const status = error.response?.status;
-    const requestUrl = error.config?.url ?? '';
+    const requestUrl = error.config?.url ?? FROM_FALLBACK;
 
     if (status === 401) {
       // Skip redirect for the bootstrap session probe — the auth store handles
@@ -97,9 +104,17 @@ apiClient.interceptors.response.use(
         redirectToLogin();
       }
     } else if (status === 403) {
-      void router.push('/forbidden');
+      // Forward `from` so the Forbidden page can show which route was blocked.
+      void router.push({ name: 'forbidden', query: { from: requestUrl } });
     } else if (status === 429) {
-      void router.push('/too-many-requests');
+      // Throttler v5 sets `Retry-After` (seconds) — pass it through so the
+      // TooManyRequests page can drive its countdown UI.
+      const retryAfterHeader = error.response?.headers?.['retry-after'];
+      const retryAfter = parseRetryAfter(retryAfterHeader);
+      void router.push({
+        name: 'too-many-requests',
+        query: { from: requestUrl, retryAfter: String(retryAfter) },
+      });
     } else {
       // Preserve the legacy error log for non-auth failures (useful in dev
       // when debugging payment/gateway calls that don't fall under 401/403/429).
@@ -156,4 +171,26 @@ export function getCookie(name: string): string | null {
     if (k === name) return decodeURIComponent(v ?? '');
   }
   return null;
+}
+
+/**
+ * Parse the `Retry-After` HTTP header (RFC 7231 §7.1.3) into a positive
+ * integer number of seconds.
+ *
+ * The header may be either a delta-seconds integer OR an HTTP-date. We only
+ * support the integer form (which is what NestJS `@nestjs/throttler` v5
+ * emits). Invalid / missing / negative values fall back to the default
+ * countdown so the 429 page always has a sane value to display.
+ *
+ * Exported for unit tests; not part of the public auth API surface.
+ */
+export function parseRetryAfter(value: string | string[] | undefined): number {
+  if (typeof value !== 'string' || value.length === 0) {
+    return DEFAULT_RETRY_AFTER_SEC;
+  }
+  const parsed = Number.parseInt(value, 10);
+  if (Number.isNaN(parsed) || parsed < 0) {
+    return DEFAULT_RETRY_AFTER_SEC;
+  }
+  return parsed;
 }

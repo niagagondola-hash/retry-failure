@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
-import { useRouter } from 'vue-router';
+// Plan reference: PLAN2 Section 11.2 (Struktur folder — App.vue renders AppMenu).
+// Task: AUTH-22 — render `<AppMenu />` in the sticky header. The header
+// component owns brand + menu + user section + dark mode toggle (consolidated
+// single-header decision — see worklog AUTH-22). App.vue keeps the bootstrap
+// lifecycle (gateway config + global polling) + sticky footer + RouterView +
+// Toast.
+
+import { onMounted, onUnmounted } from 'vue';
 import { useGatewayStore } from './stores/gateway';
 import { usePollingStore } from './stores/polling';
-
-const router = useRouter();
-const isDark = ref(false);
+import AppMenu from './components/AppMenu.vue';
 
 const gatewayStore = useGatewayStore();
 const pollingStore = usePollingStore();
@@ -23,54 +27,12 @@ onUnmounted(() => {
   // Cleanup timers (rarely fires in SPA, but good hygiene)
   pollingStore.stop();
 });
-
-function toggleDark() {
-  isDark.value = !isDark.value;
-  document.documentElement.classList.toggle('app-dark', isDark.value);
-}
 </script>
 
 <template>
   <div class="min-h-screen flex flex-col">
-    <!-- Sticky Header -->
-    <header class="border-b sticky top-0 z-50 bg-white dark:bg-gray-900">
-      <div class="container mx-auto px-4 py-3 flex items-center justify-between">
-        <div class="flex items-center gap-4">
-          <h1
-            class="text-lg font-bold cursor-pointer"
-            @click="router.push('/')"
-          >
-            Cockatiel Retry Dashboard
-          </h1>
-          <nav class="flex gap-3">
-            <RouterLink
-              to="/"
-              class="text-sm hover:text-blue-500"
-            >
-              Home
-            </RouterLink>
-            <RouterLink
-              to="/payments"
-              class="text-sm hover:text-blue-500"
-            >
-              Payments
-            </RouterLink>
-            <RouterLink
-              to="/metrics"
-              class="text-sm hover:text-blue-500"
-            >
-              Metrics
-            </RouterLink>
-          </nav>
-        </div>
-        <Button
-          :icon="isDark ? 'pi pi-sun' : 'pi pi-moon'"
-          severity="secondary"
-          text
-          @click="toggleDark"
-        />
-      </div>
-    </header>
+    <!-- Sticky header (brand + menu + user section + dark toggle) -->
+    <AppMenu />
 
     <!-- Main Content -->
     <main class="flex-1">
