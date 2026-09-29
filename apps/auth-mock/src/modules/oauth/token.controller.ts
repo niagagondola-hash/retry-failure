@@ -58,18 +58,22 @@ export class TokenController {
    * (RFC 6749 §5.2 error responses). Extracting per-grant helpers would
    * scatter the spec's dispatch table without reducing real complexity.
    */
-  // eslint-disable-next-line max-lines-per-function -- OAuth token endpoint: grant-type dispatch per RFC 6749 §4.1.3 + §6
+  // eslint-disable-next-line max-lines-per-function, complexity -- OAuth token endpoint: 3-branch dispatcher (auth_code / refresh / default) + log statements; inherent to RFC 6749 §4.1.3 + §6
   @Post('token')
   async token(@Body() body: TokenRequestDto, @Res() res: Response) {
+    this.logger.debug(`POST /oauth/token — grant_type=${body.grant_type} client_id=${body.client_id ?? '(none)'}`);
     try {
       if (body.grant_type === 'authorization_code') {
+        this.logger.debug('POST /oauth/token — authorization_code grant: verify code + code_verifier + redirect_uri');
         if (!body.code || !body.code_verifier || !body.redirect_uri) {
+          this.logger.warn('POST /oauth/token — authorization_code grant missing required params, return invalid_request');
           return res.status(HttpStatus.BAD_REQUEST).json({
             error: 'invalid_request',
             error_description:
               'authorization_code grant requires code, code_verifier, redirect_uri',
           });
         }
+        this.logger.debug('POST /oauth/token — exchange code via oauth.exchangeCode()');
         const pair = await this.oauth.exchangeCode({
           code: body.code,
           codeVerifier: body.code_verifier,
@@ -77,6 +81,7 @@ export class TokenController {
           clientSecret: body.client_secret,
           redirectUri: body.redirect_uri,
         });
+        this.logger.debug('POST /oauth/token — code exchanged, return access+id+refresh tokens');
         return res.status(HttpStatus.OK).json({
           access_token: pair.accessToken,
           id_token: pair.idToken,

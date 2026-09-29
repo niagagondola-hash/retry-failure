@@ -71,15 +71,22 @@ export const useAuthStore = defineStore('auth', {
      * UI can show a retry affordance.
      */
     async fetchSession(): Promise<void> {
+      console.debug('[auth] fetchSession start');
       this.loading = true;
       this.error = null;
       try {
         const { user } = await authApi.fetchSession();
         this.user = user;
+        if (user) {
+          console.info('[auth] session loaded:', user.username, '(userId:', user.userId + ')');
+        } else {
+          console.debug('[auth] no session, user = null');
+        }
       } catch (err: unknown) {
         const status = extractStatus(err);
         if (status !== 401) {
           this.error = extractMessage(err, 'Failed to fetch session');
+          console.error('[auth] fetchSession error (status:', status + '):', this.error);
         }
         this.user = null;
       } finally {

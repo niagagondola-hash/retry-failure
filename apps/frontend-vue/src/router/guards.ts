@@ -44,6 +44,7 @@ const BFF_LOGIN_HREF: string = `${import.meta.env.VITE_API_URL ?? 'http://localh
 export function setupRouterGuards(router: Router): void {
   router.beforeEach(async (to) => {
     if (to.meta.public === true) {
+      console.debug('[guard] public route, skip auth check:', to.path);
       return true;
     }
 
@@ -53,24 +54,28 @@ export function setupRouterGuards(router: Router): void {
     // bootstrap also calls `fetchSession()`, but in dev (HMR) or on deep
     // links the store may be empty when this guard runs.
     if (!auth.user && !auth.loading) {
+      console.debug('[guard] no user loaded, fetchSession start for path:', to.path);
       await auth.fetchSession();
     }
 
     if (!auth.user) {
       // Cookie session missing — the SPA cannot log the user in itself.
       // Full-page navigation lets the BFF start the OAuth/PKCE flow.
+      console.warn('[guard] still no user after fetchSession, redirect to BFF login:', BFF_LOGIN_HREF);
       window.location.href = BFF_LOGIN_HREF;
       return false;
     }
 
     const requiredMenu = to.meta.menu;
     if (typeof requiredMenu === 'string' && requiredMenu.length > 0 && !auth.hasMenu(requiredMenu)) {
+      console.warn('[guard] permission denied for menu:', requiredMenu, 'path:', to.path);
       return {
         name: 'forbidden',
         query: { from: to.fullPath, menu: requiredMenu },
       };
     }
 
+    console.debug('[guard] access granted, path:', to.path, 'menu:', requiredMenu ?? '(none)');
     return true;
   });
 }

@@ -134,31 +134,40 @@ export class OAuthController {
     @Req() req: Request,
     @Res() res: Response,
   ) {
+    this.logger.debug(`GET /oauth/authorize — client_id=${query.client_id} redirect_uri=${query.redirect_uri} code_challenge_method=${query.code_challenge_method}`);
+
     const clientCheck = this.validateClient(
       query.client_id,
       query.redirect_uri,
     );
     if (!clientCheck.valid) {
+      this.logger.warn(`GET /oauth/authorize — client validation failed: ${clientCheck.message}`);
       return this.renderError(res, clientCheck.status, clientCheck.message);
     }
+    this.logger.debug('GET /oauth/authorize — client validation passed');
 
     if (
       !query.code_challenge ||
       query.code_challenge_method !== 'S256'
     ) {
+      this.logger.warn('GET /oauth/authorize — PKCE missing or method != S256');
       return this.renderError(
         res,
         HttpStatus.BAD_REQUEST,
         'PKCE required (code_challenge_method=S256)',
       );
     }
+    this.logger.debug('GET /oauth/authorize — PKCE S256 verified');
 
     // Already-logged-in user? Skip the login page.
+    this.logger.debug('GET /oauth/authorize — check existing auth_sid cookie (skip login if valid)');
     const session = await this.oauth.getAuthSession(req);
     if (session) {
+      this.logger.debug(`GET /oauth/authorize — auth_sid valid, userId=${session.userId}`);
       const user = await this.users.findById(session.userId);
       if (!user) {
         // Session exists but user was deleted — clear cookie, force re-login.
+        this.logger.warn(`GET /oauth/authorize — session exists but userId=${session.userId} not found (deleted?)`);
         return this.renderError(
           res,
           HttpStatus.UNAUTHORIZED,
@@ -167,6 +176,7 @@ export class OAuthController {
       }
       if (user.roles.length === 1) {
         // Single-role: issue code immediately.
+        this.logger.debug(`GET /oauth/authorize — single role user=${user.username}, issue code immediately`);
         return this.oauth.issueCodeAndRedirect(res, {
           clientId: query.client_id,
           userId: user.id,
@@ -179,6 +189,7 @@ export class OAuthController {
         });
       }
       // Multi-role: render select-role page (AUTH-04).
+      this.logger.debug(`GET /oauth/authorize — multi-role user=${user.username} (${user.roles.length} roles), render select-role page`);
       return res.status(HttpStatus.OK).render('select-role', {
         userId: user.id,
         clientId: query.client_id,
@@ -192,6 +203,7 @@ export class OAuthController {
     }
 
     // Not logged in: render login page (AUTH-04 EJS template).
+    this.logger.debug('GET /oauth/authorize — no auth_sid, render login.ejs');
     return res.status(HttpStatus.OK).render('login', {
       clientId: query.client_id,
       redirectUri: query.redirect_uri,
@@ -222,20 +234,25 @@ export class OAuthController {
     @Body() body: AuthorizeSubmitDto,
     @Res() res: Response,
   ) {
+    this.logger.debug(`POST /oauth/authorize — submit login for username=${body.username}`);
+
     const clientCheck = this.validateClient(
       body.client_id,
       body.redirect_uri,
     );
     if (!clientCheck.valid) {
+      this.logger.warn(`POST /oauth/authorize — client validation failed: ${clientCheck.message}`);
       return this.renderError(res, clientCheck.status, clientCheck.message);
     }
 
+    this.logger.debug(`POST /oauth/authorize — validate credentials for username=${body.username}`);
     const user = await this.users.validateCredentials(
       body.username,
       body.password,
     );
     if (!user) {
       // Re-render login page with error message (AUTH-04 AC #5).
+      this.logger.warn(`POST /oauth/authorize — credentials invalid for username=${body.username}, re-render login with error`);
       return res.status(HttpStatus.UNAUTHORIZED).render('login', {
         clientId: body.client_id,
         redirectUri: body.redirect_uri,
@@ -246,12 +263,15 @@ export class OAuthController {
         error: 'Username atau password salah',
       });
     }
+    this.logger.debug(`POST /oauth/authorize — credentials valid for user=${user.username} (${user.roles.length} roles)`);
 
     // Create auth_sid cookie (so subsequent /oauth/authorize skips login).
+    this.logger.debug(`POST /oauth/authorize — create auth_sid cookie for user=${user.username}`);
     await this.oauth.createAuthSession(res, user);
 
     if (user.roles.length === 1) {
       // Single-role: issue code + redirect immediately.
+      this.logger.debug(`POST /oauth/authorize — single role, issue code + redirect immediately`);
       return this.oauth.issueCodeAndRedirect(res, {
         clientId: body.client_id,
         userId: user.id,
@@ -265,6 +285,7 @@ export class OAuthController {
     }
 
     // Multi-role: render select-role page (AUTH-04).
+    this.logger.debug(`POST /oauth/authorize — multi-role (${user.roles.length} roles), render select-role page`);
     return res.status(HttpStatus.OK).render('select-role', {
       userId: user.id,
       clientId: body.client_id,

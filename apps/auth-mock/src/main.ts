@@ -5,10 +5,19 @@ import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 
 import { AppModule } from './app.module';
+import { FileLoggerService } from './file-logger.service';
 
 async function bootstrap() {
+  // FileLoggerService writes to stdout + apps/logs/auth-mock-yyyyMMdd-HHmmss.log.
+  // Instantiate BEFORE NestFactory.create + pass via `logger` option so it's
+  // installed as the global logger BEFORE any Nest internal log fires during
+  // module init. (Calling `app.useLogger()` after create() misses the bootstrap
+  // log lines from RoutesResolver + InstanceLoader.)
+  const fileLogger = new FileLoggerService();
+
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     rawBody: true,
+    logger: fileLogger,
   });
 
   // Static assets (CSS, JS, images) — /style.css, etc.
@@ -27,6 +36,7 @@ async function bootstrap() {
   const port = Number(process.env.AUTH_MOCK_PORT ?? 4001);
   await app.listen(port);
 
+  // Bootstrap log via the global file-aware logger (writes to stdout + file).
   const logger = new Logger('AuthMock');
   logger.log(`auth-mock listening on http://localhost:${port}`);
   logger.log('⚠️  Development only — do NOT use in production.');

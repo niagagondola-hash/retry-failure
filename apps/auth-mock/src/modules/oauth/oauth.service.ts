@@ -142,6 +142,7 @@ export class OAuthService {
     res: import('express').Response,
     user: MockUser,
   ): Promise<string> {
+    this.logger.debug(`createAuthSession — set auth_sid cookie for user=${user.username} (userId=${user.id})`);
     return this.authSessions.create(res, user);
   }
 
@@ -156,6 +157,9 @@ export class OAuthService {
     res: import('express').Response,
     params: IssueCodeParams,
   ): Promise<IssueCodeResult> {
+    this.logger.debug(
+      `issueCodeAndRedirect — generate authorization code for clientId=${params.clientId} userId=${params.userId} roleId=${params.roleId}`,
+    );
     const code = randomBytes(32).toString('hex');
     const entry: StoredAuthCode = {
       code,
@@ -170,6 +174,7 @@ export class OAuthService {
       consumed: false,
     };
     await this.authCodes.store(entry);
+    this.logger.debug(`issueCodeAndRedirect — code stored (60s TTL), redirect to: ${params.redirectUri}`);
 
     const url = new URL(params.redirectUri);
     url.searchParams.set('code', code);

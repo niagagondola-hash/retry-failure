@@ -32,6 +32,7 @@ import {
   Controller,
   Get,
   HttpCode,
+  Logger,
   Post,
   Req,
   Res,
@@ -69,6 +70,8 @@ const OAUTH_COOKIE_MAX_AGE = 5 * 60 * 1000;
 @Controller('auth')
 @Public()
 export class AuthController {
+  private readonly logger = new Logger('AuthController');
+
   constructor(
     private readonly authService: AuthService,
     private readonly sessionService: SessionService,
@@ -90,14 +93,26 @@ export class AuthController {
     @Req() req: Request,
   ): Promise<{ user: { userId: string; username: string; roleId: string; isSuperAdmin: boolean } | null }> {
     const sid = parseSessionCookie(req);
-    if (!sid) return { user: null };
+    if (!sid) {
+      this.logger.debug('GET /auth/session — no sid cookie, return user=null');
+      return { user: null };
+    }
 
+    this.logger.debug(`GET /auth/session — sid=${sid.substring(0, 8)}... lookup session`);
     const session = await this.sessionService.get(sid);
-    if (!session) return { user: null };
+    if (!session) {
+      this.logger.debug(`GET /auth/session — session not found for sid=${sid.substring(0, 8)}...`);
+      return { user: null };
+    }
 
     // Lookup cached_users for isSuperAdmin (plan2 §6.3 — stable across sessions)
+    this.logger.debug(`GET /auth/session — lookup cached_user for userId=${session.userId}`);
     const cached = await this.cacheRepository.findCachedUser(session.userId);
     const isSuperAdmin = cached?.is_super_admin ?? false;
+
+    this.logger.debug(
+      `GET /auth/session — return user=${session.username} roleId=${session.roleId} isSuperAdmin=${isSuperAdmin}`,
+    );
 
     return {
       user: {
@@ -130,8 +145,11 @@ export class AuthController {
       return;
     }
 
+    this.logger.debug('GET /auth/login — start OAuth2 flow (generate PKCE + state)');
     const { redirectUrl, state, codeVerifier } =
       await this.authService.startLogin();
+
+    this.logger.debug(`GET /auth/login — set oauth_state + oauth_verifier cookies (5min TTL) + redirect to: ${redirectUrl.substring(0, 80)}...`);
 
     const isProd = process.env.NODE_ENV === 'production';
     const cookieOpts = {
@@ -182,7 +200,13 @@ export class AuthController {
     const expectedState = req.cookies?.oauth_state;
     const codeVerifier = req.cookies?.oauth_verifier;
 
+    this.logger.debug(
+      `GET /auth/callback — code=${code ? 'present' : 'missing'} state=${state ? 'present' : 'missing'} ` +
+      `oauth_state_cookie=${expectedState ? 'present' : 'missing'} oauth_verifier_cookie=${codeVerifier ? 'present' : 'missing'}`,
+    );
+
     if (!code || !state || !expectedState || !codeVerifier) {
+      this.logger.warn('GET /auth/callback — missing code/state/cookies, return 400');
       res.status(400).json({
         statusCode: 400,
         message: 'Missing code, state, or oauth cookies',
@@ -191,6 +215,7 @@ export class AuthController {
     }
 
     try {
+      this.logger.debug('GET /auth/callback — call authService.handleCallback (verify state + exchange code + verify JWT + fetch perms + create session)');
       const { sid, user } = await this.authService.handleCallback(
         code,
         state,
@@ -199,6 +224,7 @@ export class AuthController {
       );
 
       const isProd = process.env.NODE_ENV === 'production';
+      this.logger.debug(`GET /auth/callback — set sid cookie (8h TTL) for user=${user.username}, redirect to /`);
       res.cookie('sid', sid, {
         httpOnly: true,
         secure: isProd,
@@ -211,6 +237,7 @@ export class AuthController {
       res.redirect(302, '/');
       void user; // user info available via /auth/session after redirect
     } catch (err) {
+      this.logger.warn(`GET /auth/callback — handleCallback failed: ${(err as Error).message}`);
       res.status(401).json({
         statusCode: 401,
         message: (err as Error).message,

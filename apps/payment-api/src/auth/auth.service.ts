@@ -73,9 +73,11 @@ export class AuthService {
    * then redirects browser to `redirectUrl`.
    */
   async startLogin(): Promise<LoginStartResult> {
+    this.logger.debug('startLogin — generate PKCE + state via OAuthClientService');
     const result = await this.oauthClient.getAuthorizationUrl(
       this.generateState(),
     );
+    this.logger.debug(`startLogin — authorize URL built, state=${result.state.substring(0, 8)}... code_verifier len=${result.codeVerifier.length}`);
     return {
       redirectUrl: result.url,
       state: result.state,
@@ -101,21 +103,29 @@ export class AuthService {
     expectedState: string,
     codeVerifier: string,
   ): Promise<CallbackResult> {
+    this.logger.debug('handleCallback — step 1: verify state (CSRF protection)');
     // 1. Verify state (CSRF protection)
     if (state !== expectedState) {
+      this.logger.warn('handleCallback — state mismatch, throw UnauthorizedException');
       throw new UnauthorizedException('OAuth state mismatch');
     }
 
+    this.logger.debug('handleCallback — step 2: exchange code for tokens via OAuthClientService');
     // 2. Exchange code for tokens
     const tokenSet = await this.oauthClient.exchangeCode(code, codeVerifier);
+    this.logger.debug(`handleCallback — tokens received: access_token len=${tokenSet.accessToken.length} expiresAt=${tokenSet.expiresAt}`);
 
+    this.logger.debug('handleCallback — step 3: verify access token JWT via JwksVerifier');
     // 3. Verify access token JWT
     const payload = await this.jwksVerifier.verify(tokenSet.accessToken);
+    this.logger.debug(`handleCallback — JWT verified, sub=${payload.sub} username=${payload.username}`);
 
+    this.logger.debug('handleCallback — step 4: fetch permissions via OAuthClientService');
     // 4. Fetch permissions (user info + role + permissionCodes)
     const perms = await this.oauthClient.fetchPermissions(
       tokenSet.accessToken,
     );
+    this.logger.debug(`handleCallback — permissions fetched, permissionCodes count=${perms.permissionCodes.length}`);
 
     // 4.5. Initial sync — upsert cached_users (plan2 §8.1)
     // This ensures cached_users table is populated immediately on login,
@@ -131,6 +141,7 @@ export class AuthService {
       `Initial sync: cached_users upserted for userId=${perms.user.id} isSuperAdmin=${perms.user.isSuperAdmin}`,
     );
 
+    this.logger.debug('handleCallback — step 5: create session via SessionService');
     // 5. Create session
     const { sid, session } = await this.sessionService.create({
       userId: payload.sub!,

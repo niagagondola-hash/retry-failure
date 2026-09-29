@@ -32,9 +32,11 @@ const loading = ref<boolean>(true);
 const errorMessage = ref<string | null>(null);
 
 onMounted(async () => {
+  console.debug('[callback] post-OAuth callback received, fetchSession start');
   try {
     await auth.fetchSession();
     if (!auth.user) {
+      console.warn('[callback] fetchSession returned no user, redirect to /login');
       errorMessage.value = 'Login failed. Session not established.';
       window.setTimeout(() => {
         void router.push({ name: 'login' });
@@ -43,8 +45,10 @@ onMounted(async () => {
     }
     const nextQuery = route.query.next;
     const next = typeof nextQuery === 'string' && nextQuery.length > 0 ? nextQuery : DEFAULT_NEXT_ROUTE;
+    console.info('[callback] session established, redirect to:', next);
     await router.push(next);
   } catch (err: unknown) {
+    console.error('[callback] error during fetchSession, redirect to /login:', err);
     errorMessage.value = extractMessage(err, 'Login failed.');
     window.setTimeout(() => {
       void router.push({ name: 'login' });

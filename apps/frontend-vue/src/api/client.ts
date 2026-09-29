@@ -79,12 +79,14 @@ export const apiClient = axios.create({
 // --- Request interceptor: attach CSRF header for non-safe methods ---
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const method = (config.method ?? 'get').toLowerCase();
+  console.debug('[api] request:', method.toUpperCase(), config.url);
   if (!CSRF_EXEMPT_METHODS.has(method)) {
     const csrf = getCookie(CSRF_COOKIE_NAME);
     if (csrf) {
       // AxiosHeaders supports bracket assignment; keeps the double-submit cookie
       // pattern (plan2 §12.3) in sync with the `XSRF-TOKEN` cookie value.
       config.headers[CSRF_HEADER_NAME] = csrf;
+      console.debug('[api] CSRF header attached for:', method.toUpperCase(), config.url);
     }
   }
   return config;
@@ -101,7 +103,10 @@ apiClient.interceptors.response.use(
       // Skip redirect for the bootstrap session probe — the auth store handles
       // the "not logged in yet" case by setting user = null.
       if (!requestUrl.includes(SESSION_PATH)) {
+        console.warn('[api] 401 received, redirect to BFF login:', requestUrl);
         redirectToLogin();
+      } else {
+        console.debug('[api] 401 on /auth/session (bootstrap, no redirect)');
       }
     } else if (status === 403) {
       // Forward `from` so the Forbidden page can show which route was blocked.
