@@ -3,7 +3,10 @@ module.exports = {
   moduleFileExtensions: ['js', 'json', 'ts'],
   rootDir: '.',
   testEnvironment: 'node',
-  testRegex: 'tests/.*\\.spec\\.ts$',
+  // Use testMatch (glob) instead of testRegex so CLI `--testMatch` overrides
+  // work for `pnpm test:integration` (per Jest docs, testMatch + testRegex
+  // cannot coexist). Default matches all `*.spec.ts` files under `tests/`.
+  testMatch: ['**/tests/**/*.spec.ts'],
   passWithNoTests: true,
   transform: {
     '^.+\\.(t|j)s$': [

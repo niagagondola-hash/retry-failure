@@ -10,7 +10,8 @@
     "build:watch": "tsc -p tsconfig.build.json --watch",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "jest"
+    "test": "jest",
+    "test:cov": "jest --coverage"
   },
   "dependencies": {
     "@nestjs/typeorm": "^10.0.2",

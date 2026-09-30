@@ -54,6 +54,19 @@ import { SwitchRoleDto } from './dto/switch-role.dto';
 /** Throttle config for login + callback (10 req/min per IP per plan2 §12.5). */
 const AUTH_THROTTLE = { default: { limit: 10, ttl: 60_000 } };
 
+/**
+ * Frontend URL — redirect target setelah OAuth callback berhasil.
+ *
+ * Di dev/sandbox: `http://localhost:5173` (FE Vue beda port dari BFF).
+ * Di production: biasanya `/` (same-origin via reverse proxy) atau origin
+ * domain utama (mis. `https://app.example.com`). Di-allow juga nilai `/`
+ * supaya bisa pakai relative redirect same-origin.
+ *
+ * Value dari env var `FRONTEND_URL` (Joi-validated di validation.schema.ts).
+ * Fallback `'http://localhost:5173'` kalau env tidak diset (dev default).
+ */
+const FRONTEND_URL = process.env.FRONTEND_URL ?? 'http://localhost:5173';
+
 /** Session cookie TTL — 8 hours (matches refresh token TTL per plan2 §5.3). */
 const SESSION_COOKIE_MAX_AGE = 8 * 60 * 60 * 1000;
 
@@ -168,13 +181,15 @@ export class AuthController {
    * GET /auth/callback — handle OAuth2 callback.
    *
    * Flow:
-   *   1. Read `code` + `state` from query
+   *   1. Read `code` + `state` (+ optional `next`) from query
    *   2. Read `oauth_state` + `oauth_verifier` from cookies
    *   3. Verify state matches (CSRF protection)
    *   4. Exchange code → verify JWT → fetch permissions → create session
    *   5. Set `sid` cookie (8h TTL)
    *   6. Clear `oauth_state` + `oauth_verifier` cookies
-   *   7. Redirect 302 to `/` (frontend)
+   *   7. Redirect 302 to FRONTEND_URL (default localhost:5173, atau env override).
+   *      Kalau `?next=` query ada, forward sebagai `?next=<path>` ke FE
+   *      supaya FE bisa router.push(next) langsung ke halaman tujuan.
    *
    * AUTH_MODE=disabled → 501 Not Implemented.
    */
@@ -183,7 +198,7 @@ export class AuthController {
   async callback(
     @Req()
     req: Request & {
-      query: { code?: string; state?: string };
+      query: { code?: string; state?: string; next?: string };
       cookies?: Record<string, string>;
     },
     @Res() res: Response,
@@ -224,7 +239,7 @@ export class AuthController {
       );
 
       const isProd = process.env.NODE_ENV === 'production';
-      this.logger.debug(`GET /auth/callback — set sid cookie (8h TTL) for user=${user.username}, redirect to /`);
+      this.logger.debug(`GET /auth/callback — set sid cookie (8h TTL) for user=${user.username}, redirect to FE`);
       res.cookie('sid', sid, {
         httpOnly: true,
         secure: isProd,
@@ -234,7 +249,9 @@ export class AuthController {
       });
       res.clearCookie('oauth_state');
       res.clearCookie('oauth_verifier');
-      res.redirect(302, '/');
+
+      this.logger.debug(`GET /auth/callback — redirect to: ${FRONTEND_URL}`);
+      res.redirect(302, FRONTEND_URL);
       void user; // user info available via /auth/session after redirect
     } catch (err) {
       this.logger.warn(`GET /auth/callback — handleCallback failed: ${(err as Error).message}`);
