@@ -51,11 +51,30 @@ export function setupRouterGuards(router: Router): void {
     const auth = useAuthStore();
 
     // Bootstrap session on first protected navigation. The `main.ts`
-    // bootstrap also calls `fetchSession()`, but in dev (HMR) or on deep
-    // links the store may be empty when this guard runs.
+    // bootstrap also calls `fetchSession()`, so we may arrive here while
+    // `auth.loading === true` (in-flight XHR). In that case we must WAIT
+    // for the in-flight fetchSession to complete before checking `auth.user`
+    // — otherwise we'd redirect to the BFF login even though the session
+    // is about to be loaded, causing an infinite redirect loop.
     if (!auth.user && !auth.loading) {
       console.debug('[guard] no user loaded, fetchSession start for path:', to.path);
       await auth.fetchSession();
+    } else if (!auth.user && auth.loading) {
+      console.debug('[guard] fetchSession in-flight (main.ts bootstrap), waiting for completion');
+      // Wait for the in-flight fetchSession to complete by polling
+      // `auth.loading`. Pinia reactive updates will flip `loading` to false
+      // when the XHR resolves. Using a polling loop (vs `watch`) keeps
+      // this file dependency-free — no Vue `watch` import needed.
+      const startTime = Date.now();
+      const BOOTSTRAP_TIMEOUT_MS = 10_000; // 10s — XHR should complete in <2s
+      while (auth.loading && Date.now() - startTime < BOOTSTRAP_TIMEOUT_MS) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      if (auth.loading) {
+        console.warn('[guard] fetchSession still loading after 10s timeout, proceed with null user');
+      } else {
+        console.debug('[guard] in-flight fetchSession completed, user loaded:', auth.user !== null);
+      }
     }
 
     if (!auth.user) {
