@@ -143,15 +143,6 @@ export const validationSchema = Joi.object({
   THROTTLE_LIMIT: Joi.number().integer().positive().default(100),
   THROTTLER_DISABLED: Joi.boolean().default(false),
 
-  // Frontend URL — redirect target setelah OAuth callback (AUTH-17 §4).
-  // Production asumsi same-origin via reverse proxy (FRONTEND_URL='/' atau
-  // domain root). Dev/sandbox beda port — set ke origin FE Vue (5173).
-  // Dipakai di AuthController.callback untuk redirect setelah set sid cookie.
-  FRONTEND_URL: Joi.string()
-    .uri({ scheme: ['http', 'https'] })
-    .allow('/')
-    .default('http://localhost:5173'),
-
   // Redis (required when SESSION_STORE=redis)
   REDIS_URL: Joi.string().when('SESSION_STORE', {
     is: 'redis',

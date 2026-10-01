@@ -16,7 +16,6 @@ export * from './guards';
 export * from './decorators';
 export * from './sync';
 export * from './middleware';
-export * from './utils/bootstrap-validation';
 
 // Stubs — will be exported when implemented:
 // export * from './oauth/oauth.controller';          // AUTH-17 (payment-api)

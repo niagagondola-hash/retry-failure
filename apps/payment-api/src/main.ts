@@ -10,18 +10,50 @@ import { ConfigService } from '@nestjs/config';
 import { Logger as PinoLogger } from 'nestjs-pino';
 import cookieParser from 'cookie-parser';
 
-import { validateBootstrapConfig } from '@retry-failure/security';
-
 import { AppModule } from './app.module';
 
+/**
+ * Bootstrap validation — reject insecure config in production (AUTH-17 §6).
+ *
+ * Per plan2 §14.6:
+ *   - AUTH_MODE=mock + NODE_ENV=production → reject (mock is dev only)
+ *   - AUTH_MODE=disabled + NODE_ENV=production → reject (disabled is dev/test only)
+ *   - SESSION_STORE=memory + NODE_ENV=production → reject (no multi-instance)
+ *
+ * Per plan2 §9.4:
+ *   - SESSION_STORE=redis + no REDIS_URL → reject (Redis required)
+ */
+function validateConfig(): void {
+  const { NODE_ENV, AUTH_MODE, SESSION_STORE, REDIS_URL } = process.env;
+
+  if (NODE_ENV === 'production') {
+    if (AUTH_MODE === 'mock') {
+      throw new Error(
+        'AUTH_MODE=mock tidak boleh di production — pakai AUTH_MODE=oauth',
+      );
+    }
+    if (AUTH_MODE === 'disabled') {
+      throw new Error(
+        'AUTH_MODE=disabled tidak boleh di production — pakai AUTH_MODE=oauth',
+      );
+    }
+    if (SESSION_STORE === 'memory') {
+      throw new Error(
+        'SESSION_STORE=memory tidak boleh di production — pakai SESSION_STORE=redis',
+      );
+    }
+  }
+
+  if (SESSION_STORE === 'redis' && !REDIS_URL) {
+    throw new Error(
+      'REDIS_URL wajib diisi kalau SESSION_STORE=redis',
+    );
+  }
+}
+
 async function bootstrap() {
-  // Validate config before app creation (fail fast).
-  // Validates: NODE_ENV=production + AUTH_MODE in {mock,disabled} → reject;
-  // NODE_ENV=production + SESSION_STORE=memory → reject;
-  // SESSION_STORE=redis + no REDIS_URL → reject (any NODE_ENV).
-  // Implementation lives in packages/security/src/utils/bootstrap-validation.ts
-  // so it can be unit-tested (see AUTH-24).
-  validateBootstrapConfig(process.env);
+  // Validate config before app creation (fail fast)
+  validateConfig();
 
   const app = await NestFactory.create(AppModule, { bufferLogs: false });
   app.useLogger(app.get(PinoLogger));
