@@ -10,9 +10,7 @@ export default defineConfig({
     Components({
       resolvers: [
         PrimeVueResolver({
-          components: {
-            prefix: "prime-cmp"
-          }
+          prefix: '',
         }),
       ],
     }),

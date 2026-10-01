@@ -81,6 +81,6 @@ const router = createRouter({
 });
 
 // Register the global navigation guard (plan2 §11.5).
-// setupRouterGuards(router);
+setupRouterGuards(router);
 
 export default router;

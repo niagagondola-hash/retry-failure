@@ -104,7 +104,7 @@ export class AuthController {
   @Get('session')
   async session(
     @Req() req: Request,
-  ): Promise<{ user: { userId: string; username: string; roleId: string; isSuperAdmin: boolean; permissionCodes: string[] } | null }> {
+  ): Promise<{ user: { userId: string; username: string; roleId: string; isSuperAdmin: boolean } | null }> {
     const sid = parseSessionCookie(req);
     if (!sid) {
       this.logger.debug('GET /auth/session — no sid cookie, return user=null');
@@ -133,7 +133,6 @@ export class AuthController {
         username: session.username,
         roleId: session.roleId,
         isSuperAdmin,
-        permissionCodes: session.permissionCodes,
       },
     };
   }
@@ -182,13 +181,15 @@ export class AuthController {
    * GET /auth/callback — handle OAuth2 callback.
    *
    * Flow:
-   *   1. Read `code` + `state` from query
+   *   1. Read `code` + `state` (+ optional `next`) from query
    *   2. Read `oauth_state` + `oauth_verifier` from cookies
    *   3. Verify state matches (CSRF protection)
    *   4. Exchange code → verify JWT → fetch permissions → create session
    *   5. Set `sid` cookie (8h TTL)
    *   6. Clear `oauth_state` + `oauth_verifier` cookies
    *   7. Redirect 302 to FRONTEND_URL (default localhost:5173, atau env override).
+   *      Kalau `?next=` query ada, forward sebagai `?next=<path>` ke FE
+   *      supaya FE bisa router.push(next) langsung ke halaman tujuan.
    *
    * AUTH_MODE=disabled → 501 Not Implemented.
    */
@@ -197,7 +198,7 @@ export class AuthController {
   async callback(
     @Req()
     req: Request & {
-      query: { code?: string; state?: string };
+      query: { code?: string; state?: string; next?: string };
       cookies?: Record<string, string>;
     },
     @Res() res: Response,
