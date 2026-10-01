@@ -152,7 +152,6 @@ export class CsrfMiddleware implements NestMiddleware {
   private setCookie(res: Response, token: string): void {
     const parts: string[] = [
       `${CSRF_COOKIE_NAME}=${token}`,
-      'HttpOnly=false',
       'SameSite=Lax',
       'Path=/',
       `Max-Age=${CSRF_COOKIE_TTL_SEC}`,

@@ -196,6 +196,8 @@ export class AuthController {
       return;
     }
 
+    const FRONTEND_URL = process.env.FRONTEND_URL!;
+
     const { code, state } = req.query;
     const expectedState = req.cookies?.oauth_state;
     const codeVerifier = req.cookies?.oauth_verifier;
@@ -224,7 +226,7 @@ export class AuthController {
       );
 
       const isProd = process.env.NODE_ENV === 'production';
-      this.logger.debug(`GET /auth/callback — set sid cookie (8h TTL) for user=${user.username}, redirect to /`);
+      this.logger.debug(`GET /auth/callback — set sid cookie (8h TTL) for user=${user.username}, redirect to FE`);
       res.cookie('sid', sid, {
         httpOnly: true,
         secure: isProd,
@@ -234,7 +236,8 @@ export class AuthController {
       });
       res.clearCookie('oauth_state');
       res.clearCookie('oauth_verifier');
-      res.redirect(302, '/');
+      this.logger.debug(`GET /auth/callback — redirect to: ${FRONTEND_URL}`);
+      res.redirect(302, FRONTEND_URL);
       void user; // user info available via /auth/session after redirect
     } catch (err) {
       this.logger.warn(`GET /auth/callback — handleCallback failed: ${(err as Error).message}`);

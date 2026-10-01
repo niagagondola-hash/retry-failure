@@ -31,25 +31,26 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   ...pluginVue.configs['flat/recommended'],
   {
+    files: ['**/*.ts', '**/*.tsx'],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        tsconfigRootDir: __dirname, // Mengunci parser ke folder apps/frontend-vue
+      },
+    },
+  },
+  {
     files: ['**/*.vue'],
     languageOptions: {
       parser: vueParser,
       parserOptions: {
         parser: tsParser,
         sourceType: 'module',
-        tsconfigRootDir: __dirname,
-        project: ['./tsconfig.json'],
-        extraFileExtensions: ['.vue'],
+        tsconfigRootDir: __dirname, // Mengunci parser ke folder apps/frontend-vue
       },
     },
   },
   {
-    languageOptions: {
-      parserOptions: {
-        tsconfigRootDir: __dirname,
-        project: ['./tsconfig.json'],
-      },
-    },
     rules: {
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'warn',
