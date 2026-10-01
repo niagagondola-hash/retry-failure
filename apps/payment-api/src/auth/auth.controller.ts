@@ -91,7 +91,7 @@ export class AuthController {
   @Get('session')
   async session(
     @Req() req: Request,
-  ): Promise<{ user: { userId: string; username: string; roleId: string; isSuperAdmin: boolean } | null }> {
+  ): Promise<{ user: { userId: string; username: string; roleId: string; isSuperAdmin: boolean; permissionCodes: string[] } | null }> {
     const sid = parseSessionCookie(req);
     if (!sid) {
       this.logger.debug('GET /auth/session — no sid cookie, return user=null');
@@ -120,6 +120,7 @@ export class AuthController {
         username: session.username,
         roleId: session.roleId,
         isSuperAdmin,
+        permissionCodes: session.permissionCodes,
       },
     };
   }
@@ -196,7 +197,7 @@ export class AuthController {
       return;
     }
 
-    const FRONTEND_URL = process.env.FRONTEND_URL!;
+    const FRONTEND_URL = process.env.FRONTEND_URL ?? 'http://localhost:5173';
 
     const { code, state } = req.query;
     const expectedState = req.cookies?.oauth_state;

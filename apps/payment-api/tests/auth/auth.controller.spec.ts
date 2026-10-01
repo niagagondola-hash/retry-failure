@@ -139,6 +139,7 @@ describe('AuthController', () => {
         username: 'budi_santoso',
         roleId: 'role-uuid-102',
         isSuperAdmin: false,
+        permissionCodes: ['dashboard', 'payment.read'],
       });
     });
 
@@ -198,8 +199,12 @@ describe('AuthController', () => {
         .expect(400);
     });
 
-    it('redirects 302 to / + sets sid cookie on success', async () => {
+    it('redirects 302 to FRONTEND_URL + sets sid cookie on success', async () => {
       process.env.AUTH_MODE = 'mock';
+      // FRONTEND_URL env var controls the post-callback redirect target
+      // (default 'http://localhost:5173' — FE Vue di dev/sandbox).
+      // Test sets it explicitly supaya assertion deterministic.
+      const expectedRedirect = process.env.FRONTEND_URL ?? 'http://localhost:5173';
       const res = await request(app.getHttpServer())
         .get('/auth/callback?code=test-code&state=test-state-123')
         .set('Cookie', [
@@ -207,7 +212,7 @@ describe('AuthController', () => {
           'oauth_verifier=test-verifier-456',
         ])
         .expect(302);
-      expect(res.headers.location).toBe('/');
+      expect(res.headers.location).toBe(expectedRedirect);
       const setCookie = res.headers['set-cookie'];
       expect(setCookie).toBeDefined();
       const cookieStr = Array.isArray(setCookie) ? setCookie[0] : setCookie;

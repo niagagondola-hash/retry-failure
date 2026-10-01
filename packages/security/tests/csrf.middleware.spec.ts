@@ -101,7 +101,13 @@ describe('CsrfMiddleware', () => {
       expect(next).toHaveBeenCalledTimes(1);
       const cookie = getSetCookie(m);
       expect(cookie).toMatch(/^XSRF-TOKEN=[A-Za-z0-9_-]{40,50}/);
-      expect(cookie).toContain('HttpOnly=false');
+      // HttpOnly attribute MUST be absent — RFC 6265 §5.2.6 treats ANY
+      // presence of HttpOnly attribute as true (regardless of value).
+      // Setting `HttpOnly=false` would make the cookie inaccessible to JS,
+      // breaking the CSRF double-submit pattern (FE cannot read cookie to
+      // mirror in X-CSRF-Token header). Correct implementation: omit the
+      // attribute entirely so browser defaults to HttpOnly=false.
+      expect(cookie).not.toMatch(/HttpOnly/i);
       expect(cookie).toContain('SameSite=Lax');
       expect(cookie).toContain('Path=/');
       expect(cookie).toContain('Max-Age=28800');
