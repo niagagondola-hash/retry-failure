@@ -22,6 +22,13 @@ import { setupRouterGuards } from './guards';
  * `useAuthStore.hasMenu(code)` — see AUTH-20 for the store contract.
  */
 const routes: RouteRecordRaw[] = [
+  // --- Public routes (no auth required) ---
+  {
+    path: '/',
+    name: 'landing',
+    component: () => import('../views/LandingView.vue'),
+    meta: { public: true },
+  },
   {
     path: '/login',
     name: 'login',
@@ -49,8 +56,8 @@ const routes: RouteRecordRaw[] = [
 
   // --- Protected routes — guard enforces session + meta.menu ---
   {
-    path: '/',
-    name: 'home',
+    path: '/dashboard',
+    name: 'dashboard',
     component: () => import('../views/HomeView.vue'),
     meta: { menu: 'dashboard' },
   },

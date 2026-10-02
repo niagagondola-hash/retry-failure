@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { SignJWT, jwtVerify, JWTPayload } from 'jose';
+import { SignJWT, jwtVerify, JWTPayload, errors } from 'jose';
 
 import { KeyPairService } from './key-pair.service';
 
@@ -50,13 +50,35 @@ export class JwtSignerService {
     token: string,
     expectedAudience: string,
     expectedIssuer: string,
+    ignoreExpiration = false,
   ): Promise<JWTPayload> {
-    const { payload } = await jwtVerify(token, this.keyPair.publicKey, {
-      algorithms: ['RS256'],
-      audience: expectedAudience,
-      issuer: expectedIssuer,
-      clockTolerance: 5,
-    });
-    return payload;
+    try {
+      const { payload } = await jwtVerify(token, this.keyPair.publicKey, {
+        algorithms: ['RS256'],
+        audience: expectedAudience,
+        issuer: expectedIssuer,
+        clockTolerance: 5,
+      });
+      return payload;
+    } catch (err: unknown) {
+      // Tangkap error kadaluarsa HANYA jika ignoreExpiration = true
+      if (ignoreExpiration) {
+        // 1. Pengecekan utama via class instance (TypeScript otomatis narrowing tipe err)
+        if (err instanceof errors.JWTExpired) {
+          return err.payload as JWTPayload;
+        }
+        if (
+          typeof err === 'object' &&
+          err !== null &&
+          'code' in err &&
+          'payload' in err &&
+          (err as { code: unknown }).code === 'ERR_JWT_EXPIRED'
+        ) {
+          return (err as { payload: JWTPayload }).payload;
+        }
+      }
+      // Lempar kembali error jika signature palsu atau ignoreExpiration = false
+      throw err;
+    }
   }
 }

@@ -279,10 +279,46 @@ export class OAuthClientService {
     return {
       accessToken: ts.access_token as string,
       refreshToken: ts.refresh_token,
+      idToken: ts.id_token,
       expiresAt,
       tokenType: 'Bearer',
       scope: ts.scope,
     };
+  }
+
+  /**
+   * Generate RP-initiated logout URL (OIDC Session Management 1.0 — AUTH-09a).
+   *
+   * Uses openid-client v5 native `client.endSessionUrl()` to build the URL
+   * with the following parameters:
+   *   - id_token_hint: JWT id_token from the login session (NOT access_token).
+   *     Auth-mock verifies signature + extracts sub (userId).
+   *   - post_logout_redirect_uri: URL to redirect browser after logout.
+   *     Must match auth-mock whitelist (anti open-redirect).
+   *   - state: Auto-generated random string for anti-CSRF. Forwarded as-is
+   *     to post_logout_redirect_uri as ?state=...
+   *   - client_id: Auto-added by openid-client.
+   *
+   * @param params.idTokenHint - JWT id_token (string) from the login TokenSet.
+   * @param params.postLogoutRedirectUri - URL target setelah logout (default FE).
+   * @param params.state - Optional state string (auto-generate if undefined).
+   * @returns Full URL string for browser redirect to auth-mock /oauth/logout.
+   */
+  async getEndSessionUrl(params: {
+    idTokenHint: string;
+    postLogoutRedirectUri: string;
+    state?: string;
+  }): Promise<string> {
+    const client = await this.getClient();
+    try {
+      return client.endSessionUrl({
+        id_token_hint: params.idTokenHint,
+        post_logout_redirect_uri: params.postLogoutRedirectUri,
+        state: params.state,
+      });
+    } catch (err) {
+      throw this.wrapOidcError(err, 'endSessionUrl generation failed');
+    }
   }
 
   /** Wrap openid-client `OPError` / `RPError` into typed `OAuthClientError`. */

@@ -55,6 +55,7 @@ export class PostgresSessionStore implements SessionStore {
       existing.user_id = session.userId;
       existing.role_id = session.roleId;
       existing.permission_codes = session.permissionCodes;
+      existing.id_token = session.idToken;
       existing.access_token = session.accessToken;
       existing.refresh_token = session.refreshToken;
       existing.access_expires_at = session.accessExpiresAt ? new Date(session.accessExpiresAt) : null;
@@ -68,6 +69,7 @@ export class PostgresSessionStore implements SessionStore {
         user_id: session.userId,
         role_id: session.roleId,
         permission_codes: session.permissionCodes,
+        id_token: session.idToken,
         access_token: session.accessToken,
         refresh_token: session.refreshToken,
         access_expires_at: session.accessExpiresAt ? new Date(session.accessExpiresAt) : null,
@@ -160,6 +162,7 @@ export class PostgresSessionStore implements SessionStore {
       username,
       roleId: entity.role_id,
       permissionCodes: entity.permission_codes ?? [],
+      idToken: entity.id_token ?? '',
       accessToken: entity.access_token ?? '',
       refreshToken: entity.refresh_token ?? '',
       accessExpiresAt: toTimestamp(entity.access_expires_at, 0),

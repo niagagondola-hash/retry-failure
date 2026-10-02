@@ -84,6 +84,27 @@ export class AuthSessionService implements OnModuleDestroy {
     res.clearCookie(AUTH_SID_COOKIE, this.cookieOptions());
   }
 
+  /**
+   * Delete all sessions for a given userId (RP-initiated logout — AUTH-09a).
+   *
+   * Used by `GET /oauth/logout` when the caller passes `id_token_hint`.
+   * The JWT `sub` claim identifies the user; we delete ALL auth_sid sessions
+   * for that user (multi-device logout from auth-mock's perspective).
+   *
+   * @param userId - The user ID extracted from the `id_token_hint` JWT `sub` claim.
+   * @returns Number of sessions deleted.
+   */
+  async deleteByUserId(userId: string): Promise<number> {
+    let deleted = 0;
+    for (const [sid, session] of this.sessions) {
+      if (session.userId === userId) {
+        this.sessions.delete(sid);
+        deleted++;
+      }
+    }
+    return deleted;
+  }
+
   private cookieOptions(): CookieOptions {
     return {
       httpOnly: true,

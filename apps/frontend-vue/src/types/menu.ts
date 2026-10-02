@@ -45,7 +45,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     code: 'dashboard',
     label: 'Dashboard',
-    to: '/',
+    to: '/dashboard',
     icon: 'pi pi-home',
     order: 1,
   },

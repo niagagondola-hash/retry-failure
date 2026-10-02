@@ -167,17 +167,26 @@ export class AuthService {
   }
 
   /**
-   * Logout — revoke refresh token + delete session.
+   * Logout — revoke refresh token + generate endSessionUrl + delete session.
    *
-   * Errors from revoke are logged + swallowed (don't block logout).
+   * Plan reference: AUTH-09a task spec — RP-initiated logout.
+   *
+   * Flow:
+   *   1. Best-effort revoke refresh token (RFC 7009, existing behavior).
+   *   2. Generate endSessionUrl via openid-client (MANDATORY — kalau fail,
+   *      throw error, logout tidak complete per user requirement).
+   *   3. Delete BFF session from store.
+   *
+   * @returns `{ endSessionUrl }` — browser redirect target ke auth-mock /oauth/logout.
+   * @throws Error if getEndSessionUrl fails (logout tidak complete).
    */
-  async logout(sid: string): Promise<void> {
+  async logout(sid: string): Promise<{ endSessionUrl: string }> {
     const session = await this.sessionService.get(sid);
     if (!session) {
       this.logger.debug(
         `Logout: session not found sid=${sid.substring(0, 8)}...`,
       );
-      return;
+      throw new Error('Session not found — already logged out?');
     }
 
     // Best-effort revoke refresh token — don't fail logout if revoke fails
@@ -194,8 +203,18 @@ export class AuthService {
       );
     }
 
+    // Generate endSessionUrl via openid-client (MANDATORY).
+    // OIDC RP-initiated logout: id_token_hint = id_token (NOT access_token).
+    const endSessionUrl = await this.oauthClient.getEndSessionUrl({
+      idTokenHint: session.idToken,
+      postLogoutRedirectUri: process.env.FRONTEND_URL ?? 'http://localhost:5173',
+    });
+
+    // Delete BFF session
     await this.sessionService.delete(sid);
     this.logger.log(`Logout success sid=${sid.substring(0, 8)}...`);
+
+    return { endSessionUrl };
   }
 
   /**

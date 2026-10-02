@@ -47,6 +47,7 @@ export interface DiscoveryDocument {
   authorization_endpoint: string;
   token_endpoint: string;
   revocation_endpoint: string;
+  end_session_endpoint: string;
   jwks_uri: string;
   userinfo_endpoint: string;
   response_types_supported: string[];
@@ -76,6 +77,7 @@ export class DiscoveryService {
       authorization_endpoint: `${issuer}/oauth/authorize`,
       token_endpoint: `${issuer}/oauth/token`,
       revocation_endpoint: `${issuer}/oauth/revoke`,
+      end_session_endpoint: `${issuer}/oauth/logout`,
       jwks_uri: `${issuer}/.well-known/jwks.json`,
       // userinfo_endpoint — listed for discovery completeness even though
       // /oauth/userinfo is not yet implemented (plan2 §10.1 marks optional).

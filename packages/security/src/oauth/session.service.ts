@@ -64,6 +64,7 @@ export class SessionService {
       username: input.username,
       roleId: input.roleId,
       permissionCodes: input.permissionCodes,
+      idToken: input.tokens.idToken ?? '',
       accessToken: input.tokens.accessToken,
       refreshToken: input.tokens.refreshToken ?? '',
       // Convert seconds → ms (plan2 §5.3: expiresAt is Unix seconds)

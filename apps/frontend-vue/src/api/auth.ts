@@ -33,14 +33,18 @@ export const authApi = {
   },
 
   /**
-   * Destroy the BFF session and clear cookies.
+   * Destroy the BFF session, revoke refresh token, and generate endSessionUrl.
    *
-   * Sends the CSRF header automatically (POST → interceptor). After this
-   * resolves, the caller (`useAuthStore.logout`) clears local state and
-   * bounces to the BFF login page so a fresh OAuth/PKCE flow starts.
+   * Sends the CSRF header automatically (POST → interceptor). The BFF returns
+   * `{ endSessionUrl }` — a URL to auth-mock /oauth/logout that the browser
+   * must redirect to. Auth-mock will delete auth_sid session, clear cookie,
+   * and redirect back to the FE landing page.
+   *
+   * @returns `{ endSessionUrl: string }` — browser redirect target.
    */
-  async logout(): Promise<void> {
-    await apiClient.post('/auth/logout');
+  async logout(): Promise<{ endSessionUrl: string }> {
+    const { data } = await apiClient.post<{ endSessionUrl: string }>('/auth/logout');
+    return data;
   },
 
   /**

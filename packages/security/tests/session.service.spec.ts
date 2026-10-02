@@ -80,6 +80,7 @@ describe('SessionService', () => {
       permissionCodes: ['dashboard', 'payment.read'],
       tokens: {
         accessToken: 'access.jwt.token',
+    idToken: 'id-token.jwt',
         refreshToken: 'refresh.jwt.token',
         expiresAt: Math.floor(Date.now() / 1000) + 900, // 15 min from now
         tokenType: 'Bearer' as const,
@@ -149,6 +150,7 @@ describe('SessionService', () => {
         permissionCodes: [],
         tokens: {
           accessToken: 'a',
+    idToken: 'id-token.jwt',
           refreshToken: 'r',
           expiresAt: Math.floor(Date.now() / 1000) + 900,
           tokenType: 'Bearer',
@@ -172,6 +174,7 @@ describe('SessionService', () => {
         permissionCodes: [],
         tokens: {
           accessToken: 'a',
+    idToken: 'id-token.jwt',
           refreshToken: 'r',
           expiresAt: Math.floor(Date.now() / 1000) + 900,
           tokenType: 'Bearer',
@@ -191,6 +194,7 @@ describe('SessionService', () => {
         permissionCodes: [],
         tokens: {
           accessToken: 'a',
+    idToken: 'id-token.jwt',
           refreshToken: 'r',
           expiresAt: Math.floor(Date.now() / 1000) + 900,
           tokenType: 'Bearer',
@@ -212,6 +216,7 @@ describe('SessionService', () => {
         permissionCodes: ['dashboard'],
         tokens: {
           accessToken: 'a',
+    idToken: 'id-token.jwt',
           refreshToken: 'r',
           expiresAt: Math.floor(Date.now() / 1000) + 900,
           tokenType: 'Bearer',
@@ -238,6 +243,7 @@ describe('SessionService', () => {
         permissionCodes: ['dashboard'],
         tokens: {
           accessToken: 'old-access',
+    idToken: 'id-token.jwt',
           refreshToken: 'old-refresh',
           expiresAt: Math.floor(Date.now() / 1000) + 900,
           tokenType: 'Bearer',
@@ -246,6 +252,7 @@ describe('SessionService', () => {
 
       const newTokens: TokenSet = {
         accessToken: 'new-access',
+    idToken: 'id-token.jwt',
         refreshToken: 'new-refresh',
         expiresAt: Math.floor(Date.now() / 1000) + 900,
         tokenType: 'Bearer',
@@ -269,6 +276,7 @@ describe('SessionService', () => {
         'role-new',
         {
           accessToken: 'a',
+    idToken: 'id-token.jwt',
           refreshToken: 'r',
           expiresAt: Math.floor(Date.now() / 1000) + 900,
           tokenType: 'Bearer',
@@ -286,6 +294,7 @@ describe('SessionService', () => {
         permissionCodes: [],
         tokens: {
           accessToken: 'old-access',
+    idToken: 'id-token.jwt',
           refreshToken: 'old-refresh',
           expiresAt: Math.floor(Date.now() / 1000) + 900,
           tokenType: 'Bearer',
@@ -293,6 +302,7 @@ describe('SessionService', () => {
       });
       const updated = await svc.updateOnSwitchRole(sid, 'role-new', {
         accessToken: 'new-access',
+    idToken: 'id-token.jwt',
         // refreshToken undefined — should keep old
         expiresAt: Math.floor(Date.now() / 1000) + 900,
         tokenType: 'Bearer',

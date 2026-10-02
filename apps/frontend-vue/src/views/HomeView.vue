@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 import { usePaymentsStore } from '../stores/payments';
 import { usePollingStore } from '../stores/polling';
 import GatewayModeSelector from '../components/GatewayModeSelector.vue';
@@ -7,9 +7,20 @@ import CreatePaymentDialog from '../components/CreatePaymentDialog.vue';
 import CircuitBreakerCard from '../components/CircuitBreakerCard.vue';
 import DemoScenarioRunner from '../components/DemoScenarioRunner.vue';
 import StatusTag from '../components/StatusTag.vue';
+import { useGatewayStore } from '../stores/gateway';
 
 const paymentsStore = usePaymentsStore();
 const pollingStore = usePollingStore();
+const gatewayStore = useGatewayStore();
+
+onMounted(async () => {
+    // Fetch gateway config once on app boot (mode, n, probability, ...)
+    await gatewayStore.fetchConfig().catch(() => {
+      // Gateway down is non-fatal — UI can still render in default mode
+    });
+    // Start global polling (payments @ 3s + metrics @ 5s)
+    pollingStore.start();
+});
 
 // NOTE: polling lifecycle (start/stop) is owned by App.vue + global store.
 // HomeView only exposes the toggle UI + manual refresh button.

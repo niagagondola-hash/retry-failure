@@ -262,11 +262,23 @@ export class AuthController {
     @Res() res: Response,
   ): Promise<void> {
     const sid = req.cookies?.sid;
-    if (sid) {
-      await this.authService.logout(sid);
+    if (!sid) {
+      res.json({ statusCode: 200, message: 'OK (no session)' });
+      return;
     }
-    res.clearCookie('sid', { path: '/' });
-    res.json({ statusCode: 200, message: 'OK' });
+
+    try {
+      const { endSessionUrl } = await this.authService.logout(sid);
+      res.clearCookie('sid', { path: '/' });
+      res.json({ statusCode: 200, endSessionUrl });
+    } catch (err) {
+      this.logger.warn(`POST /auth/logout — logout failed: ${(err as Error).message}`);
+      res.clearCookie('sid', { path: '/' });
+      res.status(500).json({
+        statusCode: 500,
+        message: 'Logout failed — please try again',
+      });
+    }
   }
 
   /**

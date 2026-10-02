@@ -33,6 +33,7 @@ function mockSession(overrides: Partial<Session> = {}): Session {
     roleId: 'role-uuid-102',
     permissionCodes: ['dashboard'],
     accessToken: 'access.jwt.token',
+    idToken: 'id-token.jwt',
     refreshToken: 'refresh.jwt.token',
     accessExpiresAt: Date.now() + 900_000,
     refreshExpiresAt: Date.now() + 8 * 60 * 60 * 1000,

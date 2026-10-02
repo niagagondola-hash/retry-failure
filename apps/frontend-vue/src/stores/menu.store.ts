@@ -24,7 +24,7 @@ import { useAuthStore } from './auth.store';
 const ACTIVE_MENU_CLASS = 'menu-item-active';
 
 /** Home path — exact match only (avoid every `/payments` matching `/`). */
-const HOME_PATH = '/';
+const HOME_PATH = '/dashboard';
 
 export const useMenuStore = defineStore('menu', () => {
   const auth = useAuthStore();
@@ -64,7 +64,7 @@ export const useMenuStore = defineStore('menu', () => {
       icon: item.icon,
       to: item.to,
       command: () => {
-        void router.push(item.to);
+        router.push(item.to);
       },
       class: isActiveRoute(item.to) ? ACTIVE_MENU_CLASS : '',
     })),

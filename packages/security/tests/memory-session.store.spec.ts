@@ -10,6 +10,7 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     roleId: 'role-1',
     permissionCodes: ['payment.read'],
     accessToken: 'access-token-1',
+    idToken: 'id-token.jwt',
     refreshToken: 'refresh-token-1',
     accessExpiresAt: now + 15 * 60 * 1000, // 15m
     refreshExpiresAt: now + 8 * 60 * 60 * 1000, // 8h

@@ -283,6 +283,7 @@ describe('OAuthClientService', () => {
         data: {
           data: {
             accessToken: 'new-access',
+    idToken: 'id-token.jwt',
             refreshToken: 'new-refresh',
             role,
           },

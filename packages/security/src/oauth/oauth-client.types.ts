@@ -31,6 +31,8 @@ export interface TokenSet {
   accessToken: string;
   /** OAuth2 refresh token (rotated on each refresh per plan2 §5.4). */
   refreshToken?: string;
+  /** OIDC id_token (JWT, RS256 per OIDC Core §2). Used for RP-initiated logout id_token_hint (AUTH-09a). */
+  idToken?: string;
   /** Unix timestamp (seconds) when access token expires. */
   expiresAt: number;
   /** Token type — always `Bearer`. */

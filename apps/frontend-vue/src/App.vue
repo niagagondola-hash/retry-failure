@@ -6,22 +6,11 @@
 // lifecycle (gateway config + global polling) + sticky footer + RouterView +
 // Toast.
 
-import { onMounted, onUnmounted } from 'vue';
-import { useGatewayStore } from './stores/gateway';
+import { onUnmounted } from 'vue';
 import { usePollingStore } from './stores/polling';
 import AppMenu from './components/AppMenu.vue';
 
-const gatewayStore = useGatewayStore();
 const pollingStore = usePollingStore();
-
-onMounted(async () => {
-  // Fetch gateway config once on app boot (mode, n, probability, ...)
-  await gatewayStore.fetchConfig().catch(() => {
-    // Gateway down is non-fatal — UI can still render in default mode
-  });
-  // Start global polling (payments @ 3s + metrics @ 5s)
-  pollingStore.start();
-});
 
 onUnmounted(() => {
   // Cleanup timers (rarely fires in SPA, but good hygiene)

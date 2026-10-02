@@ -12,7 +12,7 @@
  * in `tests/session-store.parity.spec.ts` catches drift).
  */
 
-/** Session record persisted in store. 11 fields per plan2 §9.4.1. */
+/** Session record persisted in store. 12 fields per plan2 §9.4.1 + AUTH-09a (idToken). */
 export interface Session {
   /** Session ID — opaque random string, also stored in cookie `sid`. */
   sid: string;
@@ -24,6 +24,8 @@ export interface Session {
   roleId: string;
   /** Permission codes for active role (lazy-synced from auth). */
   permissionCodes: string[];
+  /** OIDC id_token (JWT). Used for RP-initiated logout id_token_hint (AUTH-09a). */
+  idToken: string;
   /** OAuth2 access token (JWT RS256). */
   accessToken: string;
   /** OAuth2 refresh token (rotated on each refresh). */

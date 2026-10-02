@@ -34,6 +34,7 @@ function mockSession(lastSyncAt: number): Session {
     roleId: 'role-uuid-102',
     permissionCodes: ['dashboard'],
     accessToken: 'access.jwt',
+    idToken: 'id-token.jwt',
     refreshToken: 'refresh.jwt',
     accessExpiresAt: Date.now() + 900_000,
     refreshExpiresAt: Date.now() + 8 * 60 * 60 * 1000,

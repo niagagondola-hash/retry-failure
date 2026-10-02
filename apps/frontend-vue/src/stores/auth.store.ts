@@ -8,10 +8,6 @@ import { defineStore } from 'pinia';
 import { authApi } from '../api/auth';
 import type { AuthUser } from '../types/auth';
 
-/** BFF login URL — used by `logout()` to restart the OAuth/PKCE flow. */
-const API_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
-const LOGIN_HREF = `${API_URL}/auth/login`;
-
 /** Wildcard permission code — grants every menu/route check. */
 const WILDCARD_PERMISSION = '*';
 
@@ -95,21 +91,30 @@ export const useAuthStore = defineStore('auth', {
     },
 
     /**
-     * Log out: call the BFF logout endpoint, then unconditionally clear local
-     * state and bounce to the BFF login page so a fresh OAuth/PKCE flow starts.
+     * Log out via RP-initiated logout (OIDC Session Management 1.0 — AUTH-09a).
      *
-     * Failures from `authApi.logout` are swallowed (warned) because we still
-     * want to clear local state and redirect — a stale session cookie on the
-     * BE side is not a reason to trap the user in the SPA.
+     * Flow:
+     *   1. Call BFF POST /auth/logout → BFF revokes refresh token + generates
+     *      endSessionUrl (auth-mock /oauth/logout?id_token_hint=...&post_logout_redirect_uri=...&state=...).
+     *   2. Clear local state (user=null).
+     *   3. Browser redirect to endSessionUrl → auth-mock deletes auth_sid session
+     *      + clears cookie + redirects to FE landing page.
+     *
+     * If BFF logout fails, clear local state + redirect to landing page anyway
+     * (best-effort) — user is effectively logged out from FE perspective.
      */
     async logout(): Promise<void> {
       try {
-        await authApi.logout();
-      } catch (err: unknown) {
-        console.warn('[auth] logout API failed:', extractMessage(err, 'unknown error'));
-      } finally {
+        const { endSessionUrl } = await authApi.logout();
         this.clear();
-        window.location.href = LOGIN_HREF;
+        // Browser redirect to auth-mock /oauth/logout — auth-mock will
+        // delete auth_sid session + clear cookie + redirect to FE landing.
+        window.location.href = endSessionUrl;
+      } catch (err: unknown) {
+        console.error('[auth] logout failed:', extractMessage(err, 'unknown error'));
+        // Best-effort: clear local state + redirect to landing page
+        this.clear();
+        window.location.href = '/';
       }
     },
 

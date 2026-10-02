@@ -36,6 +36,10 @@ export class SessionEntity {
   @Column('text', { name: 'refresh_token', nullable: true })
   refresh_token: string | null = null;
 
+  /** OIDC id_token — used for RP-initiated logout id_token_hint (AUTH-09a). */
+  @Column('text', { name: 'id_token', nullable: true })
+  id_token: string | null = null;
+
   @Column({ type: getTimestampColumnType(), name: 'access_expires_at', nullable: true })
   access_expires_at: Date | null = null;
 

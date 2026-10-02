@@ -37,8 +37,10 @@ import {
 import type { Request, Response } from 'express';
 
 import { ClientService } from '../client/client.service';
+import { JwtSignerService } from '../keypair/jwt-signer.service';
 import { UserService , MockRole } from '../user/user.service';
 
+import { AUTH_SID_COOKIE, AuthSessionService } from './auth-session.service';
 import {
   AuthorizeQueryDto,
   AuthorizeSubmitDto,
@@ -57,10 +59,13 @@ interface RoleDto {
 export class OAuthController {
   private readonly logger = new Logger('OAuthController');
 
+  // eslint-disable-next-line max-params -- NestJS DI constructor; all 5 collaborators genuinely required for OAuth2 + logout flows
   constructor(
     private readonly oauth: OAuthService,
     private readonly clients: ClientService,
     private readonly users: UserService,
+    private readonly jwtSigner: JwtSignerService,
+    private readonly authSessions: AuthSessionService,
   ) {}
 
   // ----- Shared helpers (DRY refactor per CODING_STANDARDS.md §DRY) --------
@@ -346,5 +351,99 @@ export class OAuthController {
       scope: body.scope ?? '',
       state: body.state,
     });
+  }
+
+  // ----- RP-initiated logout (AUTH-09a) ----------------------------------
+
+  /**
+   * GET /oauth/logout — RP-initiated logout (OIDC Session Management 1.0).
+   *
+   * Plan reference: AUTH-09a task spec, OIDC Session Management 1.0.
+   *
+   * Accepts 3 query parameters per OIDC RP-initiated logout spec:
+   *   - id_token_hint (REQUIRED): JWT id_token from login. Verify signature +
+   *     extract sub (userId) to identify which auth_sid sessions to delete.
+   *   - post_logout_redirect_uri (OPTIONAL): URL to redirect after logout.
+   *     Must match whitelist (anti open-redirect). Default: FE landing page.
+   *   - state (OPTIONAL): Opaque value for anti-CSRF. Forwarded as-is to
+   *     post_logout_redirect_uri as ?state=...
+   *
+   * Flow:
+   *   1. Verify id_token_hint JWT signature via JwtSignerService.verify()
+   *   2. Extract sub (userId) from JWT payload
+   *   3. Delete all AuthSession entries for userId via AuthSessionService.deleteByUserId()
+   *   4. Clear auth_sid cookie (Set-Cookie: auth_sid=; Max-Age=0; Path=/)
+   *   5. Validate post_logout_redirect_uri against whitelist
+   *   6. Redirect 302 to post_logout_redirect_uri (+ append state if present)
+   *
+   * @param idTokenHint - JWT id_token from login
+   * @param postLogoutRedirectUri - URL to redirect after logout
+   * @param state - Anti-CSRF opaque value
+   */
+  // eslint-disable-next-line max-lines-per-function -- RP-initiated logout: linear guard-clause flow per OIDC Session Management 1.0
+  @Get('logout')
+  async logout(
+    @Query('id_token_hint') idTokenHint: string | undefined,
+    @Query('post_logout_redirect_uri') postLogoutRedirectUri: string | undefined,
+    @Query('state') state: string | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    this.logger.debug('GET /oauth/logout — RP-initiated logout received');
+
+    // 1. id_token_hint is REQUIRED — verify JWT + extract userId
+    if (!idTokenHint) {
+      this.logger.warn('GET /oauth/logout — missing id_token_hint, return 400');
+      res.status(HttpStatus.BAD_REQUEST).json({
+        error: 'invalid_request',
+        error_description: 'id_token_hint is required',
+      });
+      return;
+    }
+
+    // 2. Verify JWT signature — extract sub (userId)
+    const issuer = process.env.AUTH_ISSUER ?? 'http://localhost:4001';
+    const audience = process.env.JWT_AUDIENCE ?? 'payment-api';
+    let userId: string;
+    try {
+      const payload = await this.jwtSigner.verify(
+        idTokenHint,
+        audience,
+        issuer,
+        true
+      );
+      userId = payload.sub as string;
+      this.logger.debug(`GET /oauth/logout — JWT verified, userId=${userId}`);
+    } catch (err) {
+      this.logger.warn(`GET /oauth/logout — JWT verification failed: ${(err as Error).message}`);
+      res.status(HttpStatus.BAD_REQUEST).json({
+        error: 'invalid_request',
+        error_description: 'id_token_hint is invalid or expired',
+      });
+      return;
+    }
+
+    // 3. Delete all auth_sid sessions for this user
+    const deleted = await this.authSessions.deleteByUserId(userId);
+    this.logger.debug(`GET /oauth/logout — deleted ${deleted} auth_sid sessions for userId=${userId}`);
+
+    // 4. Clear auth_sid cookie
+    res.clearCookie(AUTH_SID_COOKIE, { path: '/' });
+
+    // 5. Validate post_logout_redirect_uri against whitelist (anti open-redirect)
+    const allowedRedirects = [
+      'http://localhost:5173/',
+      'http://localhost:5173',
+    ];
+    const redirectUri = postLogoutRedirectUri && allowedRedirects.includes(postLogoutRedirectUri)
+      ? postLogoutRedirectUri
+      : 'http://localhost:5173/';
+
+    // 6. Append state to redirect URL if present (anti-CSRF, forwarded as-is per OIDC spec)
+    const finalRedirect = state
+      ? `${redirectUri}${redirectUri.includes('?') ? '&' : '?'}state=${encodeURIComponent(state)}`
+      : redirectUri;
+
+    this.logger.debug(`GET /oauth/logout — redirect to: ${finalRedirect}`);
+    res.redirect(HttpStatus.FOUND, finalRedirect);
   }
 }

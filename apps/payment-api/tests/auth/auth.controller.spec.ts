@@ -54,7 +54,7 @@ function mockAuthService() {
         isSuperAdmin: false,
       },
     }),
-    logout: jest.fn().mockResolvedValue(undefined),
+    logout: jest.fn().mockResolvedValue({ endSessionUrl: 'http://localhost:4001/oauth/logout?id_token_hint=test' }),
     refresh: jest.fn().mockResolvedValue(undefined),
     switchRole: jest.fn().mockResolvedValue({
       userId: '00000000-0000-1000-8000-000000000002',
@@ -239,19 +239,20 @@ describe('AuthController', () => {
   });
 
   describe('POST /auth/logout', () => {
-    it('returns 200 + clears sid cookie', async () => {
+    it('returns 200 + clears sid cookie + returns endSessionUrl', async () => {
       const res = await request(app.getHttpServer())
         .post('/auth/logout')
         .set('Cookie', 'sid=test-sid')
         .expect(200);
-      expect(res.body.message).toBe('OK');
+      expect(res.body.endSessionUrl).toBeDefined();
       expect(authService.logout).toHaveBeenCalledWith('test-sid');
     });
 
     it('returns 200 even without sid cookie (no-op)', async () => {
-      await request(app.getHttpServer())
+      const res = await request(app.getHttpServer())
         .post('/auth/logout')
         .expect(200);
+      expect(res.body.message).toBe('OK (no session)');
       expect(authService.logout).not.toHaveBeenCalled();
     });
   });

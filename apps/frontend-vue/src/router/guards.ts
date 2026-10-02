@@ -53,12 +53,12 @@ export function setupRouterGuards(router: Router): void {
     // Bootstrap session on first protected navigation. The `main.ts`
     // bootstrap also calls `fetchSession()`, but in dev (HMR) or on deep
     // links the store may be empty when this guard runs.
-    if (!auth.user && !auth.loading) {
+    if (!auth.isAuthenticated) {
       console.debug('[guard] no user loaded, fetchSession start for path:', to.path);
       await auth.fetchSession();
     }
 
-    if (!auth.user) {
+    if (!auth.isAuthenticated) {
       // Cookie session missing — the SPA cannot log the user in itself.
       // Full-page navigation lets the BFF start the OAuth/PKCE flow.
       console.warn('[guard] still no user after fetchSession, redirect to BFF login:', BFF_LOGIN_HREF);
