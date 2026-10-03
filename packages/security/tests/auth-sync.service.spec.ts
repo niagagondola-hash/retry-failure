@@ -17,6 +17,7 @@ import { Test } from '@nestjs/testing';
 import { CacheRepository } from '../src/cache/cache.repository';
 import { OAuthClientService } from '../src/oauth/oauth-client.service';
 import type { PermissionsResponse } from '../src/oauth/oauth-client.types';
+import { TokenLifecycleManager } from '../src/oauth/token-lifecycle-manager';
 import {
   SESSION_STORE,
   Session,
@@ -94,6 +95,14 @@ describe('AuthSyncService', () => {
         { provide: OAuthClientService, useValue: oauthClient },
         { provide: CacheRepository, useValue: cache },
         { provide: SESSION_STORE, useValue: sessionStore },
+        {
+          provide: TokenLifecycleManager,
+          useValue: {
+            executeWithToken: jest.fn(async <T>(session: Session, fn: (token: string) => Promise<T>) =>
+              fn(session.accessToken),
+            ),
+          },
+        },
       ],
     }).compile();
     svc = mod.get(AuthSyncService);

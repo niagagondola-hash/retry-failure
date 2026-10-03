@@ -6,6 +6,8 @@ export * from './oauth/pkce.util';
 export * from './oauth/oauth-client.types';
 export * from './oauth/oauth-client.service';
 export * from './oauth/session.service';
+export * from './oauth/token-lifecycle-manager';
+export * from './oauth/token-lifecycle-manager.types';
 export * from './oauth/cookie.util';
 export * from './types/auth-user';
 export * from './security.module';

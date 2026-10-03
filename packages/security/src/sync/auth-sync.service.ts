@@ -29,6 +29,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { CacheRepository } from '../cache/cache.repository';
 import { OAuthClientService } from '../oauth/oauth-client.service';
 import type { PermissionsResponse } from '../oauth/oauth-client.types';
+import { TokenLifecycleManager } from '../oauth/token-lifecycle-manager';
 import { SESSION_STORE, Session, SessionStore } from '../session-store';
 
 /** Result of a successful sync — fresh permissionCodes + user snapshot. */
@@ -45,6 +46,7 @@ export class AuthSyncService {
     private readonly oauthClient: OAuthClientService,
     private readonly cache: CacheRepository,
     @Inject(SESSION_STORE) private readonly sessionStore: SessionStore,
+    private readonly tokenManager: TokenLifecycleManager,
   ) {}
 
   /**
@@ -61,9 +63,10 @@ export class AuthSyncService {
       `Syncing session sid=${sidShort}... userId=${session.userId}`,
     );
 
-    // 1. Fetch fresh permissions from auth
-    const data = await this.oauthClient.fetchPermissions(
-      session.accessToken,
+    // 1. Fetch fresh permissions from auth (with auto-refresh via TokenLifecycleManager)
+    const data = await this.tokenManager.executeWithToken(
+      session,
+      (token) => this.oauthClient.fetchPermissions(token),
     );
 
     // 2. Upsert stable user fields into cached_users

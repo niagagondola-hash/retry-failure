@@ -28,6 +28,7 @@ import {
   SECURITY_OPTIONS,
   SecurityOptions,
   SessionService,
+  TokenLifecycleManager,
   AuthUser,
 } from '@retry-failure/security';
 
@@ -64,6 +65,7 @@ export class AuthService {
     @Inject(JWT_VERIFIER) private readonly jwksVerifier: JwtVerifier,
     @Inject(SECURITY_OPTIONS) private readonly options: SecurityOptions,
     private readonly cacheRepository: CacheRepository,
+    private readonly tokenManager: TokenLifecycleManager,
   ) {}
 
   /**
@@ -259,10 +261,10 @@ export class AuthService {
       throw new UnauthorizedException('Session not found');
     }
 
-    // 1. Call auth /api/v1/auth/switch-role
-    const result = await this.oauthClient.switchRole(
-      session.accessToken,
-      roleId,
+    // 1. Call auth /api/v1/auth/switch-role (with auto-refresh via TokenLifecycleManager)
+    const result = await this.tokenManager.executeWithToken(
+      session,
+      (token) => this.oauthClient.switchRole(token, roleId),
     );
 
     // 2. Verify new access token

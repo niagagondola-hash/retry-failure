@@ -103,8 +103,11 @@ apiClient.interceptors.response.use(
       // Skip redirect for the bootstrap session probe — the auth store handles
       // the "not logged in yet" case by setting user = null.
       if (!requestUrl.includes(SESSION_PATH)) {
-        console.warn('[api] 401 received, redirect to BFF login:', requestUrl);
-        redirectToLogin();
+        console.warn('[api] 401 received — session expired, redirect to landing page:', requestUrl);
+        // Redirect to landing page (not BFF login) — TokenLifecycleManager
+        // already tried to refresh token. If we get here, refresh failed too,
+        // meaning session is truly invalid. User must login manually.
+        window.location.href = '/';
       } else {
         console.debug('[api] 401 on /auth/session (bootstrap, no redirect)');
       }

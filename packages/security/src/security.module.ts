@@ -56,6 +56,7 @@ import { HelmetMiddleware } from './middleware/helmet.middleware';
 import { LazySyncMiddleware } from './middleware/lazy-sync.middleware';
 import { OAuthClientService, SECURITY_OPTIONS } from './oauth/oauth-client.service';
 import { SessionService } from './oauth/session.service';
+import { TokenLifecycleManager } from './oauth/token-lifecycle-manager';
 import {
   MemorySessionStore,
   PostgresSessionStore,
@@ -124,6 +125,7 @@ const EXPORTS = [
   JWT_VERIFIER,
   OAuthClientService,
   SessionService,
+  TokenLifecycleManager,
   CacheRepository,
   SessionGuard,
   MenuAccessGuard,
@@ -204,6 +206,7 @@ function buildDependentProvidersWithoutSessionStore(): Provider[] {
     buildJwtVerifierProvider(),
     OAuthClientService,
     SessionService,
+    TokenLifecycleManager,
     CacheRepository,
     SessionGuard,
     MenuAccessGuard,

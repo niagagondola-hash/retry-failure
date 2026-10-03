@@ -139,4 +139,29 @@ export class SessionService {
     }
     return session;
   }
+
+  /**
+   * Update session tokens after token refresh (AUTH-09b).
+   *
+   * Updates: accessToken, refreshToken, accessExpiresAt, idToken, lastSyncAt.
+   * Persists to store with refreshed TTL.
+   *
+   * @returns Updated session, or null if session no longer exists
+   */
+  async updateTokens(sid: string, tokens: TokenSet): Promise<Session | null> {
+    const session = await this.store.get(sid);
+    if (!session) return null;
+
+    session.accessToken = tokens.accessToken;
+    session.refreshToken = tokens.refreshToken ?? session.refreshToken;
+    session.idToken = tokens.idToken ?? session.idToken;
+    session.accessExpiresAt = tokens.expiresAt * 1000;
+    session.lastSyncAt = Date.now();
+
+    const ttlMs = session.refreshExpiresAt - Date.now();
+    if (ttlMs > 0) {
+      await this.store.set(sid, session, ttlMs);
+    }
+    return session;
+  }
 }
