@@ -4,10 +4,10 @@
  * Plan reference: CODING_STANDARDS.md §DRY, PLAN2 §5.1 (signing), §5.2 (JWT claims),
  * OIDC Core 1.0 §2 (id_token), §3.1.3.3 (token response).
  *
- * Token TTL constants:
- *   - Access token: 15 menit (900 detik) per plan2 §5.2
- *   - Refresh token: 8 jam per plan2 §5.4
- *   - ID token: 15 menit (same as access token) per OIDC Core §2
+ * Token TTL (configurable via env vars for testing):
+ *   - ACCESS_TOKEN_TTL env (default '15m') — access token expiry (jose format: '15m', '1h', '30s')
+ *   - REFRESH_TOKEN_TTL env (default '8h') — refresh token expiry (jose format: '8h', '1d', '7200s')
+ *   - ID token: same as access token per OIDC Core §2
  *   - Issuer: AUTH_ISSUER env (default http://localhost:4001)
  *   - Audience: JWT_AUDIENCE env (default payment-api)
  *
@@ -30,14 +30,14 @@ const DEFAULT_ISSUER = 'http://localhost:4001';
 /** Default audience when JWT_AUDIENCE env is not set. */
 const DEFAULT_AUDIENCE = 'payment-api';
 
-/** Access token TTL — 15 minutes per plan2 §5.2. */
-const ACCESS_TOKEN_TTL = '15m';
+/** Default access token TTL — overridable via ACCESS_TOKEN_TTL env (jose format: '15m', '1h', '30s'). */
+const ACCESS_TOKEN_TTL = process.env.ACCESS_TOKEN_TTL ?? '15m';
 
-/** Refresh token TTL — 8 hours per plan2 §5.4. */
-const REFRESH_TOKEN_TTL = '8h';
+/** Default refresh token TTL — overridable via REFRESH_TOKEN_TTL env (jose format: '8h', '1d', '7200s'). */
+const REFRESH_TOKEN_TTL = process.env.REFRESH_TOKEN_TTL ?? '8h';
 
-/** ID token TTL — same as access token (15 minutes) per OIDC Core §2. */
-const ID_TOKEN_TTL = '15m';
+/** ID token TTL — same as access token per OIDC Core §2. */
+const ID_TOKEN_TTL = ACCESS_TOKEN_TTL;
 
 /**
  * Optional overrides for `issueAccessToken` / `issueRefreshToken` signing.

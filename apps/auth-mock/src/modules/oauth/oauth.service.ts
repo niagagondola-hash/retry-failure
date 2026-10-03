@@ -48,10 +48,55 @@ const JWT_AUDIENCE = process.env.JWT_AUDIENCE ?? 'payment-api';
 /**
  * Access token expiry in seconds — plan2 §5.3: 15 minutes.
  *
- * Used for cookie `maxAge` calculation (line ~429). JWT signing TTL is owned by
- * `token-factory.ts` (`ACCESS_TOKEN_TTL = '15m'`) — keep the two in sync.
+ * Configurable via ACCESS_TOKEN_TTL env var (jose format: '15m', '1h', '30s').
+ * Default: 900 seconds (15 minutes) per plan2 §5.2.
  */
-export const ACCESS_TTL_SEC = 900;
+export const ACCESS_TTL_SEC = parseTtlToSeconds(process.env.ACCESS_TOKEN_TTL ?? '15m');
+
+/**
+ * Refresh token TTL in milliseconds.
+ *
+ * Configurable via REFRESH_TOKEN_TTL env var (jose format: '8h', '1d', '7200s').
+ * Default: 8 hours (28800000 ms) per plan2 §5.4.
+ */
+export const REFRESH_TTL_MS = parseTtlToMs(process.env.REFRESH_TOKEN_TTL ?? '8h');
+
+/**
+ * Parse jose/ms-style TTL string (e.g. '15m', '8h', '30s', '1d', '7200s') to seconds.
+ *
+ * Used to keep ACCESS_TTL_SEC in sync with ACCESS_TOKEN_TTL in token-factory.ts
+ * (both read from same env var, but token-factory uses string for jose sign
+ * while oauth.service uses numeric for TokenStore + token response).
+ */
+function parseTtlToSeconds(ttl: string): number {
+  return Math.floor(parseTtlToMs(ttl) / 1000);
+}
+
+/**
+ * Parse jose/ms-style TTL string to milliseconds.
+ *
+ * Supports formats: '30s', '15m', '8h', '1d', '7200s', '2h30m'.
+ */
+function parseTtlToMs(ttl: string): number {
+  const match = ttl.match(/^(\d+)([smhd])$/);
+  if (!match) {
+    // Fallback: treat as raw seconds if no unit
+    const seconds = parseInt(ttl, 10);
+    if (Number.isNaN(seconds)) {
+      throw new Error(`Invalid TTL format: ${ttl} (expected e.g. '15m', '8h', '30s', '1d')`);
+    }
+    return seconds * 1000;
+  }
+  const value = parseInt(match[1], 10);
+  const unit = match[2];
+  const multipliers: Record<string, number> = {
+    s: 1000,
+    m: 60 * 1000,
+    h: 60 * 60 * 1000,
+    d: 24 * 60 * 60 * 1000,
+  };
+  return value * multipliers[unit];
+}
 
 /** RFC 7636 §4.1: code_verifier length 43-128. */
 function isValidCodeVerifier(v: string): boolean {
@@ -458,7 +503,7 @@ export class OAuthService {
       clientId,
       roleId,
       type: 'refresh',
-      expiresAt: now + 8 * 60 * 60 * 1000,
+      expiresAt: now + REFRESH_TTL_MS,
       revoked: false,
     });
 

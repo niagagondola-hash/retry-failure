@@ -5,7 +5,13 @@ import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 
 import { AppModule } from './app.module';
+import { loadEnv } from './env-loader';
 import { FileLoggerService } from './file-logger.service';
+
+// Load .env from monorepo root BEFORE any other module reads process.env.
+// Must be called before AppModule imports (token-factory reads
+// ACCESS_TOKEN_TTL, discovery reads AUTH_ISSUER, etc.).
+loadEnv();
 
 async function bootstrap() {
   // FileLoggerService writes to stdout + apps/logs/auth-mock-yyyyMMdd-HHmmss.log.
